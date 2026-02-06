@@ -24,24 +24,31 @@ import PayrollEngine from "./pages/payroll/PayrollEngine";
 import SystemAdmin from "./pages/admin/SystemAdmin";
 import UserManagement from "./pages/admin/UserManagement";
 import Announcements from "./pages/announce/Announcements";
-// import Login from "./pages/auth/Login";
-// import RequireAuth from "./components/RequireAuth";
-// import Register from "./pages/auth/Register";
+import Login from "./pages/auth/Login";
+import RequireAuth from "./components/RequireAuth";
+import Register from "./pages/auth/Register";
+import PublicRoute from "./components/PublicRoute";
 
 function App() {
   return (
     <>
       <BrowserRouter>
         <Routes>
-          {/* <Route path="/login" element={<Login />} /> */}
+          <Route
+            path="/login"
+            element={
+              <PublicRoute>
+                <Login />
+              </PublicRoute>
+            }/>
 
           {/* Route gốc dùng MainLayout */}
           <Route
             path="/"
             element={
-              // <RequireAuth>
-              <MainLayout />
-              // </RequireAuth>
+              <RequireAuth>
+                <MainLayout />
+              </RequireAuth>
             }
           >
             {/* Các trang con sẽ hiện vào vị trí của <Outlet /> */}
@@ -56,12 +63,12 @@ function App() {
             <Route
               path="admin"
               element={
-                // <RequireAuth roles={["ADMIN"]}>
-                <Outlet />
-                // </RequireAuth>
+                <RequireAuth roles={["ADMIN"]}>
+                  <Outlet />
+                </RequireAuth>
               }
             >
-              {/* <Route path="register" element={<Register />} /> */}
+              <Route path="register" element={<Register />} />
 
               <Route path="system-admin" element={<SystemAdmin />} />
               <Route path="user-management" element={<UserManagement />} />
@@ -69,9 +76,9 @@ function App() {
             <Route
               path="hr"
               element={
-                // <RequireAuth roles={["ADMIN", "HR"]}>
-                <Outlet />
-                // </RequireAuth>
+                <RequireAuth roles={["ADMIN", "HR"]}>
+                  <Outlet />
+                </RequireAuth>
               }
             >
               <Route path="payroll-engine" element={<PayrollEngine />} />

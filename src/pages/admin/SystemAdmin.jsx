@@ -1,410 +1,490 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Shield,
-  Clock,
-  Calendar,
-  Briefcase,
-  Box,
-  FileText,
-  Edit,
   Plus,
   Trash2,
+  Edit2,
   Save,
-  ToggleLeft,
-  ToggleRight,
-  Monitor,
-  Cpu,
-  Mouse,
   Check,
+  X,
+  Search,
+  Lock,
+  Loader2,
+  AlertCircle,
+  Key, // Icon mới cho Permission
 } from "lucide-react";
-
-// Import UI Kit
+import { roleApi } from "../../apis/roleApi";
+import { permissionApi } from "../../apis/permissionApi";
+import { toast } from "react-toastify";
 import Card from "../../components/common/Card";
-import Button from "../../components/common/Button";
-import StatusBadge from "../../components/common/StatusBadge";
+import Button from "../../components/common/Button"; // Đảm bảo component này tồn tại
 
 const SystemAdmin = () => {
-  const [activeTab, setActiveTab] = useState("roles");
+  // --- STATE ---
+  const [roles, setRoles] = useState([]);
+  const [permissions, setPermissions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Danh sách Menu Cấu hình
-  const menuItems = [
-    {
-      id: "roles",
-      label: "Roles & Permissions",
-      icon: <Shield size={18} />,
-      desc: "Phân quyền người dùng",
-    },
-    {
-      id: "schedules",
-      label: "Work Schedules",
-      icon: <Clock size={18} />,
-      desc: "Ca làm việc & Giờ giấc",
-    },
-    {
-      id: "policies",
-      label: "Leave & OT Policies",
-      icon: <Briefcase size={18} />,
-      desc: "Quy định nghỉ & tăng ca",
-    },
-    {
-      id: "holidays",
-      label: "Holidays",
-      icon: <Calendar size={18} />,
-      desc: "Danh sách ngày lễ",
-    },
-    {
-      id: "assets",
-      label: "Asset Categories",
-      icon: <Box size={18} />,
-      desc: "Danh mục tài sản",
-    },
-    {
-      id: "reports",
-      label: "Report Settings",
-      icon: <FileText size={18} />,
-      desc: "Cấu hình báo cáo tự động",
-    },
-  ];
+  const [selectedRole, setSelectedRole] = useState(null);
 
-  // --- RENDER CONTENT: ROLES ---
-  const renderRoles = () => {
-    const roles = [
-      {
-        name: "Admin",
-        desc: "Quản trị viên hệ thống, toàn quyền truy cập.",
-        users: 2,
-        type: "System",
-      },
-      {
-        name: "HR Manager",
-        desc: "Quản lý tuyển dụng, nhân sự, chấm công.",
-        users: 3,
-        type: "System",
-      },
-      {
-        name: "Payroll",
-        desc: "Truy cập module tính lương và báo cáo tài chính.",
-        users: 2,
-        type: "Custom",
-      },
-      {
-        name: "Team Leader",
-        desc: "Quản lý nhân viên trong team, duyệt đơn từ.",
-        users: 12,
-        type: "System",
-      },
-      {
-        name: "Employee",
-        desc: "Quyền cơ bản: xem hồ sơ, chấm công, gửi request.",
-        users: 120,
-        type: "System",
-      },
-    ];
+  // State cho Role
+  const [isCreatingRole, setIsCreatingRole] = useState(false);
+  const [newRoleName, setNewRoleName] = useState("");
 
-    return (
-      <div className="space-y-6 animate-in fade-in duration-300">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold text-gray-800">
-            Roles & Permissions
-          </h2>
-          <Button className="flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700">
-            <Plus size={16} /> Tạo Role mới
-          </Button>
-        </div>
-        <div className="border border-gray-200 rounded-lg overflow-hidden">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200 font-semibold text-gray-500">
-              <tr>
-                <th className="p-4">Tên Role</th>
-                <th className="p-4">Mô tả quyền hạn</th>
-                <th className="p-4 text-center">User</th>
-                <th className="p-4 text-right">Hành động</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
-              {roles.map((role, idx) => (
-                <tr key={idx} className="hover:bg-gray-50">
-                  <td className="p-4 font-bold text-gray-800 flex items-center gap-2">
-                    {role.name}
-                    {role.type === "System" && (
-                      <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded border">
-                        System
-                      </span>
-                    )}
-                  </td>
-                  <td className="p-4 text-gray-600">{role.desc}</td>
-                  <td className="p-4 text-center font-medium">{role.users}</td>
-                  <td className="p-4 text-right">
-                    <button className="text-blue-600 hover:underline text-xs font-medium">
-                      Edit Permission
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
+  // State cho Permission (Mới)
+  const [isCreatingPerm, setIsCreatingPerm] = useState(false);
+  const [newPermData, setNewPermData] = useState({
+    name: "",
+    module: "",
+    description: "",
+  });
+
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // --- INIT DATA ---
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [rolesRes, permsRes] = await Promise.all([
+        roleApi.getAll(),
+        permissionApi.getAll(),
+      ]);
+
+      // Xử lý dữ liệu trả về an toàn
+      const rolesData = rolesRes.data?.data || rolesRes.data || [];
+      const permsData = permsRes.data?.data || permsRes.data || [];
+
+      setRoles(rolesData);
+      setPermissions(permsData);
+
+      if (rolesData.length > 0 && !selectedRole) {
+        setSelectedRole(rolesData[0]);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Lỗi tải dữ liệu hệ thống");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // --- RENDER CONTENT: SCHEDULES ---
-  const renderSchedules = () => (
-    <div className="space-y-6 animate-in fade-in duration-300 max-w-2xl">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-800">
-          Cấu hình ca làm việc chuẩn
-        </h2>
-        <Button variant="secondary" className="flex items-center gap-2">
-          <Save size={16} /> Lưu thay đổi
-        </Button>
-      </div>
+  // --- LOGIC NHÓM PERMISSION ---
+  const groupedPermissions = useMemo(() => {
+    const groups = {};
+    if (!Array.isArray(permissions)) return groups;
 
-      <div className="space-y-6">
-        <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-          <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
-            <Clock size={18} /> Giờ hành chính (Standard)
-          </h3>
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Giờ bắt đầu (Check-in)
-              </label>
-              <input
-                type="time"
-                defaultValue="08:30"
-                className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Giờ kết thúc (Check-out)
-              </label>
-              <input
-                type="time"
-                defaultValue="17:30"
-                className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Nghỉ trưa từ
-              </label>
-              <input
-                type="time"
-                defaultValue="12:00"
-                className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Đến
-              </label>
-              <input
-                type="time"
-                defaultValue="13:30"
-                className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-blue-500"
-              />
-            </div>
-          </div>
+    permissions.forEach((perm) => {
+      const moduleName = perm.module ? perm.module.toUpperCase() : "OTHER";
+      if (!groups[moduleName]) {
+        groups[moduleName] = [];
+      }
 
-          <div className="mt-6 pt-4 border-t border-gray-200">
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Ngày làm việc trong tuần
-            </label>
-            <div className="flex gap-2">
-              {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((day, i) => (
-                <div
-                  key={day}
-                  className={`
-                         w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold cursor-pointer border transition-all
-                         ${
-                           i < 5
-                             ? "bg-blue-600 text-white border-blue-600"
-                             : "bg-white text-gray-400 border-gray-300 hover:border-blue-400"
-                         }
-                      `}
-                >
-                  {day}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+      if (
+        searchTerm === "" ||
+        perm.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        perm.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      ) {
+        groups[moduleName].push(perm);
+      }
+    });
 
-  // --- RENDER CONTENT: ASSETS ---
-  const renderAssets = () => {
-    const categories = [
-      {
-        name: "Laptop / PC",
-        prefix: "LAP",
-        icon: <Monitor size={24} />,
-        items: 45,
-      },
-      {
-        name: "Monitor",
-        prefix: "MON",
-        icon: <Monitor size={24} />,
-        items: 30,
-      },
-      {
-        name: "Keyboard / Mouse",
-        prefix: "ACC",
-        icon: <Mouse size={24} />,
-        items: 50,
-      },
-      {
-        name: "Server / Network",
-        prefix: "SVR",
-        icon: <Cpu size={24} />,
-        items: 5,
-      },
-    ];
-    return (
-      <div className="space-y-6 animate-in fade-in duration-300">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold text-gray-800">Danh mục Tài sản</h2>
-          <Button className="flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700">
-            <Plus size={16} /> Thêm nhóm
-          </Button>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {categories.map((cat, idx) => (
-            <Card
-              key={idx}
-              className="flex items-center gap-4 hover:border-blue-300 cursor-pointer transition"
-            >
-              <div className="p-4 bg-gray-50 rounded-lg text-gray-600">
-                {cat.icon}
-              </div>
-              <div>
-                <h4 className="font-bold text-gray-800">{cat.name}</h4>
-                <p className="text-sm text-gray-500">
-                  Mã tiền tố:{" "}
-                  <span className="font-mono font-bold">{cat.prefix}</span>
-                </p>
-                <p className="text-xs text-blue-600 mt-1">
-                  {cat.items} thiết bị
-                </p>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
+    Object.keys(groups).forEach((key) => {
+      if (groups[key].length === 0) delete groups[key];
+    });
+
+    return groups;
+  }, [permissions, searchTerm]);
+
+  // --- HANDLERS: ROLE ---
+  const handleCreateRole = async () => {
+    if (!newRoleName.trim()) return;
+    try {
+      const res = await roleApi.create({ name: newRoleName });
+      toast.success("Create Role Success");
+
+      // Xử lý response linh hoạt
+      const newRole = res.data?.data || res.data;
+
+      // Đảm bảo permissions là mảng rỗng để tránh lỗi render
+      const safeRole = { ...newRole, permissions: newRole.permissions || [] };
+
+      setRoles([...roles, safeRole]);
+      setNewRoleName("");
+      setIsCreatingRole(false);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Tạo thất bại");
+    }
   };
 
-  // --- RENDER CONTENT: HOLIDAYS ---
-  const renderHolidays = () => (
-    <div className="space-y-6 animate-in fade-in duration-300 max-w-3xl">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-800">
-          Danh sách Ngày lễ 2025
-        </h2>
-        <Button className="flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700">
-          <Plus size={16} /> Thêm ngày lễ
-        </Button>
+  const handleDeleteRole = async (id) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa vai trò này?")) return;
+    try {
+      await roleApi.delete(id);
+      toast.success("Delete Role Success");
+      const newRoles = roles.filter((r) => r._id !== id);
+      setRoles(newRoles);
+      if (selectedRole?._id === id) {
+        setSelectedRole(newRoles.length > 0 ? newRoles[0] : null);
+      }
+    } catch (error) {
+      const msg = error.response?.data?.message || "Lỗi khi xóa vai trò";
+      toast.error(msg);
+    }
+  };
+
+  // --- HANDLERS: PERMISSION (MỚI) ---
+  const handleCreatePermission = async () => {
+    // Validate cơ bản
+    if (!newPermData.name || !newPermData.module) {
+      toast.warning("Vui lòng nhập Tên quyền và Module");
+      return;
+    }
+
+    try {
+      const res = await permissionApi.create(newPermData);
+      toast.success("Tạo quyền hạn mới thành công");
+
+      const newPerm = res.data?.data || res.data;
+      setPermissions([...permissions, newPerm]); // Cập nhật list ngay lập tức
+
+      // Reset form
+      setNewPermData({ name: "", module: "", description: "" });
+      setIsCreatingPerm(false);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Tạo quyền thất bại");
+    }
+  };
+
+  // --- HANDLERS: ASSIGNMENT ---
+  const hasPermission = (permId) => {
+    if (!selectedRole || !selectedRole.permissions) return false;
+    return selectedRole.permissions.some((p) => p._id === permId);
+  };
+
+  const togglePermission = async (permId, isAssigned) => {
+    if (!selectedRole) return;
+
+    const originalRole = { ...selectedRole };
+    let updatedPermissions;
+
+    if (isAssigned) {
+      updatedPermissions = selectedRole.permissions.filter(
+        (p) => p._id !== permId,
+      );
+    } else {
+      const permToAdd = permissions.find((p) => p._id === permId);
+      updatedPermissions = [...(selectedRole.permissions || []), permToAdd];
+    }
+
+    const updatedRole = { ...selectedRole, permissions: updatedPermissions };
+    setSelectedRole(updatedRole);
+    setRoles(roles.map((r) => (r._id === updatedRole._id ? updatedRole : r)));
+
+    try {
+      if (isAssigned) {
+        await roleApi.removePermissions(selectedRole._id, [permId]);
+      } else {
+        await roleApi.addPermissions(selectedRole._id, [permId]);
+      }
+    // eslint-disable-next-line no-unused-vars
+    } catch (error) {
+      setSelectedRole(originalRole);
+      setRoles(
+        roles.map((r) => (r._id === originalRole._id ? originalRole : r)),
+      );
+      toast.error("Cập nhật quyền thất bại");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="animate-spin text-blue-600" size={40} />
       </div>
-      <div className="border border-gray-200 rounded-lg overflow-hidden">
-        {[
-          { date: "01/01/2025", name: "Tết Dương lịch", days: 1 },
-          { date: "25/01/2025", name: "Tết Nguyên Đán", days: 7 },
-          { date: "30/04/2025", name: "Ngày Giải phóng & Quốc tế LĐ", days: 2 },
-          { date: "02/09/2025", name: "Quốc Khánh", days: 2 },
-        ].map((h, idx) => (
-          <div
-            key={idx}
-            className="flex justify-between items-center p-4 border-b border-gray-100 last:border-0 hover:bg-gray-50"
-          >
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-red-50 text-red-600 rounded-lg font-bold flex flex-col items-center min-w-[60px]">
-                <span className="text-xs uppercase">
-                  {h.date.split("/")[1]}/{h.date.split("/")[2]}
-                </span>
-                <span className="text-lg">{h.date.split("/")[0]}</span>
-              </div>
-              <div>
-                <p className="font-bold text-gray-800">{h.name}</p>
-                <p className="text-sm text-gray-500">Nghỉ {h.days} ngày</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button className="p-2 text-gray-400 hover:text-blue-600">
-                <Edit size={16} />
-              </button>
-              <button className="p-2 text-gray-400 hover:text-red-600">
-                <Trash2 size={16} />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+    );
+  }
 
   return (
-    <div className="h-[calc(100vh-100px)] flex flex-col md:flex-row gap-6">
-      {/* --- LEFT SIDEBAR: SETTINGS MENU --- */}
-      <Card className="w-full md:w-72 flex-shrink-0 p-2 h-full overflow-y-auto">
-        <div className="px-4 py-3 mb-2">
-          <h3 className="font-bold text-gray-800 uppercase text-xs tracking-wider">
-            System Settings
-          </h3>
-        </div>
-        <div className="space-y-1">
-          {menuItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all text-left group
-                    ${
-                      activeTab === item.id
-                        ? "bg-blue-50 text-blue-700 shadow-sm"
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                    }
-                 `}
-            >
-              <span
-                className={`${
-                  activeTab === item.id
-                    ? "text-blue-600"
-                    : "text-gray-400 group-hover:text-gray-600"
-                }`}
+    <div className="h-[calc(100vh-100px)] flex flex-col md:flex-row gap-6 relative">
+      {/* --- MODAL TẠO PERMISSION --- */}
+      {isCreatingPerm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+              <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                <Key size={18} className="text-blue-600" /> Thêm quyền hạn mới
+              </h3>
+              <button
+                onClick={() => setIsCreatingPerm(false)}
+                className="text-gray-400 hover:text-red-500"
               >
-                {item.icon}
-              </span>
-              <div className="flex-1">
-                <p>{item.label}</p>
-                {/* <p className="text-[10px] text-gray-400 font-normal mt-0.5 line-clamp-1">{item.desc}</p> */}
-              </div>
-              {activeTab === item.id && (
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-600"></div>
-              )}
-            </button>
-          ))}
-        </div>
-      </Card>
-
-      {/* --- RIGHT CONTENT AREA --- */}
-      <Card className="flex-1 h-full overflow-y-auto p-6 md:p-8 border border-gray-200 shadow-sm bg-white">
-        {activeTab === "roles" && renderRoles()}
-        {activeTab === "schedules" && renderSchedules()}
-        {activeTab === "assets" && renderAssets()}
-        {activeTab === "holidays" && renderHolidays()}
-
-        {/* Placeholder cho các tab chưa implement */}
-        {(activeTab === "policies" || activeTab === "reports") && (
-          <div className="flex flex-col items-center justify-center h-full text-gray-400 animate-in fade-in">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <FileText size={32} className="opacity-30" />
+                <X size={20} />
+              </button>
             </div>
-            <p className="font-medium">Cấu hình này đang được phát triển</p>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tên quyền (Key) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                  placeholder="VD: manage_system"
+                  value={newPermData.name}
+                  onChange={(e) =>
+                    setNewPermData({ ...newPermData, name: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Module <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                  placeholder="VD: ADMIN, AUTH..."
+                  value={newPermData.module}
+                  onChange={(e) =>
+                    setNewPermData({ ...newPermData, module: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mô tả
+                </label>
+                <textarea
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                  placeholder="Mô tả chức năng của quyền này..."
+                  rows={3}
+                  value={newPermData.description}
+                  onChange={(e) =>
+                    setNewPermData({
+                      ...newPermData,
+                      description: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="pt-2 flex justify-end gap-3">
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsCreatingPerm(false)}
+                >
+                  Hủy
+                </Button>
+                <Button onClick={handleCreatePermission}>Tạo mới</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- LEFT COLUMN: ROLE MANAGEMENT --- */}
+      <div className="w-full md:w-1/4 flex flex-col gap-4">
+        <Card className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+              <Shield size={20} className="text-blue-600" />
+              Vai trò (Roles)
+            </h2>
+            <button
+              onClick={() => setIsCreatingRole(!isCreatingRole)}
+              className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-md transition"
+              title="Thêm Role mới"
+            >
+              {isCreatingRole ? <X size={20} /> : <Plus size={20} />}
+            </button>
+          </div>
+
+          {isCreatingRole && (
+            <div className="mb-4 flex gap-2 animate-in fade-in slide-in-from-top-2">
+              <input
+                type="text"
+                value={newRoleName}
+                onChange={(e) => setNewRoleName(e.target.value)}
+                placeholder="Tên vai trò..."
+                className="w-full px-3 py-1.5 text-sm border rounded focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+              <button
+                onClick={handleCreateRole}
+                className="bg-blue-600 text-white p-1.5 rounded hover:bg-blue-700"
+              >
+                <Check size={16} />
+              </button>
+            </div>
+          )}
+
+          <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+            {roles.map((role) => (
+              <div
+                key={role._id}
+                onClick={() => setSelectedRole(role)}
+                className={`
+                  group flex items-center justify-between p-3 rounded-lg cursor-pointer border transition-all
+                  ${
+                    selectedRole?._id === role._id
+                      ? "bg-blue-50 border-blue-200 shadow-sm"
+                      : "bg-white border-transparent hover:bg-gray-50 border-gray-100"
+                  }
+                `}
+              >
+                <div>
+                  <p
+                    className={`font-semibold text-sm ${selectedRole?._id === role._id ? "text-blue-700" : "text-gray-700"}`}
+                  >
+                    {role.name}
+                  </p>
+                  {/* --- FIX LỖI TẠI ĐÂY: Thêm optional chaining (?.) và fallback || 0 --- */}
+                  <p className="text-xs text-gray-400">
+                    {role.permissions?.length || 0} quyền hạn
+                  </p>
+                </div>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteRole(role._id);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      {/* --- RIGHT COLUMN: PERMISSION MATRIX --- */}
+      <div className="w-full md:w-3/4 flex flex-col gap-4">
+        {selectedRole ? (
+          <Card className="h-full flex flex-col overflow-hidden">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b border-gray-100 pb-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                  Phân quyền:{" "}
+                  <span className="text-blue-600">{selectedRole.name}</span>
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Quản lý các quyền hạn cho vai trò này.
+                </p>
+              </div>
+
+              <div className="flex gap-2 w-full sm:w-auto">
+                <div className="relative flex-1 sm:w-64">
+                  <Search
+                    size={16}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm quyền..."
+                    className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                {/* --- NÚT TẠO PERMISSION MỚI --- */}
+                <button
+                  onClick={() => setIsCreatingPerm(true)}
+                  className="flex items-center justify-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition"
+                  title="Tạo quyền mới"
+                >
+                  <Plus size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto pr-2">
+              {Object.keys(groupedPermissions).length === 0 ? (
+                <div className="text-center py-10 text-gray-400">
+                  Không tìm thấy quyền hạn nào phù hợp.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  {Object.entries(groupedPermissions).map(
+                    ([moduleName, perms]) => (
+                      <div
+                        key={moduleName}
+                        className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden"
+                      >
+                        <div className="px-4 py-3 bg-white border-b border-gray-200 flex justify-between items-center">
+                          <h3 className="font-bold text-gray-700 text-sm uppercase tracking-wide">
+                            Module: {moduleName}
+                          </h3>
+                          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                            {perms.length}
+                          </span>
+                        </div>
+
+                        <div className="p-2 space-y-1">
+                          {perms.map((perm) => {
+                            const isAssigned = hasPermission(perm._id);
+                            return (
+                              <label
+                                key={perm._id}
+                                className={`
+                                flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all
+                                ${isAssigned ? "bg-blue-50 border border-blue-100" : "hover:bg-gray-100 border border-transparent"}
+                              `}
+                              >
+                                <div className="relative flex items-center mt-0.5">
+                                  <input
+                                    type="checkbox"
+                                    className="peer sr-only"
+                                    checked={isAssigned}
+                                    onChange={() =>
+                                      togglePermission(perm._id, isAssigned)
+                                    }
+                                  />
+                                  <div
+                                    className={`
+                                  w-5 h-5 border-2 rounded transition-all flex items-center justify-center
+                                  ${isAssigned ? "bg-blue-600 border-blue-600" : "border-gray-300 bg-white"}
+                                `}
+                                  >
+                                    {isAssigned && (
+                                      <Check size={12} className="text-white" />
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="flex-1">
+                                  <p
+                                    className={`text-sm font-medium ${isAssigned ? "text-blue-800" : "text-gray-700"}`}
+                                  >
+                                    {perm.name}
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-0.5">
+                                    {perm.description ||
+                                      `Mã quyền: ${perm.name}`}
+                                  </p>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ),
+                  )}
+                </div>
+              )}
+            </div>
+          </Card>
+        ) : (
+          <div className="h-full flex flex-col items-center justify-center bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 text-gray-400">
+            <Lock size={48} className="mb-4 opacity-50" />
+            <p className="font-medium">
+              Vui lòng chọn một vai trò để phân quyền
+            </p>
           </div>
         )}
-      </Card>
+      </div>
     </div>
   );
 };

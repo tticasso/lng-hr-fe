@@ -395,7 +395,7 @@ const OnboardingOffboarding = () => {
 
                     {currentDetail.tasks.map((task, idx) => (
                       <div
-                        key={task.id}
+                        key={idx}
                         className="flex items-start gap-4 group"
                       >
                         {/* Checkbox Circle */}

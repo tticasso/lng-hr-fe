@@ -21,7 +21,7 @@ import {
   LogOut,
 } from "lucide-react";
 import logoLNG from "../assets/LNG.png";
-// import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext";
 
 const Sidebar = () => {
   const navigate = useNavigate();
@@ -97,12 +97,12 @@ const Sidebar = () => {
       ],
     },
   ];
-  // const { logout } = useAuth();
+  const { logout } = useAuth();
   const handleLogout = () => {
     // Gọi hàm logout từ context
-    // logout();
+    logout();
     // Điều hướng về trang login
-    // navigate("/login");
+    navigate("/login");
     console.log("logout");
   };
   return (
@@ -163,7 +163,7 @@ const Sidebar = () => {
         </button>
       </div>
       <div className="p-4 text-xs text-center text-gray-400">
-        © 2025 LNG Inc.
+        © 2026 LNG Inc.
       </div>
     </div>
   );

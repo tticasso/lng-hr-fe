@@ -1,4 +1,5 @@
 import React from "react";
+import { useState, useEffect } from "react";
 import {
   Briefcase,
   Clock,
@@ -19,14 +20,49 @@ import Button from "../components/common/Button";
 import StatusBadge from "../components/common/StatusBadge";
 import { Link, Navigate } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { employeeApi } from "../apis/employeeApi";
+
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  console.log("Dashboard/user: ", user);
+
   const employee = {
     name: "Nguyễn Hữu Tần",
     position: "Senior React Developer",
     department: "Developer",
     avatar: "TN", // Giả lập Avatar dạng text
   };
+  const [employeeDetail, setEmployeeDetail] = useState(null);
+  const [stats, setStats] = useState({
+    totalEmployees: 0,
+    newEmployees: 0,
+  });
+
+  // Load thông tin chi tiết của user đang login để hiển thị Avatar/Position đúng
+  useEffect(() => {
+    if (user.isProfileUpdated === false) navigate("/profile");
+    const fetchDashboardData = async () => {
+      try {
+        const userId = user?.id || user?._id || user?.account?._id;
+
+        if (userId) {
+          if (user?.roles?.includes("ADMIN") || user?.roles?.includes("HR")) {
+            const res = await employeeApi.getAll({ limit: 1 }); // Chỉ cần lấy total
+            setStats({
+              totalEmployees: res.total || 0,
+              newEmployees: 0,
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      }
+    };
+
+    fetchDashboardData();
+  }, [user]);
 
   const summaryStats = [
     {
@@ -108,14 +144,14 @@ const Dashboard = () => {
 
           <div className="flex items-center gap-5 relative z-10 h-full">
             <div className="h-16 w-16 rounded-full bg-white text-blue-600 flex items-center justify-center font-bold text-2xl shadow-sm border-2 border-blue-100">
-              {employee.avatar}
+              {(user?.fullName || "U").charAt(0).toUpperCase()}
             </div>
             <div className="flex-1">
               <h2 className="text-2xl font-bold">
-                Xin chào, {employee.name}! 👋
+                Xin chào, {user?.fullName || "Unknown"}! 👋
               </h2>
               <p className="text-blue-100 opacity-90 mt-1">
-                {employee.position} | {employee.department}
+                {user.workMode || "--"} | {user.department || "--"}
               </p>
               <div className="mt-4 flex gap-3">
                 <button
@@ -195,7 +231,6 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* --- KHU VỰC CHÍNH: GRID 2 CỘT LỆCH (2/3 & 1/3) --- */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* CỘT TRÁI (8/12) - Announcements & Requests */}
         <div className="lg:col-span-8 space-y-6">
@@ -237,8 +272,8 @@ const Dashboard = () => {
                                           news.tag === "Important"
                                             ? "bg-red-100 text-red-600"
                                             : news.tag === "Policy"
-                                            ? "bg-blue-100 text-blue-600"
-                                            : "bg-green-100 text-green-600"
+                                              ? "bg-blue-100 text-blue-600"
+                                              : "bg-green-100 text-green-600"
                                         }`}
                       >
                         {news.tag}
