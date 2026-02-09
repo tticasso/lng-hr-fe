@@ -47,7 +47,7 @@ const EmployeeDetail = () => {
       try {
         setLoading(true);
         const res = await employeeApi.getById(id);
-
+        console.log("Emp Deltail, res: ", res);
         // Handle response structure
         const responseBody = res.data || {};
         const realData = responseBody.data || responseBody;
@@ -60,7 +60,7 @@ const EmployeeDetail = () => {
       } catch (error) {
         console.error("Error fetching employee:", error);
         toast.error("Không thể tải thông tin nhân viên.");
-        navigate("/employees");
+        navigate("/hr/employees");
       } finally {
         setLoading(false);
       }
@@ -69,7 +69,6 @@ const EmployeeDetail = () => {
     if (id) fetchEmployeeDetail();
   }, [id, navigate]);
 
-  // --- 2. FORMAT HELPERS ---
   const formatDate = (dateString) => {
     if (!dateString) return "--";
     return new Date(dateString).toLocaleDateString("vi-VN");
@@ -82,7 +81,6 @@ const EmployeeDetail = () => {
     }).format(amount || 0);
   };
 
-  // --- 3. MERGE DATA ---
   const employee = employeeData
     ? {
         id: employeeData._id || employeeData.id,
@@ -90,10 +88,10 @@ const EmployeeDetail = () => {
         avatar: employeeData.avatar || "default-avatar.jpg",
         position: employeeData.jobTitle || "N/A",
         // Xử lý department object/string
-        department:
-          typeof employeeData.department === "object"
-            ? employeeData.department?.name
-            : employeeData.department || "Chưa phân phòng",
+        departmentId:
+          typeof employeeData.departmentId === "object"
+            ? employeeData.departmentId?.name
+            : employeeData.departmentId || "Chưa phân phòng",
         status: employeeData.status || "Active",
         joinDate: formatDate(employeeData.startDate),
         contractType: employeeData.contractType || "Hợp đồng lao động",
@@ -131,9 +129,9 @@ const EmployeeDetail = () => {
           taxCode: employeeData.taxIdentification, // [MỚI]
 
           // Emergency
-          emergencyName: employeeData.emergencyName,
-          emergencyPhone: employeeData.emergencyPhone,
-          emergencyRelation: employeeData.emergencyRelation,
+          emergencyName: employeeData.emergencyContact?.name,
+          emergencyPhone: employeeData.emergencyContact?.phone,
+          emergencyRelation: employeeData.emergencyContact?.relation,
 
           // Bank Info [MỚI]
           bankName: employeeData.bankAccount?.bankName,
@@ -154,8 +152,8 @@ const EmployeeDetail = () => {
         // Financials [MỚI]
         financials: {
           baseSalary: employeeData.baseSalary || 0,
-          lunchAllowance: employeeData.lunchAllowance || 0,
-          fuelAllowance: employeeData.fuelAllowance || 0,
+          lunchAllowance: employeeData.allowances?.lunch || 0,
+          fuelAllowance: employeeData.allowances?.fuel || 0,
           currency: employeeData.baseCurrency || "VND",
         },
 
@@ -232,7 +230,7 @@ const EmployeeDetail = () => {
                 <Briefcase size={16} /> {employee.position}
               </p>
               <div className="flex gap-2 text-sm text-gray-500 items-center justify-center sm:justify-start">
-                <span>{employee.department}</span>
+                <span>{employee.departmentId}</span>
                 <span>•</span>
                 <span>{employee.contract.workEmail}</span>
               </div>

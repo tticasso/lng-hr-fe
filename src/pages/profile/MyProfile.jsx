@@ -67,9 +67,9 @@ const MyProfile = () => {
           address: user.address || "",
           identityCard: user.identityCard || "",
           personalEmail: user.personalEmail || "",
-          emergencyName: user.emergencyName || "",
-          emergencyPhone: user.emergencyPhone || "",
-          emergencyRelation: user.emergencyRelation || "",
+          emergencyName: user.emergencyContact?.name || "",
+          emergencyPhone: user.emergencyContact?.phone || "",
+          emergencyRelation: user.emergencyContact?.relation || "",
         });
       }
     }
@@ -138,7 +138,21 @@ const MyProfile = () => {
     }
     setSubmitting(true);
     try {
-      await employeeApi.updateMe(formData);
+      const submitData = {
+        ...formData,
+        emergencyContact: {
+          name: formData.emergencyName,
+          phone: formData.emergencyPhone,
+          relation: formData.emergencyRelation,
+        },
+      };
+
+      // Xóa các trường thừa nếu cần thiết
+      // delete submitData.emergencyName;
+      // delete submitData.emergencyPhone;
+      // delete submitData.emergencyRelation;
+
+      await employeeApi.updateMe(submitData);
       toast.success("Cập nhật hồ sơ thành công!");
       const updatedUser = await refreshProfile();
       setIsEditing(false);
@@ -173,7 +187,7 @@ const MyProfile = () => {
   // --- EDIT MODE ---
   if (isEditing) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6 mt-10">
+      <div className="max-w-4xl mx-auto space-y-6 mt-4">
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 flex items-start gap-4 shadow-sm">
           <AlertCircle className="text-yellow-600 shrink-0 mt-1" size={24} />
           <div>
@@ -186,9 +200,8 @@ const MyProfile = () => {
             </p>
           </div>
         </div>
+
         <Card className="border-t-4 border-t-blue-600 shadow-md">
-          {/* ... Form Code Giữ Nguyên như cũ vì logic không đổi ... */}
-          {/* Để tiết kiệm không gian hiển thị, tôi giữ nguyên phần Form updateMe đã viết ở trên */}
           <div className="flex items-center gap-3 mb-6 border-b border-gray-100 pb-4">
             <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
               <Edit size={24} />
@@ -197,11 +210,180 @@ const MyProfile = () => {
               <h2 className="text-xl font-bold text-gray-800">
                 Form thông tin nhân viên
               </h2>
+              <p className="text-sm text-gray-500">
+                Vui lòng điền chính xác các thông tin bắt buộc (*).
+              </p>
             </div>
           </div>
+
           <form onSubmit={handleUpdateProfile} className="space-y-8">
-            {/* ... (Copy lại phần Form từ response trước hoặc giữ nguyên code cũ) ... */}
-            {/* Do giới hạn độ dài, tôi giả định phần form này đã có sẵn */}
+            {/* Nhóm 1: Thông tin định danh */}
+            <div>
+              <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">
+                1. Thông tin định danh
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <InputGroup label="Họ và tên" required error={errors.fullName}>
+                  <input
+                    type="text"
+                    name="fullName"
+                    value={formData.fullName}
+                    onChange={handleInputChange}
+                    className={
+                      errors.fullName ? errorInputClassName : inputClassName
+                    }
+                    placeholder="Nguyễn Văn A"
+                  />
+                </InputGroup>
+
+                <InputGroup label="Ngày sinh" required error={errors.birthDate}>
+                  <input
+                    type="date"
+                    name="birthDate"
+                    value={formData.birthDate}
+                    onChange={handleInputChange}
+                    className={
+                      errors.birthDate ? errorInputClassName : inputClassName
+                    }
+                  />
+                </InputGroup>
+
+                <InputGroup label="Giới tính" required>
+                  <select
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleInputChange}
+                    className={inputClassName}
+                  >
+                    <option value="Male">Nam</option>
+                    <option value="Female">Nữ</option>
+                    <option value="Other">Khác</option>
+                  </select>
+                </InputGroup>
+
+                <InputGroup
+                  label="CCCD/CMND"
+                  required
+                  error={errors.identityCard}
+                >
+                  <input
+                    type="text"
+                    name="identityCard"
+                    value={formData.identityCard}
+                    onChange={handleInputChange}
+                    className={
+                      errors.identityCard ? errorInputClassName : inputClassName
+                    }
+                    placeholder="9 hoặc 12 chữ số"
+                  />
+                </InputGroup>
+              </div>
+            </div>
+
+            {/* Nhóm 2: Thông tin liên lạc */}
+            <div>
+              <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4 border-t pt-6">
+                2. Thông tin liên lạc
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <InputGroup
+                  label="Số điện thoại"
+                  required
+                  error={errors.phoneNumber}
+                >
+                  <input
+                    type="tel"
+                    name="phoneNumber"
+                    value={formData.phoneNumber}
+                    onChange={handleInputChange}
+                    className={
+                      errors.phoneNumber ? errorInputClassName : inputClassName
+                    }
+                    placeholder="VD: 0912345678"
+                  />
+                </InputGroup>
+
+                <InputGroup
+                  label="Email cá nhân"
+                  required
+                  error={errors.personalEmail}
+                >
+                  <input
+                    type="email"
+                    name="personalEmail"
+                    value={formData.personalEmail}
+                    onChange={handleInputChange}
+                    className={
+                      errors.personalEmail
+                        ? errorInputClassName
+                        : inputClassName
+                    }
+                    placeholder="email@example.com"
+                  />
+                </InputGroup>
+
+                <InputGroup
+                  label="Địa chỉ thường trú"
+                  required
+                  className="md:col-span-2"
+                  error={errors.address}
+                >
+                  <input
+                    type="text"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    className={
+                      errors.address ? errorInputClassName : inputClassName
+                    }
+                    placeholder="Số nhà, đường, phường/xã..."
+                  />
+                </InputGroup>
+              </div>
+            </div>
+
+            {/* Nhóm 3: Liên hệ khẩn cấp */}
+            <div>
+              <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4 border-t pt-6">
+                3. Liên hệ khẩn cấp
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <InputGroup label="Tên người liên hệ">
+                  <input
+                    type="text"
+                    name="emergencyName"
+                    value={formData.emergencyName}
+                    onChange={handleInputChange}
+                    className={inputClassName}
+                  />
+                </InputGroup>
+                <InputGroup label="Mối quan hệ">
+                  <input
+                    type="text"
+                    name="emergencyRelation"
+                    value={formData.emergencyRelation}
+                    onChange={handleInputChange}
+                    className={inputClassName}
+                    placeholder="Bố, Mẹ, Vợ..."
+                  />
+                </InputGroup>
+
+                <InputGroup label="SĐT Khẩn cấp" error={errors.emergencyPhone}>
+                  <input
+                    type="tel"
+                    name="emergencyPhone"
+                    value={formData.emergencyPhone}
+                    onChange={handleInputChange}
+                    className={
+                      errors.emergencyPhone
+                        ? errorInputClassName
+                        : inputClassName
+                    }
+                  />
+                </InputGroup>
+              </div>
+            </div>
+
             <div className="pt-6 border-t border-gray-200 flex justify-end gap-3">
               <Button
                 type="submit"
@@ -212,7 +394,7 @@ const MyProfile = () => {
                   <Loader2 className="animate-spin mr-2" size={18} />
                 ) : (
                   <Save className="mr-2" size={18} />
-                )}{" "}
+                )}
                 Hoàn tất
               </Button>
             </div>
@@ -375,16 +557,16 @@ const MyProfile = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <ProfileField
                       label="Họ tên"
-                      value={profile.emergencyName}
+                      value={profile.emergencyContact?.name}
                     />
                     <ProfileField
                       label="SĐT"
-                      value={profile.emergencyPhone}
+                      value={profile.emergencyContact?.phone}
                       className="text-red-700 font-bold"
                     />
                     <ProfileField
                       label="Quan hệ"
-                      value={profile.emergencyRelation}
+                      value={profile.emergencyContact?.relation}
                       className="col-span-2"
                     />
                   </div>
@@ -495,17 +677,16 @@ const MyProfile = () => {
                       </button>
                     </div>
                   </div>
-
                   <div className="h-px bg-slate-700 my-6"></div>
-
                   <div className="grid grid-cols-2 gap-8">
                     <div>
                       <p className="text-slate-400 text-xs uppercase mb-1">
                         Phụ cấp ăn trưa
                       </p>
+                      {/* [FIX] Truy cập vào allowances.lunch */}
                       <p className="text-lg font-semibold">
                         {showSalary
-                          ? formatCurrency(profile.lunchAllowance)
+                          ? formatCurrency(profile.allowances?.lunch)
                           : "••••••"}
                       </p>
                     </div>
@@ -515,7 +696,7 @@ const MyProfile = () => {
                       </p>
                       <p className="text-lg font-semibold">
                         {showSalary
-                          ? formatCurrency(profile.fuelAllowance)
+                          ? formatCurrency(profile.allowances?.fuel)
                           : "••••••"}
                       </p>
                     </div>

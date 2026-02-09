@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 
 const RequireAuth = ({ children, roles: allowedRoles }) => {
   const { user, loading } = useAuth();
+  console.log("RequireAuth/ user: ", user);
   const location = useLocation();
 
   if (loading) {
@@ -14,21 +15,15 @@ const RequireAuth = ({ children, roles: allowedRoles }) => {
     );
   }
 
-  // 1. Chưa đăng nhập -> Về Login
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // 2. LOGIC MỚI: Kiểm tra Profile Updated
-  // Nếu chưa cập nhật profile VÀ đang không ở trang /profile -> Đá về /profile
   if (user.isProfileUpdated === false && location.pathname !== "/profile") {
     return <Navigate to="/profile" replace />;
   }
 
-  // 3. Check quyền (Role)
-  // Lưu ý: User object từ getMe trả về role dạng object { _id, name: "ADMIN" }
-  // Cần mapping lại logic check role cho đúng
-  const userRoleName = user.account?.role?.name || "USER";
+  const userRoleName = user.accountId?.role?.name || "USER";
 
   if (allowedRoles && !allowedRoles.includes(userRoleName)) {
     return <Navigate to="/unauthorized" replace />;

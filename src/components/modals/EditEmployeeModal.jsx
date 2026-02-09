@@ -10,6 +10,7 @@ import {
   Hash,
   CreditCard,
   FileText,
+  Landmark, // Icon ngân hàng
 } from "lucide-react";
 import Button from "../common/Button";
 import { employeeApi } from "../../apis/employeeApi";
@@ -20,7 +21,6 @@ import { toast } from "react-toastify";
 const VIETNAM_PHONE_REGEX = /^(0|84)(3|5|7|8|9)([0-9]{8})$/;
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const IDENTITY_CARD_REGEX = /^(\d{9}|\d{12})$/;
-const NUMERIC_REGEX = /^\d+$/;
 
 const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
   // Helper format date
@@ -34,121 +34,192 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
   };
 
   const [departments, setDepartments] = useState([]);
+  const [banks, setBanks] = useState([]); // [MỚI] State lưu danh sách ngân hàng
   const [loadingDepts, setLoadingDepts] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [errors, setErrors] = useState({});
 
-  // Initialize State with ALL fields
+  // Initialize State
+  // Initialize State correctly mapping from Mongoose Model Structure
   const [formData, setFormData] = useState({
-    // --- 1. Công việc (Work Info) ---
+    // --- 1. Công việc & Tổ chức ---
     fullName: employee.fullName || "",
     employeeCode: employee.employeeCode || "",
-    status: employee.status || "Active",
+    status: employee.status || "Probation",
+    // Model dùng departmentId, UI dùng department. Map logic ở đây:
     department:
-      typeof employee.department === "object"
-        ? employee.department?._id
-        : employee.department || "",
+      typeof employee.departmentId === "object"
+        ? employee.departmentId?._id
+        : employee.departmentId || "",
     jobTitle: employee.jobTitle || "",
     jobLevel: employee.jobLevel || "",
     employmentType: employee.employmentType || "Full-time",
     workMode: employee.workMode || "Onsite",
     workEmail: employee.workEmail || "",
     startDate: formatDateInput(employee.startDate),
-    annualLeaveBalance: employee.annualLeaveBalance || 0, // [MỚI]
 
-    // --- 2. Lương & Phụ cấp (Salary & Allowances) ---
+    // Lưu ý: Model chưa có annualLeaveBalance, giữ tạm để UI không lỗi
+    annualLeaveBalance: employee.annualLeaveBalance || 0,
+
+    // --- 2. Lương & Phụ cấp (Mapping từ object allowances) ---
     baseSalary: employee.baseSalary || 0,
-    lunchAllowance: employee.lunchAllowance || 0, // [MỚI]
-    fuelAllowance: employee.fuelAllowance || 0, // [MỚI]
+    lunchAllowance: employee.allowances?.lunch || 0, // Map từ allowances.lunch
+    fuelAllowance: employee.allowances?.fuel || 0, // Map từ allowances.fuel
 
-    // --- 3. Hợp đồng (Contract) ---
+    // --- 3. Hợp đồng (Model chưa có, giữ nguyên UI nhưng Backend có thể không lưu) ---
     contractNumber: employee.contractNumber || "",
     contractType: employee.contractType || "",
-    contractStartDate: formatDateInput(employee.contractStartDate), // [MỚI]
-    contractEndDate: formatDateInput(employee.contractEndDate), // [MỚI]
+    contractStartDate: formatDateInput(employee.contractStartDate),
+    contractEndDate: formatDateInput(employee.contractEndDate),
     probationEndDate: formatDateInput(employee.probationEndDate),
 
-    // --- 4. Cá nhân & Pháp lý (Personal & Legal) ---
-    gender: employee.gender || "Male",
+    // --- 4. Cá nhân & Pháp lý ---
+    gender: employee.gender || "Other",
     birthDate: formatDateInput(employee.birthDate),
     identityCard: employee.identityCard || "",
-    taxIdentification: employee.taxIdentification || "", // [MỚI]
+    taxIdentification: employee.taxIdentification || "",
     personalEmail: employee.personalEmail || "",
     phoneNumber: employee.phoneNumber || "",
     address: employee.address || "",
 
-    // --- 5. Ngân hàng (Bank) ---
-    bankName: employee.bankAccount?.bankName || "", // [MỚI] Flat ra để dễ bind input
-    bankAccountNumber: employee.bankAccount?.accountNumber || "", // [MỚI]
+    // --- 5. Ngân hàng (Mapping từ object bankAccount) ---
+    bankName: employee.bankAccount?.bankName || "",
+    bankAccountNumber: employee.bankAccount?.accountNumber || "",
 
-    // --- 6. Khẩn cấp (Emergency) ---
-    emergencyName: employee.emergencyName || "",
-    emergencyPhone: employee.emergencyPhone || "",
-    emergencyRelation: employee.emergencyRelation || "",
+    // --- 6. Khẩn cấp (Mapping từ object emergencyContact) ---
+    emergencyName: employee.emergencyContact?.name || "",
+    emergencyPhone: employee.emergencyContact?.phone || "",
+    emergencyRelation: employee.emergencyContact?.relation || "",
   });
 
-  // Fetch Departments
+  // Fetch Departments & Banks
   useEffect(() => {
-    const fetchDepartments = async () => {
+    const fetchData = async () => {
       setLoadingDepts(true);
       try {
-        const res = await departmentApi.getAll();
-        const list = res.data?.data || res.data || [];
-        setDepartments(list);
+        // 1. Fetch Departments (Internal API)
+        const deptRes = await departmentApi.getAll();
+        const deptList = deptRes.data?.data || deptRes.data || [];
+        setDepartments(deptList);
+
+        // 2. Fetch Banks (External API - VietQR) [MỚI]
+        const bankRes = await fetch("https://api.vietqr.io/v2/banks");
+        const bankData = await bankRes.json();
+        if (bankData.code === "00") {
+          setBanks(bankData.data);
+        }
       } catch (error) {
-        console.error("Failed to load departments", error);
+        console.error("Failed to load metadata", error);
       } finally {
         setLoadingDepts(false);
       }
     };
-    fetchDepartments();
+    fetchData();
   }, []);
 
+  // --- VALIDATION LOGIC ---
   // --- VALIDATION LOGIC ---
   const validateForm = () => {
     const newErrors = {};
     let isValid = true;
 
-    // 1. Required Fields
-    if (!formData.fullName.trim())
-      newErrors.fullName = "Full name cannot be empty";
-    if (!formData.employeeCode.trim())
-      newErrors.employeeCode = "Employee code cannot be empty";
-    if (!formData.jobTitle.trim())
-      newErrors.jobTitle = "Job title cannot be empty";
+    // --- NHÓM 1: CÔNG VIỆC (Các trường bắt buộc *) ---
 
-    // 2. Formats
-    if (
-      formData.phoneNumber &&
-      !VIETNAM_PHONE_REGEX.test(formData.phoneNumber)
-    ) {
-      newErrors.phoneNumber = "Phone number invalid (VN format)";
-    }
-    if (formData.personalEmail && !EMAIL_REGEX.test(formData.personalEmail)) {
-      newErrors.personalEmail = "Personal email invalid";
-    }
-    if (formData.workEmail && !EMAIL_REGEX.test(formData.workEmail)) {
-      newErrors.workEmail = "Work email invalid";
-    }
-    if (
-      formData.identityCard &&
-      !IDENTITY_CARD_REGEX.test(formData.identityCard)
-    ) {
-      newErrors.identityCard = "ID Card must be 9 or 12 digits";
+    // Mã NV *
+    if (!formData.employeeCode.trim()) {
+      newErrors.employeeCode = "Mã nhân viên là bắt buộc";
+    } else if (formData.employeeCode.length < 3) {
+      newErrors.employeeCode = "Mã nhân viên quá ngắn";
     }
 
-    // 3. Numeric Checks (Salary & Allowances)
+    // Họ tên *
+    if (!formData.fullName.trim()) {
+      newErrors.fullName = "Họ và tên là bắt buộc";
+    } else if (formData.fullName.length < 2) {
+      newErrors.fullName = "Tên phải có ít nhất 2 ký tự";
+    }
+
+    // Phòng ban *
+    if (!formData.department) {
+      newErrors.department = "Vui lòng chọn phòng ban";
+    }
+
+    // Chức danh *
+    if (!formData.jobTitle.trim()) {
+      newErrors.jobTitle = "Chức danh là bắt buộc";
+    }
+
+    // Email công việc *
+    if (!formData.workEmail.trim()) {
+      newErrors.workEmail = "Email công việc là bắt buộc";
+    } else if (!EMAIL_REGEX.test(formData.workEmail)) {
+      newErrors.workEmail = "Email công việc không hợp lệ";
+    }
+
+    // Ngày vào làm *
+    if (!formData.startDate) {
+      newErrors.startDate = "Ngày vào làm là bắt buộc";
+    }
+
+    // --- NHÓM 2: CÁ NHÂN (Các trường bắt buộc *) ---
+
+    // Ngày sinh *
+    if (!formData.birthDate) {
+      newErrors.birthDate = "Ngày sinh là bắt buộc";
+    }
+
+    // CCCD / CMND *
+    if (!formData.identityCard.trim()) {
+      newErrors.identityCard = "CCCD/CMND là bắt buộc";
+    } else if (!IDENTITY_CARD_REGEX.test(formData.identityCard)) {
+      newErrors.identityCard = "CCCD phải gồm 9 hoặc 12 chữ số";
+    }
+
+    // SĐT Cá nhân *
+    if (!formData.phoneNumber.trim()) {
+      newErrors.phoneNumber = "SĐT cá nhân là bắt buộc";
+    } else if (!VIETNAM_PHONE_REGEX.test(formData.phoneNumber)) {
+      newErrors.phoneNumber = "SĐT không đúng định dạng VN";
+    }
+
+    // Email Cá nhân *
+    if (!formData.personalEmail.trim()) {
+      newErrors.personalEmail = "Email cá nhân là bắt buộc";
+    } else if (!EMAIL_REGEX.test(formData.personalEmail)) {
+      newErrors.personalEmail = "Email cá nhân không hợp lệ";
+    }
+
+    // --- NHÓM 3: LIÊN HỆ KHẨN CẤP (Các trường bắt buộc *) ---
+
+    // Họ tên người thân *
+    if (!formData.emergencyName.trim()) {
+      newErrors.emergencyName = "Tên người liên hệ là bắt buộc";
+    }
+
+    // Mối quan hệ *
+    if (!formData.emergencyRelation.trim()) {
+      newErrors.emergencyRelation = "Mối quan hệ là bắt buộc";
+    }
+
+    // SĐT Người thân *
+    if (!formData.emergencyPhone.trim()) {
+      newErrors.emergencyPhone = "SĐT người thân là bắt buộc";
+    } else if (!VIETNAM_PHONE_REGEX.test(formData.emergencyPhone)) {
+      newErrors.emergencyPhone = "SĐT không đúng định dạng VN";
+    }
+
+    // --- NHÓM 4: LOGIC SỐ HỌC (Lương & Phụ cấp) ---
     if (Number(formData.baseSalary) < 0)
-      newErrors.baseSalary = "Must be positive";
+      newErrors.baseSalary = "Lương không được âm";
     if (Number(formData.lunchAllowance) < 0)
-      newErrors.lunchAllowance = "Must be positive";
+      newErrors.lunchAllowance = "Phụ cấp không được âm";
     if (Number(formData.fuelAllowance) < 0)
-      newErrors.fuelAllowance = "Must be positive";
+      newErrors.fuelAllowance = "Phụ cấp không được âm";
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       isValid = false;
-      toast.error("Vui lòng kiểm tra lại thông tin nhập liệu.");
+      toast.error("Vui lòng kiểm tra lại các trường báo lỗi màu đỏ.");
     } else {
       setErrors({});
     }
@@ -164,26 +235,65 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    // if (!validateForm()) return;
 
     setUpdating(true);
     try {
       const employeeId = employee._id || employee.id;
 
-      // Construct payload (ghép lại object bankAccount)
+      // Construct payload matching Mongoose Schema
       const submitData = {
-        ...formData,
-        baseSalary: Number(formData.baseSalary),
-        lunchAllowance: Number(formData.lunchAllowance),
-        fuelAllowance: Number(formData.fuelAllowance),
-        annualLeaveBalance: Number(formData.annualLeaveBalance),
+        // Identity
+        employeeCode: formData.employeeCode,
+        fullName: formData.fullName,
+        gender: formData.gender,
+        birthDate: formData.birthDate,
+        identityCard: formData.identityCard,
+        taxIdentification: formData.taxIdentification,
+
+        // Contacts
+        phoneNumber: formData.phoneNumber,
+        address: formData.address,
+        personalEmail: formData.personalEmail,
+        workEmail: formData.workEmail,
+
+        // Organization
+        departmentId: formData.department, // Backend expects departmentId
+        jobTitle: formData.jobTitle,
+        jobLevel: formData.jobLevel,
+        employmentType: formData.employmentType,
+        workMode: formData.workMode,
+        status: formData.status,
+
+        // Lifecycle
+        startDate: formData.startDate,
+        probationEndDate: formData.probationEndDate,
+
+        // Nested Objects Reconstruction
+        emergencyContact: {
+          name: formData.emergencyName,
+          phone: formData.emergencyPhone,
+          relation: formData.emergencyRelation,
+        },
+
         bankAccount: {
           bankName: formData.bankName,
           accountNumber: formData.bankAccountNumber,
         },
+
+        // Compensation
+        baseSalary: Number(formData.baseSalary),
+        allowances: {
+          lunch: Number(formData.lunchAllowance),
+          fuel: Number(formData.fuelAllowance),
+          other: 0, // Default logic
+        },
+
+        // nếu backend chưa update schema thì gửi lên sẽ bị lọc bỏ (strip).
+        contractNumber: formData.contractNumber,
+        contractType: formData.contractType,
       };
 
-      // Remove flat bank fields to clean payload
       delete submitData.bankName;
       delete submitData.bankAccountNumber;
 
@@ -275,17 +385,21 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                       value={formData.fullName}
                       onChange={handleChange}
                       className={inputClass("fullName")}
+                      required
                     />
                     <ErrorMsg field="fullName" />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className={labelClass}>Phòng ban</label>
+                      <label className={labelClass}>
+                        Phòng ban <span className="text-red-500">*</span>
+                      </label>
                       <select
                         name="department"
                         value={formData.department}
                         onChange={handleChange}
                         className={inputClass("department")}
+                        disabled={loadingDepts}
                       >
                         <option value="">-- Chọn --</option>
                         {departments.map((d) => (
@@ -296,7 +410,9 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                       </select>
                     </div>
                     <div>
-                      <label className={labelClass}>Chức danh</label>
+                      <label className={labelClass}>
+                        Chức danh <span className="text-red-500">*</span>
+                      </label>
                       <select
                         name="jobTitle"
                         value={formData.jobTitle}
@@ -311,6 +427,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                       </select>
                     </div>
                   </div>
+                  {/* ... (Giữ nguyên các trường khác như Cấp bậc, Trạng thái, Hình thức...) ... */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className={labelClass}>Cấp bậc</label>
@@ -319,7 +436,6 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                         value={formData.jobLevel}
                         onChange={handleChange}
                         className={inputClass("jobLevel")}
-                        placeholder="L1, L2..."
                       />
                     </div>
                     <div>
@@ -365,8 +481,11 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                     </div>
                   </div>
                   <div>
-                    <label className={labelClass}>Email Công việc</label>
+                    <label className={labelClass}>
+                      Email Công việc <span className="text-red-500">*</span>
+                    </label>
                     <input
+                      type="email"
                       name="workEmail"
                       value={formData.workEmail}
                       onChange={handleChange}
@@ -376,7 +495,9 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className={labelClass}>Ngày vào làm</label>
+                      <label className={labelClass}>
+                        Ngày vào làm <span className="text-red-500">*</span>
+                      </label>
                       <input
                         type="date"
                         name="startDate"
@@ -399,6 +520,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                 </div>
               </div>
 
+              {/* Hợp đồng lao động */}
               <div className="bg-white p-4 rounded-lg border border-purple-100 shadow-sm">
                 <h4 className="font-bold text-purple-700 flex items-center gap-2 mb-4 border-b pb-2">
                   <FileText size={16} /> Hợp đồng lao động
@@ -465,7 +587,9 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                 <div className="grid grid-cols-1 gap-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className={labelClass}>Ngày sinh</label>
+                      <label className={labelClass}>
+                        Ngày sinh <span className="text-red-500">*</span>
+                      </label>
                       <input
                         type="date"
                         name="birthDate"
@@ -489,7 +613,9 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                     </div>
                   </div>
                   <div>
-                    <label className={labelClass}>CCCD / CMND</label>
+                    <label className={labelClass}>
+                      CCCD / CMND <span className="text-red-500">*</span>
+                    </label>
                     <input
                       name="identityCard"
                       value={formData.identityCard}
@@ -509,7 +635,9 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className={labelClass}>SĐT Cá nhân</label>
+                      <label className={labelClass}>
+                        SĐT Cá nhân <span className="text-red-500">*</span>
+                      </label>
                       <input
                         name="phoneNumber"
                         value={formData.phoneNumber}
@@ -519,7 +647,9 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                       <ErrorMsg field="phoneNumber" />
                     </div>
                     <div>
-                      <label className={labelClass}>Email Cá nhân</label>
+                      <label className={labelClass}>
+                        Email Cá nhân <span className="text-red-500">*</span>
+                      </label>
                       <input
                         name="personalEmail"
                         value={formData.personalEmail}
@@ -547,7 +677,9 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
-                    <label className={labelClass}>Họ tên người thân</label>
+                    <label className={labelClass}>
+                      Họ tên người thân <span className="text-red-500">*</span>
+                    </label>
                     <input
                       name="emergencyName"
                       value={formData.emergencyName}
@@ -557,7 +689,9 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                     <ErrorMsg field="emergencyName" />
                   </div>
                   <div>
-                    <label className={labelClass}>Mối quan hệ</label>
+                    <label className={labelClass}>
+                      Mối quan hệ <span className="text-red-500">*</span>
+                    </label>
                     <input
                       name="emergencyRelation"
                       value={formData.emergencyRelation}
@@ -567,7 +701,9 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                     <ErrorMsg field="emergencyRelation" />
                   </div>
                   <div>
-                    <label className={labelClass}>SĐT Người thân</label>
+                    <label className={labelClass}>
+                      SĐT Người thân <span className="text-red-500">*</span>
+                    </label>
                     <input
                       name="emergencyPhone"
                       value={formData.emergencyPhone}
@@ -623,20 +759,27 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                 </div>
               </div>
 
+              {/* [UPDATED] NGÂN HÀNG: SỬ DỤNG DROPDOWN TỪ API VIETQR */}
               <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
                 <h4 className="font-bold text-gray-700 flex items-center gap-2 mb-4 border-b pb-2">
-                  <CreditCard size={16} /> Tài khoản ngân hàng
+                  <Landmark size={16} /> Tài khoản ngân hàng
                 </h4>
                 <div className="grid grid-cols-1 gap-3">
                   <div>
                     <label className={labelClass}>Tên ngân hàng</label>
-                    <input
+                    <select
                       name="bankName"
                       value={formData.bankName}
                       onChange={handleChange}
                       className={inputClass("bankName")}
-                      placeholder="VD: Vietcombank"
-                    />
+                    >
+                      <option value="">-- Chọn ngân hàng --</option>
+                      {banks.map((bank) => (
+                        <option key={bank.id} value={bank.shortName}>
+                          {bank.shortName} - {bank.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className={labelClass}>Số tài khoản</label>
@@ -645,6 +788,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                       value={formData.bankAccountNumber}
                       onChange={handleChange}
                       className={inputClass("bankAccountNumber")}
+                      placeholder="VD: 1903..."
                     />
                   </div>
                 </div>

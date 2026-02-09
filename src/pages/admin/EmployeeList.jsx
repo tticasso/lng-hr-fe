@@ -313,7 +313,7 @@ const EmployeeList = () => {
                             {emp.fullName || emp.name}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {emp.account?.username || "Chưa có TK"}
+                            {emp.accountId?.username || "Chưa có TK"}
                           </p>
                         </div>
                       </div>

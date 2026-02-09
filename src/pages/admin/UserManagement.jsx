@@ -54,6 +54,16 @@ const UserManagement = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [newPasswordResult, setNewPasswordResult] = useState(null); // Lưu pass sau reset
 
+  const formatDate = (isoString) => {
+    if (!isoString) return "--";
+    return new Date(isoString).toLocaleString("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
   // --- 1. Init Data ---
   useEffect(() => {
     const fetchRoles = async () => {
@@ -92,10 +102,11 @@ const UserManagement = () => {
       // Merge Data Logic
       const merged = accounts.map((acc) => {
         // Tìm employee có account._id trùng với acc._id
-        const emp = employees.find((e) => e.account?._id === acc._id);
+        const emp = employees.find((e) => e.accountId?._id === acc._id);
+        console.log("emp : ", emp);
         return { ...acc, employee: emp };
       });
-      console.log("user management, merged:", merged);
+      console.log("user management, merged: ", merged);
       setUsers(merged);
       setPagination((prev) => ({
         ...prev,
@@ -239,9 +250,10 @@ const UserManagement = () => {
               <tr>
                 <th className="p-4">User Info</th>
                 <th className="p-4">Username</th>
-                <th className="p-4">Email</th> {/* Yêu cầu 2: Cột Email */}
+                <th className="p-4">Email</th>
                 <th className="p-4">Role</th>
                 <th className="p-4">Status</th>
+                <th className="p-4">Last Login</th>
                 <th className="p-4 text-center">Actions</th>
               </tr>
             </thead>
@@ -255,8 +267,9 @@ const UserManagement = () => {
                       </div>
                       <div>
                         <p className="font-bold text-gray-800">
-                          {user.employee.fullName}
-                          {user.employee.id === userInfo.id ? (
+                          {user.employee?.fullName}
+                          {user.employee?.accountId?._id ===
+                          userInfo?.accountId?._id ? (
                             <span className="text-[10px] pl-1 text-gray-500 italic font-extralight">
                               (you)
                             </span>
@@ -274,12 +287,14 @@ const UserManagement = () => {
                   <td className="p-4">
                     <div className="flex items-center gap-3">
                       <div>
-                        <p className=" text-gray-800">{user.username}</p>
+                        <p className="p-4 text-xs text-gray-500">
+                          {user.username}
+                        </p>
                       </div>
                     </div>
                   </td>
                   {/* Cột Email: Ưu tiên email account (nếu có update sau này) -> workEmail -> personalEmail */}
-                  <td className="p-4 text-gray-600">
+                  <td className="p-4 text-xs text-gray-500">
                     {user.email ||
                       user.employee?.workEmail ||
                       user.employee?.personalEmail ||
@@ -293,6 +308,9 @@ const UserManagement = () => {
                   </td>
                   <td className="p-4">
                     <StatusBadge status={user.isActive ? "Active" : "Locked"} />
+                  </td>
+                  <td className="p-4 text-xs text-gray-500">
+                    {formatDate(user.lastLogin)}
                   </td>
                   <td className="p-4 text-center">
                     <div className="flex justify-center gap-2">
@@ -322,7 +340,7 @@ const UserManagement = () => {
                           <Lock size={16} />
                         )}
                       </button>
-                      {user.employee.id !== userInfo.id ? (
+                      {user.employee?.id !== userInfo?.id ? (
                         <button
                           onClick={() =>
                             setActionData({ type: "delete", user })
