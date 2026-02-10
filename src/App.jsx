@@ -28,7 +28,7 @@ import Login from "./pages/auth/Login";
 import RequireAuth from "./components/RequireAuth";
 import Register from "./pages/auth/Register";
 import PublicRoute from "./components/PublicRoute";
-
+import MyLeave from "./pages/announce/Myleave";
 function App() {
   return (
     <>
@@ -59,6 +59,7 @@ function App() {
             <Route path="timesheet" element={<MyTimesheet />} />
             <Route path="payroll" element={<MyPayslip />} />
             <Route path="requests" element={<MyRequests />} />
+             <Route path="leave" element={<MyLeave />} />
 
             <Route
               path="admin"

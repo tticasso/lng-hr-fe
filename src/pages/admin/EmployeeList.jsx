@@ -112,6 +112,7 @@ const EmployeeList = () => {
   };
 
   const handleOpenEdit = (employee) => {
+    console.log("click edit")
     setSelectedEmployee(employee);
     setIsEditModalOpen(true);
   };

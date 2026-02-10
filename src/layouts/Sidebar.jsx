@@ -2,14 +2,10 @@ import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   Home,
-  CheckSquare,
   CalendarCheck2,
   Users,
-  BarChart2,
   Plane,
-  Folder,
   DollarSign,
-  Gift,
   FileText,
   UserCog,
   Settings,
@@ -25,6 +21,8 @@ import { useAuth } from "../context/AuthContext";
 
 const Sidebar = () => {
   const navigate = useNavigate();
+  const role = localStorage.getItem("role");
+  const isAdmin = role === "ADMIN";
 
   const menuGroups = [
     {
@@ -36,6 +34,16 @@ const Sidebar = () => {
           label: "My Calendar",
           icon: <CalendarCheck2 size={20} />,
         },
+        // ✅ Không phải ADMIN mới hiển thị My Request
+        ...(isAdmin
+          ? []
+          : [
+              {
+                path: "/leave",
+                label: "My Request",
+                icon: <Plane size={20} />,
+              },
+            ]),
       ],
     },
     {
@@ -66,13 +74,22 @@ const Sidebar = () => {
           label: "On/Off Boarding",
           icon: <Presentation size={20} />,
         },
+        // ✅ ADMIN mới hiển thị Requesting Manager trong HR MANAGEMENT
+        ...(isAdmin
+          ? [
+              {
+                path: "/leave",
+                label: "Requesting Manager",
+                icon: <Plane size={20} />,
+              },
+            ]
+          : []),
       ],
     },
     {
       title: "PAYROLL & C&B",
       items: [
         { path: "/payroll", label: "Payroll", icon: <DollarSign size={20} /> },
-
         { path: "/hr/reports", label: "Reports", icon: <FileText size={20} /> },
         {
           path: "hr/payroll-engine",
@@ -97,20 +114,22 @@ const Sidebar = () => {
       ],
     },
   ];
+
   const { logout } = useAuth();
+
   const handleLogout = () => {
-    // Gọi hàm logout từ context
+    localStorage.removeItem("role");
     logout();
-    // Điều hướng về trang login
     navigate("/login");
     console.log("logout");
   };
+
   return (
     <div className="h-screen w-64 bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0">
       {/* 1. LOGO AREA */}
       <div className="h-20 flex items-center">
         <div className="flex items-center gap-2 px-6">
-          <img src={logoLNG} alt="LNG Logo" className=" w-36" />
+          <img src={logoLNG} alt="LNG Logo" className="w-36" />
         </div>
       </div>
 
@@ -124,25 +143,22 @@ const Sidebar = () => {
             <div className="space-y-1">
               {group.items.map((item) => (
                 <NavLink
-                  key={item.path}
+                  key={`${group.title}-${item.path}-${item.label}`}
                   to={item.path}
-                  className={({ isActive }) => {
-                    return `
-                      relative flex items-center px-4 py-2.5 rounded-lg transition-all duration-200 font-medium text-sm
-                      ${
-                        isActive
-                          ? "bg-blue-50 text-primary"
-                          : "text-gray-500 hover:text-primary hover:bg-gray-50"
-                      }
-                    `;
-                  }}
+                  className={({ isActive }) => `
+                    relative flex items-center px-4 py-2.5 rounded-lg transition-all duration-200 font-medium text-sm
+                    ${
+                      isActive
+                        ? "bg-blue-50 text-primary"
+                        : "text-gray-500 hover:text-primary hover:bg-gray-50"
+                    }
+                  `}
                 >
                   {({ isActive }) => (
                     <>
                       {isActive && (
                         <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-md" />
                       )}
-
                       <span className="mr-3">{item.icon}</span>
                       <span>{item.label}</span>
                     </>
@@ -153,6 +169,7 @@ const Sidebar = () => {
           </div>
         ))}
       </nav>
+
       <div className="p-4 border-t border-gray-100 mt-auto">
         <button
           onClick={handleLogout}
@@ -162,9 +179,8 @@ const Sidebar = () => {
           <span className="group-hover:text-red-600">Đăng xuất</span>
         </button>
       </div>
-      <div className="p-4 text-xs text-center text-gray-400">
-        © 2026 LNG Inc.
-      </div>
+
+      <div className="p-4 text-xs text-center text-gray-400">© 2026 LNG Inc.</div>
     </div>
   );
 };

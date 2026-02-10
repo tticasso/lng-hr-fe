@@ -14,10 +14,15 @@ import {
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import StatusBadge from "../../components/common/StatusBadge";
+import LeaveRequestModal from "../../components/modals/CreateLeaveModal";
+import { toast } from "react-toastify";
+import { leaveAPI } from "../../apis/leaveAPI";
 
 const MyTimesheet = () => {
   const [selectedDate, setSelectedDate] = useState(null);
-
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+  const [defaultFromDate, setDefaultFromDate] = useState("");
+  
   const [todayInfo] = useState(() => {
     const now = new Date();
     const nowVN = new Date(now.getTime() + 7 * 60 * 60 * 1000);
@@ -29,9 +34,38 @@ const MyTimesheet = () => {
     };
   });
 
+console.log("defaultFromDate gửi vào modal:", defaultFromDate);
+
+  const pad2 = (n) => String(n).padStart(2, "0");
+
+  const CallleaveAPI = async (data) => {
+    console.log("ĐANG CALL API: CallleaveAPI")
+    try {
+      const res = await leaveAPI.post(data)
+      console.log("DỮ LIỆU API TRẢ VỀ : ", res)
+      setIsLeaveModalOpen(false);
+      toast.success("Xin nghỉ thành công, Vui lòng chờ quản trị duyệt");
+    } catch (error) {
+      setIsLeaveModalOpen(false);
+      toast.error("Xin nghỉ thất bại");
+      console.log("CÓ LỖI API : ", error)
+    }
+  }
+
+
+const handleTest = () => {
+  if (!selectedDate?.inMonth || !selectedDate?.isoDate) return;
+
+  setDefaultFromDate(selectedDate.isoDate); // ✅ dùng isoDate đúng của ô
+  setIsLeaveModalOpen(true);
+};
+
+
+
   const CURRENT_YEAR = todayInfo.year;
   const CURRENT_MONTH = todayInfo.month;
   const TODAY = todayInfo.day;
+  
   const generateCalendarData = () => {
     const days = [];
     // Ngày đầu tháng 12/2025 là Thứ 2 (Index = 1)
@@ -99,7 +133,7 @@ const MyTimesheet = () => {
           checkOut = null;
         }
       }
-
+      const isoDate = `${CURRENT_YEAR}-${pad2(CURRENT_MONTH + 1)}-${pad2(i)}`;
       if (i <= TODAY) {
         days.push({
           day: i,
@@ -111,7 +145,8 @@ const MyTimesheet = () => {
           checkOut,
           otHours,
           holidayName,
-          fullDate: `${i}/12/${CURRENT_YEAR}`,
+          fullDate: `${pad2(i)}/${pad2(CURRENT_MONTH + 1)}/${CURRENT_YEAR}`,
+          isoDate, // ✅ thêm dòng này
         });
       } else {
         days.push({
@@ -120,11 +155,12 @@ const MyTimesheet = () => {
           isToday: i === TODAY,
           type,
           status,
-          // checkIn,
-          // checkOut,
-          // otHours,
+          checkIn,
+          checkOut,
+          otHours,
           holidayName,
-          fullDate: `${i}/12/${CURRENT_YEAR}`,
+          fullDate: `${pad2(i)}/${pad2(CURRENT_MONTH + 1)}/${CURRENT_YEAR}`,
+          isoDate, // ✅ thêm dòng này
         });
       }
     }
@@ -166,6 +202,18 @@ const MyTimesheet = () => {
 
   return (
     <div className="space-y-6 max-w-full">
+      {/* Open modal xin nghi*/}
+      {isLeaveModalOpen && (
+        <LeaveRequestModal
+          defaultFromDate={defaultFromDate}
+          onClose={() => setIsLeaveModalOpen(false)}
+          onConfirm={(payload) => {
+            CallleaveAPI(payload)
+            // console.log("LEAVE CONFIRM:", payload);
+            // setIsLeaveModalOpen(false);
+          }}
+        />
+      )}
       {/* --- HEADER --- */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
         <div>
@@ -258,9 +306,8 @@ const MyTimesheet = () => {
               (d, i) => (
                 <div
                   key={d}
-                  className={`py-3 text-center text-xs font-bold uppercase tracking-wide ${
-                    i === 0 || i === 6 ? "text-red-400" : "text-gray-500"
-                  }`}
+                  className={`py-3 text-center text-xs font-bold uppercase tracking-wide ${i === 0 || i === 6 ? "text-red-400" : "text-gray-500"
+                    }`}
                 >
                   {d}
                 </div>
@@ -280,14 +327,13 @@ const MyTimesheet = () => {
                 <div className="flex justify-between items-start ">
                   <span
                     className={`text-lg font-semibold w-7 h-7 flex items-center justify-center rounded-full
-                      ${
-                        day.isToday
-                          ? "bg-blue-600 text-white"
-                          : day.type === "holiday"
+                      ${day.isToday
+                        ? "bg-blue-600 text-white"
+                        : day.type === "holiday"
                           ? "text-red-600"
                           : day.type === "weekend"
-                          ? "text-red-400"
-                          : "text-gray-700"
+                            ? "text-red-400"
+                            : "text-gray-700"
                       }
                    `}
                   >
@@ -343,11 +389,10 @@ const MyTimesheet = () => {
                       <>
                         <div className="flex justify-center items-center text-[11px] text-gray-500  px-1.5 py-0.5 rounded">
                           <span
-                            className={`font-mono font-bold ${
-                              day.status.includes("late")
-                                ? "text-red-600"
-                                : "text-gray-700"
-                            }`}
+                            className={`font-mono font-bold ${day.status.includes("late")
+                              ? "text-red-600"
+                              : "text-gray-700"
+                              }`}
                           >
                             {day.checkIn}
                           </span>
@@ -425,11 +470,10 @@ const MyTimesheet = () => {
                         </span>
                       </div>
                       <span
-                        className={`font-mono text-lg font-bold ${
-                          selectedDate.status.includes("late")
-                            ? "text-red-600"
-                            : "text-gray-800"
-                        }`}
+                        className={`font-mono text-lg font-bold ${selectedDate.status.includes("late")
+                          ? "text-red-600"
+                          : "text-gray-800"
+                          }`}
                       >
                         {selectedDate.checkIn}
                       </span>
@@ -469,8 +513,8 @@ const MyTimesheet = () => {
                     {selectedDate.type === "weekend"
                       ? "Cuối tuần - Không có lịch làm việc"
                       : selectedDate.type === "holiday"
-                      ? `Nghỉ lễ: ${selectedDate.holidayName}`
-                      : "Nghỉ phép có lương"}
+                        ? `Nghỉ lễ: ${selectedDate.holidayName}`
+                        : "Nghỉ phép có lương"}
                   </div>
                 )}
 
@@ -486,7 +530,9 @@ const MyTimesheet = () => {
 
           {/* Quick Actions (Bottom Right) */}
           <div className="grid grid-cols-2 gap-3">
-            <Button className="flex flex-col items-center gap-1 py-3 bg-blue-600 text-white shadow-md hover:bg-blue-700">
+            <Button
+              onClick={handleTest}
+              className="flex flex-col items-center gap-1 py-3 bg-blue-600 text-white shadow-md hover:bg-blue-700">
               <Coffee size={20} /> <span className="text-xs">Xin nghỉ</span>
             </Button>
             <Button
@@ -513,11 +559,10 @@ const StatCard = ({ icon, label, value, sub, color, isWarning }) => {
 
   return (
     <Card
-      className={`flex items-start gap-3 p-4 border ${
-        isWarning
-          ? "border-red-300 ring-1 ring-red-50"
-          : colors[color].split(" ")[2]
-      }`}
+      className={`flex items-start gap-3 p-4 border ${isWarning
+        ? "border-red-300 ring-1 ring-red-50"
+        : colors[color].split(" ")[2]
+        }`}
     >
       <div className={`p-2.5 rounded-lg shrink-0 ${colors[color]}`}>{icon}</div>
       <div>

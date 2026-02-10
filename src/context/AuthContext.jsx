@@ -43,6 +43,7 @@ export function AuthProvider({ children }) {
               const rawData = res.data?.data?.employee || res.data?.employee;
               if (rawData) {
                 const cleanUser = normalizeUser(rawData);
+                console.log("DỮ LIỆU USER : ",cleanUser)
                 setUser(cleanUser);
                 localStorage.setItem(
                   STORAGE_KEY,
