@@ -4,7 +4,6 @@ import {
   Mail,
   Phone,
   MapPin,
-  Calendar,
   Briefcase,
   CreditCard,
   Monitor,
@@ -17,9 +16,8 @@ import {
   Loader2,
   Save,
   AlertCircle,
-  CheckCircle2,
-  DollarSign,
   Landmark,
+  Key,
 } from "lucide-react";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
@@ -28,6 +26,7 @@ import { useAuth } from "../../context/AuthContext";
 import { employeeApi } from "../../apis/employeeApi";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
+import { authApi } from "../../apis/authApi";
 
 // --- CÁC REGEX CHUẨN VIỆT NAM ---
 const VIETNAM_PHONE_REGEX = /^(\+84|0)(3|5|7|8|9)[0-9]{8}$/;
@@ -45,6 +44,20 @@ const MyProfile = () => {
   const [formData, setFormData] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+
+  // ====== CHANGE PASSWORD STATE ======
+  const [pwSubmitting, setPwSubmitting] = useState(false);
+  const [pwErrors, setPwErrors] = useState({});
+  const [pwForm, setPwForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [showPw, setShowPw] = useState({
+    current: false,
+    next: false,
+    confirm: false,
+  });
 
   // Style Inline Tailwind
   const inputClassName =
@@ -147,11 +160,6 @@ const MyProfile = () => {
         },
       };
 
-      // Xóa các trường thừa nếu cần thiết
-      // delete submitData.emergencyName;
-      // delete submitData.emergencyPhone;
-      // delete submitData.emergencyRelation;
-
       await employeeApi.updateMe(submitData);
       toast.success("Cập nhật hồ sơ thành công!");
       const updatedUser = await refreshProfile();
@@ -173,10 +181,78 @@ const MyProfile = () => {
     }
   };
 
+  // ====== CHANGE PASSWORD HANDLERS ======
+  const handlePwChange = (e) => {
+    const { name, value } = e.target;
+    setPwForm((p) => ({ ...p, [name]: value }));
+    if (pwErrors[name]) setPwErrors((p) => ({ ...p, [name]: "" }));
+  };
+
+  const validatePw = () => {
+    const ne = {};
+    let ok = true;
+
+    if (!pwForm.currentPassword) {
+      ne.currentPassword = "Vui lòng nhập mật khẩu hiện tại.";
+      ok = false;
+    }
+    if (!pwForm.newPassword) {
+      ne.newPassword = "Vui lòng nhập mật khẩu mới.";
+      ok = false;
+    } else if (pwForm.newPassword.length < 8) {
+      ne.newPassword = "Mật khẩu mới tối thiểu 8 ký tự.";
+      ok = false;
+    }
+    if (!pwForm.confirmPassword) {
+      ne.confirmPassword = "Vui lòng xác nhận mật khẩu mới.";
+      ok = false;
+    } else if (pwForm.confirmPassword !== pwForm.newPassword) {
+      ne.confirmPassword = "Xác nhận mật khẩu không khớp.";
+      ok = false;
+    }
+
+    setPwErrors(ne);
+    return ok;
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (!validatePw()) {
+      toast.error("Vui lòng kiểm tra lại mật khẩu.");
+      return;
+    }
+
+    setPwSubmitting(true);
+    try {
+      const payload = {
+        currentPassword: pwForm.currentPassword,
+        newPassword: pwForm.newPassword,
+        confirmPassword: pwForm.confirmPassword,
+      };
+
+      console.log("ĐỔI MK : ", payload)
+
+      const res = await authApi.changepasswork(payload)
+      console.log("DỮ LIỆU API TRẢ VỀ : ", res)
+      toast.success("Đổi mật khẩu thành công!");
+      setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setPwErrors({});
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message ||
+        error?.message ||
+        "Đổi mật khẩu thất bại."
+      );
+    } finally {
+      setPwSubmitting(false);
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return "--";
     return new Date(dateString).toLocaleDateString("vi-VN");
   };
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
@@ -357,6 +433,7 @@ const MyProfile = () => {
                     className={inputClassName}
                   />
                 </InputGroup>
+
                 <InputGroup label="Mối quan hệ">
                   <input
                     type="text"
@@ -463,36 +540,46 @@ const MyProfile = () => {
       {/* CONTENT TABS */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 min-h-[400px]">
         <div className="flex border-b border-gray-200 overflow-x-auto">
-          {["personal", "job", "compensation", "assets"].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex items-center gap-2
-                   ${activeTab === tab ? "border-blue-600 text-blue-600 bg-blue-50/50" : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"}
-                `}
-            >
-              {tab === "personal" && (
-                <>
-                  <User size={18} /> Thông tin cá nhân
-                </>
-              )}
-              {tab === "job" && (
-                <>
-                  <Briefcase size={18} /> Công việc & HĐ
-                </>
-              )}
-              {tab === "compensation" && (
-                <>
-                  <CreditCard size={18} /> Lương & Phúc lợi
-                </>
-              )}
-              {tab === "assets" && (
-                <>
-                  <Monitor size={18} /> Tài sản
-                </>
-              )}
-            </button>
-          ))}
+          {["personal", "job", "compensation", "assets", "changepassword"].map(
+            (tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex items-center gap-2
+                ${activeTab === tab
+                    ? "border-blue-600 text-blue-600 bg-blue-50/50"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                  }
+              `}
+              >
+                {tab === "personal" && (
+                  <>
+                    <User size={18} /> Thông tin cá nhân
+                  </>
+                )}
+                {tab === "job" && (
+                  <>
+                    <Briefcase size={18} /> Công việc & HĐ
+                  </>
+                )}
+                {tab === "compensation" && (
+                  <>
+                    <CreditCard size={18} /> Lương & Phúc lợi
+                  </>
+                )}
+                {tab === "assets" && (
+                  <>
+                    <Monitor size={18} /> Tài sản
+                  </>
+                )}
+                {tab === "changepassword" && (
+                  <>
+                    <Key size={18} /> Đổi mật khẩu
+                  </>
+                )}
+              </button>
+            )
+          )}
         </div>
 
         <div className="p-6">
@@ -529,6 +616,7 @@ const MyProfile = () => {
                   />
                 </div>
               </div>
+
               <div className="space-y-6">
                 <h3 className="text-lg font-bold text-gray-800 border-b pb-2 flex items-center gap-2">
                   <Phone size={18} /> Liên hệ
@@ -550,6 +638,7 @@ const MyProfile = () => {
                     icon={<MapPin size={14} />}
                   />
                 </div>
+
                 <div className="mt-6 pt-4 rounded-lg border-red-200 border bg-red-50 p-3">
                   <h4 className="text-sm font-bold text-red-600 mb-3 uppercase flex items-center gap-2">
                     <AlertCircle size={14} /> Liên hệ khẩn cấp
@@ -583,10 +672,7 @@ const MyProfile = () => {
                   Thông tin vị trí
                 </h3>
                 <div className="space-y-4">
-                  <ProfileField
-                    label="Mã nhân viên"
-                    value={profile.employeeCode}
-                  />
+                  <ProfileField label="Mã nhân viên" value={profile.employeeCode} />
                   <ProfileField
                     label="Phòng ban"
                     value={
@@ -596,35 +682,22 @@ const MyProfile = () => {
                     }
                   />
                   <ProfileField label="Chức danh" value={profile.jobTitle} />
-                  <ProfileField
-                    label="Cấp bậc (Level)"
-                    value={profile.jobLevel}
-                  />
-                  <ProfileField
-                    label="Email công việc"
-                    value={profile.workEmail}
-                  />
+                  <ProfileField label="Cấp bậc (Level)" value={profile.jobLevel} />
+                  <ProfileField label="Email công việc" value={profile.workEmail} />
                 </div>
               </div>
+
               <div className="space-y-6">
                 <h3 className="text-lg font-bold text-gray-800 border-b pb-2">
                   Hợp đồng lao động
                 </h3>
                 <div className="space-y-4">
-                  <ProfileField
-                    label="Số hợp đồng"
-                    value={profile.contractNumber}
-                  />
-                  <ProfileField
-                    label="Loại hợp đồng"
-                    value={profile.contractType}
-                  />
+                  <ProfileField label="Số hợp đồng" value={profile.contractNumber} />
+                  <ProfileField label="Loại hợp đồng" value={profile.contractType} />
                   <div className="grid grid-cols-2 gap-4">
                     <ProfileField
                       label="Ngày bắt đầu"
-                      value={formatDate(
-                        profile.contractStartDate || profile.startDate,
-                      )}
+                      value={formatDate(profile.contractStartDate || profile.startDate)}
                     />
                     <ProfileField
                       label="Ngày kết thúc"
@@ -645,12 +718,10 @@ const MyProfile = () => {
             </div>
           )}
 
-          {/* TAB 3: COMPENSATION (Updated Design) */}
+          {/* TAB 3: COMPENSATION */}
           {activeTab === "compensation" && (
             <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-300">
-              {/* Salary Card - Dark Theme */}
               <div className="bg-[#1e293b] text-white rounded-xl p-8 shadow-xl relative overflow-hidden">
-                {/* Background decorative circles */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
 
                 <div className="relative z-10">
@@ -668,22 +739,23 @@ const MyProfile = () => {
                       </div>
                     </div>
                     <div className="p-2 bg-white/10 rounded-lg">
-                      {/* <DollarSign size={24} className="text-green-400" /> */}
                       <button
                         onClick={() => setShowSalary(!showSalary)}
                         className="text-slate-400 hover:text-white transition p-1"
+                        type="button"
                       >
                         {showSalary ? <EyeOff size={20} /> : <Eye size={20} />}
                       </button>
                     </div>
                   </div>
+
                   <div className="h-px bg-slate-700 my-6"></div>
+
                   <div className="grid grid-cols-2 gap-8">
                     <div>
                       <p className="text-slate-400 text-xs uppercase mb-1">
                         Phụ cấp ăn trưa
                       </p>
-                      {/* [FIX] Truy cập vào allowances.lunch */}
                       <p className="text-lg font-semibold">
                         {showSalary
                           ? formatCurrency(profile.allowances?.lunch)
@@ -704,25 +776,19 @@ const MyProfile = () => {
                 </div>
               </div>
 
-              {/* Bank Information Section */}
               <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
                 <h4 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                  <Landmark size={20} className="text-blue-600" /> Tài khoản
-                  nhận lương
+                  <Landmark size={20} className="text-blue-600" /> Tài khoản nhận lương
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                    <p className="text-xs text-gray-500 uppercase mb-1">
-                      Ngân hàng
-                    </p>
+                    <p className="text-xs text-gray-500 uppercase mb-1">Ngân hàng</p>
                     <p className="text-base font-bold text-gray-800">
                       {profile.bankAccount?.bankName || "--"}
                     </p>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                    <p className="text-xs text-gray-500 uppercase mb-1">
-                      Số tài khoản
-                    </p>
+                    <p className="text-xs text-gray-500 uppercase mb-1">Số tài khoản</p>
                     <p className="text-base font-mono font-bold text-gray-800 tracking-wide">
                       {profile.bankAccount?.accountNumber || "--"}
                     </p>
@@ -733,9 +799,9 @@ const MyProfile = () => {
               <div className="bg-yellow-50 text-yellow-800 p-4 rounded-lg flex gap-3 items-start text-sm border border-yellow-100">
                 <Shield size={18} className="shrink-0 mt-0.5" />
                 <p>
-                  Thông tin lương là bảo mật tuyệt đối. Vui lòng không chia sẻ
-                  màn hình này với người khác. Chi tiết thu nhập thực nhận (Net)
-                  xem tại phiếu lương hàng tháng.
+                  Thông tin lương là bảo mật tuyệt đối. Vui lòng không chia sẻ màn hình
+                  này với người khác. Chi tiết thu nhập thực nhận (Net) xem tại phiếu
+                  lương hàng tháng.
                 </p>
               </div>
             </div>
@@ -751,6 +817,150 @@ const MyProfile = () => {
                 <Monitor size={48} className="mx-auto text-gray-300 mb-3" />
                 <p>Hiện chưa có dữ liệu tài sản bàn giao.</p>
               </div>
+            </div>
+          )}
+
+          {/* TAB 5: CHANGE PASSWORD */}
+          {activeTab === "changepassword" && (
+            <div className="max-w-xl mx-auto animate-in fade-in duration-300">
+              <Card className="border border-gray-200 shadow-sm">
+                <div className="flex items-center gap-3 mb-6 border-b border-gray-100 pb-4">
+                  <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                    <Key size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-800">Đổi mật khẩu</h3>
+                    <p className="text-sm text-gray-500">
+                      Mật khẩu mới tối thiểu 8 ký tự.
+                    </p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleChangePassword} className="space-y-5">
+                  <InputGroup
+                    label="Mật khẩu hiện tại"
+                    required
+                    error={pwErrors.currentPassword}
+                  >
+                    <div className="relative">
+                      <input
+                        type={showPw.current ? "text" : "password"}
+                        name="currentPassword"
+                        value={pwForm.currentPassword}
+                        onChange={handlePwChange}
+                        className={
+                          pwErrors.currentPassword
+                            ? errorInputClassName
+                            : inputClassName
+                        }
+                        placeholder="Nhập mật khẩu hiện tại"
+                        autoComplete="current-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowPw((p) => ({ ...p, current: !p.current }))
+                        }
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        title={showPw.current ? "Ẩn" : "Hiện"}
+                      >
+                        {showPw.current ? (
+                          <EyeOff size={18} />
+                        ) : (
+                          <Eye size={18} />
+                        )}
+                      </button>
+                    </div>
+                  </InputGroup>
+
+                  <InputGroup
+                    label="Mật khẩu mới"
+                    required
+                    error={pwErrors.newPassword}
+                  >
+                    <div className="relative">
+                      <input
+                        type={showPw.next ? "text" : "password"}
+                        name="newPassword"
+                        value={pwForm.newPassword}
+                        onChange={handlePwChange}
+                        className={
+                          pwErrors.newPassword ? errorInputClassName : inputClassName
+                        }
+                        placeholder="Nhập mật khẩu mới"
+                        autoComplete="new-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPw((p) => ({ ...p, next: !p.next }))}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        title={showPw.next ? "Ẩn" : "Hiện"}
+                      >
+                        {showPw.next ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </InputGroup>
+
+                  <InputGroup
+                    label="Xác nhận mật khẩu mới"
+                    required
+                    error={pwErrors.confirmPassword}
+                  >
+                    <div className="relative">
+                      <input
+                        type={showPw.confirm ? "text" : "password"}
+                        name="confirmPassword"
+                        value={pwForm.confirmPassword}
+                        onChange={handlePwChange}
+                        className={
+                          pwErrors.confirmPassword
+                            ? errorInputClassName
+                            : inputClassName
+                        }
+                        placeholder="Nhập lại mật khẩu mới"
+                        autoComplete="new-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowPw((p) => ({ ...p, confirm: !p.confirm }))
+                        }
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        title={showPw.confirm ? "Ẩn" : "Hiện"}
+                      >
+                        {showPw.confirm ? (
+                          <EyeOff size={18} />
+                        ) : (
+                          <Eye size={18} />
+                        )}
+                      </button>
+                    </div>
+                  </InputGroup>
+
+                  <div className="pt-4 border-t border-gray-200 flex justify-end">
+                    <Button
+                      type="submit"
+                      disabled={pwSubmitting}
+                      className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg px-8 py-3"
+                    >
+                      {pwSubmitting ? (
+                        <Loader2 className="animate-spin mr-2" size={18} />
+                      ) : (
+                        <Save className="mr-2" size={18} />
+                      )}
+                      Cập nhật mật khẩu
+                    </Button>
+                  </div>
+
+                  <div className="bg-yellow-50 text-yellow-800 p-3 rounded-lg text-sm border border-yellow-100 flex gap-2 items-start">
+                    <Shield size={16} className="shrink-0 mt-0.5" />
+                    <p>
+                      Vui lòng không chia sẻ mật khẩu. Nếu nghi ngờ bị lộ tài khoản, hãy đổi
+                      mật khẩu ngay.
+                    </p>
+                  </div>
+                </form>
+              </Card>
             </div>
           )}
         </div>
@@ -774,7 +984,7 @@ const ProfileField = ({ label, value, icon, className = "" }) => (
 );
 
 const InputGroup = ({ label, required, children, className, error }) => (
-  <div className={`flex flex-col gap-2 ${className}`}>
+  <div className={`flex flex-col gap-2 ${className || ""}`}>
     <label className="text-sm font-semibold text-gray-700">
       {label} {required && <span className="text-red-500">*</span>}
     </label>

@@ -22,11 +22,34 @@ import { Link, Navigate } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { employeeApi } from "../apis/employeeApi";
-
+import LeaveRequestModal from "../components/modals/CreateLeaveModal";
+import { leaveAPI } from "../../src/apis/leaveAPI";
+import { toast } from "react-toastify";
 const Dashboard = () => {
+
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
   console.log("Dashboard/user: ", user);
+
+
+  const handleClick = () => {
+    setIsLeaveModalOpen(true)
+  }
+
+  const CallleaveAPI = async (data) => {
+    console.log("ĐANG CALL API: CallleaveAPI")
+    try {
+      const res = await leaveAPI.post(data)
+      console.log("DỮ LIỆU API TRẢ VỀ : ", res)
+      setIsLeaveModalOpen(false);
+      toast.success("Xin nghỉ thành công, Vui lòng chờ quản trị duyệt");
+    } catch (error) {
+      setIsLeaveModalOpen(false);
+      toast.error("Xin nghỉ thất bại");
+      console.log("CÓ LỖI API : ", error)
+    }
+  }
 
   const employee = {
     name: "Nguyễn Hữu Tần",
@@ -135,6 +158,18 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
+      {/* --- LEAVE MODAL (Imported Component) --- */}
+      {isLeaveModalOpen && (
+        <LeaveRequestModal
+          onClose={() => setIsLeaveModalOpen(false)}
+          onConfirm={(payload) => {
+            CallleaveAPI(payload)
+            // gọi API tạo đơn nghỉ
+            console.log("DỮ LIỆU XIN NGHỈ : ", payload);
+            //setIsLeaveModalOpen(false);
+          }}
+        />
+      )}
       {/* --- HÀNG TRÊN: WELCOME & STATS --- */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* 1. Welcome Card (Chiếm 6/12 cột) */}
@@ -268,13 +303,12 @@ const Dashboard = () => {
                     <div className="flex items-center gap-2 mb-1">
                       <span
                         className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider 
-                                        ${
-                                          news.tag === "Important"
-                                            ? "bg-red-100 text-red-600"
-                                            : news.tag === "Policy"
-                                              ? "bg-blue-100 text-blue-600"
-                                              : "bg-green-100 text-green-600"
-                                        }`}
+                                        ${news.tag === "Important"
+                            ? "bg-red-100 text-red-600"
+                            : news.tag === "Policy"
+                              ? "bg-blue-100 text-blue-600"
+                              : "bg-green-100 text-green-600"
+                          }`}
                       >
                         {news.tag}
                       </span>
@@ -352,7 +386,9 @@ const Dashboard = () => {
 
             <div className="grid grid-cols-2 gap-4">
               {/* Action 1: Xin nghỉ phép */}
-              <button className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-blue-50 hover:border-blue-200 hover:shadow-sm transition-all group">
+              <button className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-blue-50 hover:border-blue-200 hover:shadow-sm transition-all group"
+                onClick={handleClick}
+              >
                 <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center shadow-sm text-blue-500 group-hover:text-blue-600 mb-3">
                   <Coffee size={20} />
                 </div>

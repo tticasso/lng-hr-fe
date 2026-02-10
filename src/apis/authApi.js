@@ -15,4 +15,8 @@ export const authApi = {
   refreshToken: (token) => {
     return apiClient.post("/auth/refresh", { refreshToken: token });
   },
+  //đổi mật khẩu
+    changepasswork: (payload) => {
+    return apiClient.put("/auth/update-password",payload);
+  },
 };
