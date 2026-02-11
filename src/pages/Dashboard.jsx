@@ -1,4 +1,6 @@
 import React from "react";
+import ModalOT from "../components/modals/OTModal";
+import "antd/dist/reset.css";
 import { useState, useEffect } from "react";
 import {
   Briefcase,
@@ -25,18 +27,46 @@ import { employeeApi } from "../apis/employeeApi";
 import LeaveRequestModal from "../components/modals/CreateLeaveModal";
 import { leaveAPI } from "../../src/apis/leaveAPI";
 import { toast } from "react-toastify";
+import { OTApi } from "../apis/OTAPI";
 const Dashboard = () => {
 
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
-  console.log("Dashboard/user: ", user);
+  const [isOTModalOpen, setIsOTModalOpen] = useState(false);
 
+  useEffect(() => {
+    console.log("[OT] isOTModalOpen changed:", isOTModalOpen);
+  }, [isOTModalOpen]);
 
   const handleClick = () => {
     setIsLeaveModalOpen(true)
   }
+  const handleClickOT = () => {
+    console.log("[OT] CLICK button - before set:", isOTModalOpen);
+    setIsOTModalOpen(true);
+  };
 
+  const callOTAPI = async (payload) => {
+    try {
+      // payload dạng:
+      // { date:"YYYY-MM-DD", otType:"WEEKDAY", startTime:"HH:mm", endTime:"HH:mm", reason:"" }
+
+      // Đổi đúng theo hàm backend của bạn:
+      // ví dụ OTApi.post(payload) hoặc OTApi.create(payload)
+      const id=localStorage.getItem("accountID")
+      console.log("ACCOUNT ID : ",id)
+      const res = await OTApi.post(payload);
+
+      console.log("OT created:", res);
+      setIsOTModalOpen(false);
+      toast.success("Đăng ký OT thành công, vui lòng chờ quản trị duyệt");
+    } catch (error) {
+      console.log("OT create error:", error);
+      setIsOTModalOpen(false);
+      toast.error(`Đăng ký OT thất bại ${error}`);
+    }
+  };
   const CallleaveAPI = async (data) => {
     console.log("ĐANG CALL API: CallleaveAPI")
     try {
@@ -158,6 +188,25 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
+      {/* --- OT MODAL (Imported Component) --- */}
+      {isOTModalOpen && (
+        <>
+          {console.log("[OT] Rendering ModalOT...")}
+          <ModalOT
+            open={isOTModalOpen}
+            onClose={() => {
+              console.log("[OT] onClose called");
+              setIsOTModalOpen(false);
+            }}
+            onSubmit={(payload) => {
+              console.log("[OT] onSubmit payload:", payload);
+              callOTAPI(payload);
+            }}
+            initialValues={{ otType: "WEEKDAY" }}
+          />
+        </>
+      )}
+
       {/* --- LEAVE MODAL (Imported Component) --- */}
       {isLeaveModalOpen && (
         <LeaveRequestModal
@@ -398,7 +447,10 @@ const Dashboard = () => {
               </button>
 
               {/* Action 2: Gửi OT */}
-              <button className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-orange-50 hover:border-orange-200 hover:shadow-sm transition-all group">
+              <button
+                className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-orange-50 hover:border-orange-200 hover:shadow-sm transition-all group"
+                onClick={handleClickOT}
+              >
                 <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center shadow-sm text-orange-500 group-hover:text-orange-600 mb-3">
                   <Clock size={20} />
                 </div>

@@ -18,9 +18,23 @@ import { departmentApi } from "../../apis/departmentApi";
 import { toast } from "react-toastify";
 
 // --- REGEX & CONSTANTS ---
-const VIETNAM_PHONE_REGEX = /^(0|84)(3|5|7|8|9)([0-9]{8})$/;
+// VN phone: 0 / 84 / +84 + (3|5|7|8|9) + 8 digits
+const VIETNAM_PHONE_REGEX = /^(\+84|84|0)(3|5|7|8|9)\d{8}$/;
+
+// Email
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-const IDENTITY_CARD_REGEX = /^(\d{9}|\d{12})$/;
+
+// CCCD/CMND: 9–12 digits only
+const IDENTITY_CARD_DIGITS_REGEX = /^\d+$/;
+const IDENTITY_CARD_LENGTH_REGEX = /^\d{9,12}$/;
+
+// ISO date: YYYY-MM-DD (input type="date" trả về format này)
+const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const isISODate = (v) => !!v && ISO_DATE_REGEX.test(v);
+// --- NORMALIZE HELPERS ---
+const normalizeSpaces = (v) => String(v ?? "").replace(/\s+/g, "").trim(); // bỏ mọi space
+const normalizeTrim = (v) => String(v ?? "").trim(); // chỉ trim đầu/cuối
+
 
 const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
   // Helper format date
@@ -118,114 +132,86 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
   }, []);
 
   // --- VALIDATION LOGIC ---
-  // --- VALIDATION LOGIC ---
   const validateForm = () => {
     const newErrors = {};
-    let isValid = true;
 
-    // --- NHÓM 1: CÔNG VIỆC (Các trường bắt buộc *) ---
-
-    // Mã NV *
-    if (!formData.employeeCode.trim()) {
-      newErrors.employeeCode = "Mã nhân viên là bắt buộc";
-    } else if (formData.employeeCode.length < 3) {
-      newErrors.employeeCode = "Mã nhân viên quá ngắn";
+    // 1) employeeCode (5-10 characters)
+    const employeeCode = normalizeTrim(formData.employeeCode);
+    if (!employeeCode) {
+      newErrors.employeeCode = "Employee code is required";
+    } else if (employeeCode.length < 5 || employeeCode.length > 10) {
+      newErrors.employeeCode = "Employee code must be between 5 and 10 characters";
     }
 
-    // Họ tên *
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = "Họ và tên là bắt buộc";
-    } else if (formData.fullName.length < 2) {
-      newErrors.fullName = "Tên phải có ít nhất 2 ký tự";
+    // 2) jobTitle (required)
+    const jobTitle = normalizeTrim(formData.jobTitle);
+    if (!jobTitle) {
+      newErrors.jobTitle = "Job title cannot be empty";
     }
 
-    // Phòng ban *
+    // 3) phoneNumber (VN format)
+    const phone = normalizeSpaces(formData.phoneNumber);
+    if (!phone) {
+      newErrors.phoneNumber = "Phone number is required";
+    } else if (!VIETNAM_PHONE_REGEX.test(phone)) {
+      newErrors.phoneNumber = "Phone number is not in the correct Vietnamese format";
+    }
+
+    // 4) birthDate (ISO yyyy-mm-dd)
+    const birthDate = normalizeTrim(formData.birthDate);
+    if (!birthDate) {
+      newErrors.birthDate = "Birth date is required";
+    } else if (!isISODate(birthDate)) {
+      newErrors.birthDate = "Birth date must be a valid ISO8601 date format";
+    }
+
+    // 5) identityCard (digits only + length 9-12)
+    const id = normalizeSpaces(formData.identityCard);
+    if (id) {
+      if (!IDENTITY_CARD_DIGITS_REGEX.test(id)) {
+        newErrors.identityCard = "ID number must contain only digits";
+      } else if (!IDENTITY_CARD_LENGTH_REGEX.test(id)) {
+        newErrors.identityCard = "ID number must be between 9 and 12 digits";
+      }
+    }
+
+    // 6) personalEmail (required + format)
+    const personalEmail = normalizeTrim(formData.personalEmail);
+    if (!personalEmail) {
+      newErrors.personalEmail = "Personal email is required";
+    } else if (!EMAIL_REGEX.test(personalEmail)) {
+      newErrors.personalEmail = "Personal email is invalid";
+    }
+
+    // 7) workEmail (required + format)
+    const workEmail = normalizeTrim(formData.workEmail);
+    if (!workEmail) {
+      newErrors.workEmail = "Work email is required";
+    } else if (!EMAIL_REGEX.test(workEmail)) {
+      newErrors.workEmail = "Work email is invalid";
+    }
+
+    // 8) fullName (required)
+    const fullName = normalizeTrim(formData.fullName);
+    if (!fullName) {
+      newErrors.fullName = "Full name is required";
+    }
+
+    // 9) department (required)
     if (!formData.department) {
-      newErrors.department = "Vui lòng chọn phòng ban";
+      newErrors.department = "Department is required";
     }
-
-    // Chức danh *
-    if (!formData.jobTitle.trim()) {
-      newErrors.jobTitle = "Chức danh là bắt buộc";
-    }
-
-    // Email công việc *
-    if (!formData.workEmail.trim()) {
-      newErrors.workEmail = "Email công việc là bắt buộc";
-    } else if (!EMAIL_REGEX.test(formData.workEmail)) {
-      newErrors.workEmail = "Email công việc không hợp lệ";
-    }
-
-    // Ngày vào làm *
-    if (!formData.startDate) {
-      newErrors.startDate = "Ngày vào làm là bắt buộc";
-    }
-
-    // --- NHÓM 2: CÁ NHÂN (Các trường bắt buộc *) ---
-
-    // Ngày sinh *
-    if (!formData.birthDate) {
-      newErrors.birthDate = "Ngày sinh là bắt buộc";
-    }
-
-    // CCCD / CMND *
-    if (!formData.identityCard.trim()) {
-      newErrors.identityCard = "CCCD/CMND là bắt buộc";
-    } else if (!IDENTITY_CARD_REGEX.test(formData.identityCard)) {
-      newErrors.identityCard = "CCCD phải gồm 9 hoặc 12 chữ số";
-    }
-
-    // SĐT Cá nhân *
-    if (!formData.phoneNumber.trim()) {
-      newErrors.phoneNumber = "SĐT cá nhân là bắt buộc";
-    } else if (!VIETNAM_PHONE_REGEX.test(formData.phoneNumber)) {
-      newErrors.phoneNumber = "SĐT không đúng định dạng VN";
-    }
-
-    // Email Cá nhân *
-    if (!formData.personalEmail.trim()) {
-      newErrors.personalEmail = "Email cá nhân là bắt buộc";
-    } else if (!EMAIL_REGEX.test(formData.personalEmail)) {
-      newErrors.personalEmail = "Email cá nhân không hợp lệ";
-    }
-
-    // --- NHÓM 3: LIÊN HỆ KHẨN CẤP (Các trường bắt buộc *) ---
-
-    // Họ tên người thân *
-    if (!formData.emergencyName.trim()) {
-      newErrors.emergencyName = "Tên người liên hệ là bắt buộc";
-    }
-
-    // Mối quan hệ *
-    if (!formData.emergencyRelation.trim()) {
-      newErrors.emergencyRelation = "Mối quan hệ là bắt buộc";
-    }
-
-    // SĐT Người thân *
-    if (!formData.emergencyPhone.trim()) {
-      newErrors.emergencyPhone = "SĐT người thân là bắt buộc";
-    } else if (!VIETNAM_PHONE_REGEX.test(formData.emergencyPhone)) {
-      newErrors.emergencyPhone = "SĐT không đúng định dạng VN";
-    }
-
-    // --- NHÓM 4: LOGIC SỐ HỌC (Lương & Phụ cấp) ---
-    if (Number(formData.baseSalary) < 0)
-      newErrors.baseSalary = "Lương không được âm";
-    if (Number(formData.lunchAllowance) < 0)
-      newErrors.lunchAllowance = "Phụ cấp không được âm";
-    if (Number(formData.fuelAllowance) < 0)
-      newErrors.fuelAllowance = "Phụ cấp không được âm";
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      isValid = false;
       toast.error("Vui lòng kiểm tra lại các trường báo lỗi màu đỏ.");
-    } else {
-      setErrors({});
+      return false;
     }
 
-    return isValid;
+    setErrors({});
+    return true;
   };
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -235,7 +221,17 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // if (!validateForm()) return;
+    
+    // Normalize dữ liệu trước khi validate và submit
+    const phone = normalizeSpaces(formData.phoneNumber);
+    const id = normalizeSpaces(formData.identityCard);
+    const personalEmail = normalizeTrim(formData.personalEmail);
+    const workEmail = normalizeTrim(formData.workEmail);
+    const birthDate = normalizeTrim(formData.birthDate);
+    const employeeCode = normalizeTrim(formData.employeeCode);
+    const jobTitle = normalizeTrim(formData.jobTitle);
+
+    if (!validateForm()) return;
 
     setUpdating(true);
     try {
@@ -243,65 +239,89 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
 
       // Construct payload matching Mongoose Schema
       const submitData = {
-        // Identity
-        employeeCode: formData.employeeCode,
-        fullName: formData.fullName,
-        gender: formData.gender,
-        birthDate: formData.birthDate,
-        identityCard: formData.identityCard,
-        taxIdentification: formData.taxIdentification,
+        // Identity - Đảm bảo không gửi empty string
+        employeeCode: employeeCode || undefined,
+        fullName: normalizeTrim(formData.fullName) || undefined,
+        gender: formData.gender || undefined,
+        birthDate: birthDate || undefined,
+        taxIdentification: normalizeTrim(formData.taxIdentification) || undefined,
 
-        // Contacts
-        phoneNumber: formData.phoneNumber,
-        address: formData.address,
-        personalEmail: formData.personalEmail,
-        workEmail: formData.workEmail,
+        // Contacts - Đảm bảo format đúng
+        phoneNumber: phone || undefined,
+        address: normalizeTrim(formData.address) || undefined,
+        personalEmail: personalEmail || undefined,
+        workEmail: workEmail || undefined,
 
-        // Organization
-        departmentId: formData.department, // Backend expects departmentId
-        jobTitle: formData.jobTitle,
-        jobLevel: formData.jobLevel,
-        employmentType: formData.employmentType,
-        workMode: formData.workMode,
-        status: formData.status,
+        // Organization - Đảm bảo có giá trị
+        departmentId: formData.department || undefined,
+        jobTitle: jobTitle || undefined,
+        jobLevel: normalizeTrim(formData.jobLevel) || undefined,
+        employmentType: formData.employmentType || undefined,
+        workMode: formData.workMode || undefined,
+        status: formData.status || undefined,
 
         // Lifecycle
-        startDate: formData.startDate,
-        probationEndDate: formData.probationEndDate,
+        startDate: normalizeTrim(formData.startDate) || undefined,
+        probationEndDate: normalizeTrim(formData.probationEndDate) || undefined,
 
         // Nested Objects Reconstruction
         emergencyContact: {
-          name: formData.emergencyName,
-          phone: formData.emergencyPhone,
-          relation: formData.emergencyRelation,
+          name: normalizeTrim(formData.emergencyName) || undefined,
+          phone: normalizeSpaces(formData.emergencyPhone) || undefined,
+          relation: normalizeTrim(formData.emergencyRelation) || undefined,
         },
 
         bankAccount: {
-          bankName: formData.bankName,
-          accountNumber: formData.bankAccountNumber,
+          bankName: normalizeTrim(formData.bankName) || undefined,
+          accountNumber: normalizeSpaces(formData.bankAccountNumber) || undefined,
         },
 
         // Compensation
-        baseSalary: Number(formData.baseSalary),
+        baseSalary: Number(formData.baseSalary) || 0,
         allowances: {
-          lunch: Number(formData.lunchAllowance),
-          fuel: Number(formData.fuelAllowance),
-          other: 0, // Default logic
+          lunch: Number(formData.lunchAllowance) || 0,
+          fuel: Number(formData.fuelAllowance) || 0,
+          other: 0,
         },
 
-        // nếu backend chưa update schema thì gửi lên sẽ bị lọc bỏ (strip).
-        contractNumber: formData.contractNumber,
-        contractType: formData.contractType,
+        // Contract info
+        contractNumber: normalizeTrim(formData.contractNumber) || undefined,
+        contractType: normalizeTrim(formData.contractType) || undefined,
       };
 
-      delete submitData.bankName;
-      delete submitData.bankAccountNumber;
+      // Remove undefined values để không gửi lên backend
+      Object.keys(submitData).forEach(key => {
+        if (submitData[key] === undefined) {
+          delete submitData[key];
+        }
+      });
+
+      console.log("Submitting data:", submitData); // Debug log
 
       await employeeApi.updateEmployee(employeeId, submitData);
       toast.success(`Cập nhật nhân viên ${formData.fullName} thành công!`);
       onSuccess();
     } catch (error) {
       console.error("Update failed:", error);
+      console.error("Error response:", error.response?.data); // Debug log
+      
+      // Xử lý validation errors từ backend
+      if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+        const backendErrors = {};
+        error.response.data.errors.forEach((err) => {
+          if (err.field && err.message) {
+            backendErrors[err.field] = err.message;
+          }
+        });
+        
+        if (Object.keys(backendErrors).length > 0) {
+          setErrors(backendErrors);
+          toast.error("Vui lòng kiểm tra lại các trường báo lỗi màu đỏ.");
+          return;
+        }
+      }
+      
+      // Lỗi khác (không phải validation)
       toast.error(error.response?.data?.message || "Cập nhật thất bại.");
     } finally {
       setUpdating(false);
@@ -408,6 +428,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                           </option>
                         ))}
                       </select>
+                      <ErrorMsg field="department" />
                     </div>
                     <div>
                       <label className={labelClass}>
@@ -425,6 +446,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                         <option value="HR">HR</option>
                         <option value="Manager">Manager</option>
                       </select>
+                      <ErrorMsg field="jobTitle" />
                     </div>
                   </div>
                   {/* ... (Giữ nguyên các trường khác như Cấp bậc, Trạng thái, Hình thức...) ... */}
@@ -496,7 +518,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className={labelClass}>
-                        Ngày vào làm <span className="text-red-500">*</span>
+                        Ngày vào làm
                       </label>
                       <input
                         type="date"
@@ -597,6 +619,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                         onChange={handleChange}
                         className={inputClass("birthDate")}
                       />
+                      <ErrorMsg field="birthDate" />
                     </div>
                     <div>
                       <label className={labelClass}>Giới tính</label>
@@ -614,7 +637,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                   </div>
                   <div>
                     <label className={labelClass}>
-                      CCCD / CMND <span className="text-red-500">*</span>
+                      CCCD / CMND
                     </label>
                     <input
                       name="identityCard"
@@ -678,7 +701,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
                     <label className={labelClass}>
-                      Họ tên người thân <span className="text-red-500">*</span>
+                      Họ tên người thân
                     </label>
                     <input
                       name="emergencyName"
@@ -690,7 +713,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                   </div>
                   <div>
                     <label className={labelClass}>
-                      Mối quan hệ <span className="text-red-500">*</span>
+                      Mối quan hệ
                     </label>
                     <input
                       name="emergencyRelation"
@@ -702,7 +725,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                   </div>
                   <div>
                     <label className={labelClass}>
-                      SĐT Người thân <span className="text-red-500">*</span>
+                      SĐT Người thân
                     </label>
                     <input
                       name="emergencyPhone"
