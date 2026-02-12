@@ -113,6 +113,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
       try {
         // 1. Fetch Departments (Internal API)
         const deptRes = await departmentApi.getAll();
+        console.log("CHECK LOG : ",deptRes)
         const deptList = deptRes.data?.data || deptRes.data || [];
         setDepartments(deptList);
 

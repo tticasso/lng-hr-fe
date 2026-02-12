@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Calendar as CalendarIcon,
   Upload,
@@ -23,17 +23,101 @@ import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import StatusBadge from "../../components/common/StatusBadge";
 import { toast } from "react-toastify";
+import { attendancesAPI } from "../../apis/attendancesAPI";
 
 const AttendanceAdmin = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState("2025-12");
+  const [selectedPeriod, setSelectedPeriod] = useState("2026-02"); // Mặc định tháng hiện tại
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPeriodLocked, setIsPeriodLocked] = useState(false);
-
+  const [attendanceData, setAttendanceData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [employeeDetail, setEmployeeDetail] = useState([]); // Chi tiết chấm công theo ngày
   // =========================
   // IMPORT EXCEL: UI HOOKS
   // =========================
   const fileInputRef = useRef(null);
+
+  // Parse month và year từ selectedPeriod (format: "YYYY-MM")
+  const getMonthYear = (period) => {
+    const [year, month] = period.split("-");
+    return { month: parseInt(month, 10), year: parseInt(year, 10) };
+  };
+
+  // =========================
+  // HANDLE CLICK EMPLOYEE - CALL API CHI TIẾT
+  // =========================
+  const handleEmployeeClick = async (employee) => {
+    try {
+      setSelectedEmployee(employee);
+      setLoadingDetail(true);
+
+      const { month, year } = getMonthYear(selectedPeriod);
+
+      console.log("CHECK : ", employee)
+      console.log(`🔍 Fetching detail for employee: ${employee.employeeCode} (${month}/${year})`);
+      const res = await attendancesAPI.getbyid(month, year, employee.employeeId);
+      console.log("DỮ LIỆU API : ", res.data.data[0])
+
+      // API trả về mảng
+      const rows = res?.data?.data || [];
+      setEmployeeDetail(rows);
+
+
+    } catch (error) {
+      console.error("❌ Lỗi khi load chi tiết:", error);
+      toast.error("Không thể tải chi tiết chấm công");
+      setEmployeeDetail(null);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
+
+  const formatDDMMYYYY = (iso) => {
+    if (!iso) return "--";
+    const d = new Date(iso);
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  };
+
+  const mapStatusLabel = (item) => {
+    // bạn có status: PRESENT, và checkOut null...
+    if (!item.checkOut) return "Missing Out";
+    if (item.lateMinutes > 0) return "Late";
+    if (item.finalOtHours?.weekday > 0 || item.finalOtHours?.weekend > 0 || item.finalOtHours?.holiday > 0)
+      return "OT";
+    return "Normal";
+  };
+
+  // Call API khi selectedPeriod thay đổi
+  useEffect(() => {
+    const callAPIattendances = async () => {
+      try {
+        setLoading(true);
+        const { month, year } = getMonthYear(selectedPeriod);
+
+        console.log(`📅 Fetching attendance data for: ${month}/${year}`);
+        const res = await attendancesAPI.getall(month, year);
+
+        console.log("✅ DỮ LIỆU CHẤM CÔNG:", res.data);
+        setAttendanceData(res.data?.data || res.data || []);
+
+        toast.success(`Đã tải dữ liệu chấm công tháng ${month}/${year}`);
+      } catch (error) {
+        console.error("❌ DỮ LIỆU CHẤM CÔNG có lỗi:", error);
+        toast.error("Không thể tải dữ liệu chấm công");
+        setAttendanceData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    callAPIattendances();
+  }, [selectedPeriod])
 
   const handleImportClick = () => {
     // Không thay UI: chỉ trigger input file ẩn
@@ -432,79 +516,28 @@ const AttendanceAdmin = () => {
   // =========================
   // DỮ LIỆU UI DEMO (GIỮ NGUYÊN)
   // =========================
-  const attendanceSummary = [
-    {
-      id: "EMP089",
-      name: "Nguyễn Văn An",
-      dept: "Product",
-      workDays: 22,
-      otHours: 3.5,
-      leaveDays: 0,
-      lateCount: 0,
-      hasError: false,
-      status: "Valid",
-      avatar: "NA",
-    },
-    {
-      id: "EMP090",
-      name: "Lê Thị Hoa",
-      dept: "Design",
-      workDays: 21,
-      otHours: 0,
-      leaveDays: 1,
-      lateCount: 3,
-      hasError: false,
-      status: "Warning",
-      avatar: "LH",
-    },
-    {
-      id: "EMP091",
-      name: "Phạm Văn Dũng",
-      dept: "Sales",
-      workDays: 18,
-      otHours: 10,
-      leaveDays: 0,
-      lateCount: 1,
-      hasError: true,
-      status: "Error",
-      avatar: "PD",
-    },
-    {
-      id: "EMP102",
-      name: "Hoàng Thị G",
-      dept: "Marketing",
-      workDays: 20,
-      otHours: 0,
-      leaveDays: 2,
-      lateCount: 0,
-      hasError: false,
-      status: "Valid",
-      avatar: "HG",
-    },
-  ];
-
-  const dailyLogs = [
-    {
-      date: "01/12/2025",
-      checkIn: "08:25",
-      checkOut: "17:30",
-      status: "Normal",
-    },
-    {
-      date: "02/12/2025",
-      checkIn: "08:30",
-      checkOut: "17:30",
-      status: "Normal",
-    },
-    { date: "03/12/2025", checkIn: "08:45", checkOut: "17:30", status: "Late" },
-    {
-      date: "04/12/2025",
-      checkIn: "08:20",
-      checkOut: "--:--",
-      status: "Missing Out",
-    },
-    { date: "05/12/2025", checkIn: "08:30", checkOut: "19:30", status: "OT" },
-  ];
+  // const dailyLogs = [
+  //   {
+  //     date: "01/12/2025",
+  //     checkIn: "08:25",
+  //     checkOut: "17:30",
+  //     status: "Normal",
+  //   },
+  //   {
+  //     date: "02/12/2025",
+  //     checkIn: "08:30",
+  //     checkOut: "17:30",
+  //     status: "Normal",
+  //   },
+  //   { date: "03/12/2025", checkIn: "08:45", checkOut: "17:30", status: "Late" },
+  //   {
+  //     date: "04/12/2025",
+  //     checkIn: "08:20",
+  //     checkOut: "--:--",
+  //     status: "Missing Out",
+  //   },
+  //   { date: "05/12/2025", checkIn: "08:30", checkOut: "19:30", status: "OT" },
+  // ];
 
   return (
     <div className="h-[calc(100vh-100px)] flex flex-col gap-6">
@@ -546,8 +579,30 @@ const AttendanceAdmin = () => {
               onChange={(e) => setSelectedPeriod(e.target.value)}
               className="bg-transparent text-sm font-bold text-gray-700 outline-none cursor-pointer"
             >
-              <option value="2025-12">Tháng 12/2025</option>
+              <option value="2026-01">Tháng 1/2026</option>
+              <option value="2026-02">Tháng 2/2026</option>
+              <option value="2026-03">Tháng 3/2026</option>
+              <option value="2026-04">Tháng 4/2026</option>
+              <option value="2026-05">Tháng 5/2026</option>
+              <option value="2026-06">Tháng 6/2026</option>
+              <option value="2026-07">Tháng 7/2026</option>
+              <option value="2026-08">Tháng 8/2026</option>
+              <option value="2026-09">Tháng 9/2026</option>
+              <option value="2026-10">Tháng 10/2026</option>
+              <option value="2026-11">Tháng 11/2026</option>
+              <option value="2026-12">Tháng 12/2026</option>
+              <option value="2025-01">Tháng 1/2025</option>
+              <option value="2025-02">Tháng 2/2025</option>
+              <option value="2025-03">Tháng 3/2025</option>
+              <option value="2025-04">Tháng 4/2025</option>
+              <option value="2025-05">Tháng 5/2025</option>
+              <option value="2025-06">Tháng 6/2025</option>
+              <option value="2025-07">Tháng 7/2025</option>
+              <option value="2025-08">Tháng 8/2025</option>
+              <option value="2025-09">Tháng 9/2025</option>
+              <option value="2025-10">Tháng 10/2025</option>
               <option value="2025-11">Tháng 11/2025</option>
+              <option value="2025-12">Tháng 12/2025</option>
             </select>
           </div>
 
@@ -565,11 +620,10 @@ const AttendanceAdmin = () => {
           </Button>
 
           <Button
-            className={`w-48 flex items-center gap-2 text-white shadow-md ${
-              isPeriodLocked
-                ? "bg-gray-500 hover:bg-gray-600"
-                : "bg-blue-600 hover:bg-blue-700"
-            }`}
+            className={`w-48 flex items-center gap-2 text-white shadow-md ${isPeriodLocked
+              ? "bg-gray-500 hover:bg-gray-600"
+              : "bg-blue-600 hover:bg-blue-700"
+              }`}
             onClick={() => setIsPeriodLocked(!isPeriodLocked)}
           >
             {isPeriodLocked ? <Unlock size={16} /> : <Lock size={16} />}
@@ -615,89 +669,109 @@ const AttendanceAdmin = () => {
 
         {/* Data Table */}
         <div className="flex-1 overflow-auto">
-          <table className="w-full text-left text-sm border-collapse">
-            <thead className="bg-white text-gray-500 font-bold border-b border-gray-200 uppercase text-xs sticky top-0 z-10 shadow-sm">
-              <tr>
-                <th className="p-4 w-14 text-center">#</th>
-                <th className="p-4">Nhân viên</th>
-                <th className="p-4">Phòng ban</th>
-                <th className="p-4 text-center">Ngày công</th>
-                <th className="p-4 text-center">OT (Giờ)</th>
-                <th className="p-4 text-center">Nghỉ phép</th>
-                <th className="p-4 text-center">Đi muộn</th>
-                <th className="p-4 text-center">Trạng thái</th>
-                <th className="p-4 w-10"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
-              {attendanceSummary.map((emp, index) => (
-                <tr
-                  key={emp.id}
-                  onClick={() => setSelectedEmployee(emp)}
-                  className={`
-                           cursor-pointer transition-colors group
-                           ${
-                             emp.hasError
-                               ? "bg-red-50/60 hover:bg-red-100/50"
-                               : "hover:bg-blue-50/50"
-                           }
-                           ${
-                             selectedEmployee?.id === emp.id
-                               ? " bg-blue-50"
-                               : ""
-                           }
-                        `}
-                >
-                  <td className="p-4 text-center text-gray-400 font-mono text-xs">
-                    {index + 1}
-                  </td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
-                        {emp.avatar}
-                      </div>
-                      <div>
-                        <p className="font-bold text-gray-800">{emp.name}</p>
-                        <p className="text-xs text-gray-500 font-mono">
-                          {emp.id}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-4 text-gray-600">{emp.dept}</td>
-                  <td className="p-4 text-center font-medium">
-                    {emp.workDays}
-                  </td>
-                  <td className="p-4 text-center text-orange-600 font-medium">
-                    {emp.otHours}
-                  </td>
-                  <td className="p-4 text-center text-purple-600 font-medium">
-                    {emp.leaveDays}
-                  </td>
-                  <td className="p-4 text-center text-red-600 font-medium">
-                    {emp.lateCount}
-                  </td>
-                  <td className="p-4 text-center">
-                    {emp.hasError ? (
-                      <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold border border-red-200">
-                        <AlertCircle size={12} /> Error
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded text-xs font-bold border border-green-200">
-                        <CheckCircle2 size={12} /> Valid
-                      </span>
-                    )}
-                  </td>
-                  <td className="p-4 text-center">
-                    <MoreHorizontal
-                      size={16}
-                      className="text-gray-400 group-hover:text-blue-500"
-                    />
-                  </td>
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="flex flex-col items-center gap-3">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+                <p className="text-sm text-gray-500">Đang tải dữ liệu chấm công...</p>
+              </div>
+            </div>
+          ) : attendanceData.length === 0 ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center text-gray-400">
+                <AlertCircle size={48} className="mx-auto mb-3 opacity-50" />
+                <p className="text-sm font-medium">Không có dữ liệu chấm công</p>
+                <p className="text-xs mt-1">Vui lòng import dữ liệu hoặc chọn kỳ khác</p>
+              </div>
+            </div>
+          ) : (
+            <table className="w-full text-left text-sm border-collapse">
+              <thead className="bg-white text-gray-500 font-bold border-b border-gray-200 uppercase text-xs sticky top-0 z-10 shadow-sm">
+                <tr>
+                  <th className="p-4 w-14 text-center">#</th>
+                  <th className="p-4">Nhân viên</th>
+                  <th className="p-4">Phòng ban</th>
+                  <th className="p-4 text-center">Ngày công</th>
+                  <th className="p-4 text-center">OT (Giờ)</th>
+                  <th className="p-4 text-center">Nghỉ phép</th>
+                  <th className="p-4 text-center">Đi muộn</th>
+                  <th className="p-4 text-center">Trạng thái</th>
+                  <th className="p-4 w-10"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white">
+                {attendanceData.map((emp, index) => {
+                  // Generate avatar từ fullName
+                  const avatar = emp.fullName?.substring(0, 2).toUpperCase() || "??";
+
+                  return (
+                    <tr
+                      key={emp.employeeId || emp._id || index}
+                      onClick={() => handleEmployeeClick(emp)}
+                      className={`
+                               cursor-pointer transition-colors group
+                               ${emp.hasError
+                          ? "bg-red-50/60 hover:bg-red-100/50"
+                          : "hover:bg-blue-50/50"
+                        }
+                               ${selectedEmployee?.employeeId === emp.employeeId
+                          ? " bg-blue-50"
+                          : ""
+                        }
+                            `}
+                    >
+                      <td className="p-4 text-center text-gray-400 font-mono text-xs">
+                        {index + 1}
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-xs font-bold text-white shadow-sm">
+                            {avatar}
+                          </div>
+                          <div>
+                            <p className="font-bold text-gray-800">{emp.fullName || "--"}</p>
+                            <p className="text-xs text-gray-500 font-mono">
+                              {emp.employeeCode || "--"}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4 text-gray-600">{emp.department || "--"}</td>
+                      <td className="p-4 text-center font-medium">
+                        {emp.totalWorkDays?.toFixed(2) || 0}
+                      </td>
+                      <td className="p-4 text-center text-orange-600 font-medium">
+                        {emp.totalOTHours?.toFixed(2) || 0}
+                      </td>
+                      <td className="p-4 text-center text-purple-600 font-medium">
+                        {emp.paidLeaveDays || 0}
+                      </td>
+                      <td className="p-4 text-center text-red-600 font-medium">
+                        {emp.lateCount || 0}
+                      </td>
+                      <td className="p-4 text-center">
+                        {emp.hasError || emp.totalWorkDays === 0 ? (
+                          <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold border border-red-200">
+                            <AlertCircle size={12} /> Error
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded text-xs font-bold border border-green-200">
+                            <CheckCircle2 size={12} /> Valid
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-4 text-center">
+                        <MoreHorizontal
+                          size={16}
+                          className="text-gray-400 group-hover:text-blue-500"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
       </Card>
 
@@ -714,15 +788,15 @@ const AttendanceAdmin = () => {
             {/* Panel Header */}
             <div className="p-5 border-b border-gray-100 flex justify-between items-start bg-gray-50">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-xl font-bold text-blue-600">
-                  {selectedEmployee.avatar}
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-xl font-bold text-white shadow-md">
+                  {selectedEmployee.fullName?.substring(0, 2).toUpperCase() || "??"}
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-gray-800">
-                    {selectedEmployee.name}
+                    {selectedEmployee.fullName || "--"}
                   </h2>
                   <p className="text-sm text-gray-500 font-mono">
-                    {selectedEmployee.id} • {selectedEmployee.dept}
+                    {selectedEmployee.employeeCode || "--"} • {selectedEmployee.department || "--"}
                   </p>
                 </div>
               </div>
@@ -739,87 +813,100 @@ const AttendanceAdmin = () => {
               <div className="p-4 text-center border-r border-gray-100">
                 <p className="text-xs text-gray-500 uppercase">Ngày công</p>
                 <p className="text-xl font-bold text-blue-600">
-                  {selectedEmployee.workDays}
+                  {selectedEmployee.totalWorkDays?.toFixed(2) || 0}
                 </p>
               </div>
               <div className="p-4 text-center border-r border-gray-100">
                 <p className="text-xs text-gray-500 uppercase">Giờ OT</p>
                 <p className="text-xl font-bold text-orange-600">
-                  {selectedEmployee.otHours}
+                  {selectedEmployee.totalOTHours?.toFixed(2) || 0}
                 </p>
               </div>
               <div className="p-4 text-center">
                 <p className="text-xs text-gray-500 uppercase">Đi muộn</p>
                 <p className="text-xl font-bold text-red-600">
-                  {selectedEmployee.lateCount}
+                  {selectedEmployee.lateCount || 0}
                 </p>
               </div>
             </div>
 
             {/* Daily Logs Table */}
             <div className="flex-1 overflow-y-auto p-0">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-white sticky top-0 z-10 border-b border-gray-100 shadow-sm">
-                  <tr>
-                    <th className="p-4 text-gray-500 font-medium">Ngày</th>
-                    <th className="p-4 text-gray-500 font-medium text-center">
-                      Vào
-                    </th>
-                    <th className="p-4 text-gray-500 font-medium text-center">
-                      Ra
-                    </th>
-                    <th className="p-4 text-gray-500 font-medium">
-                      Trạng thái
-                    </th>
-                    <th className="p-4"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {dailyLogs.map((log, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50 group">
-                      <td className="p-4 font-medium text-gray-800">
-                        {log.date}
-                      </td>
-                      <td className="p-4 text-center font-mono text-gray-600">
-                        {log.checkIn}
-                      </td>
-                      <td
-                        className={`p-4 text-center font-mono font-bold ${
-                          log.checkOut === "--:--"
-                            ? "text-red-500"
-                            : "text-gray-600"
-                        }`}
-                      >
-                        {log.checkOut}
-                      </td>
-                      <td className="p-4">
-                        {log.status === "Missing Out" ? (
-                          <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded font-bold">
-                            Lỗi
-                          </span>
-                        ) : log.status === "Late" ? (
-                          <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded font-bold">
-                            Muộn
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-500">
-                            {log.status}
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-4 text-right">
-                        <button
-                          onClick={() => setIsEditModalOpen(true)}
-                          className="p-1.5 hover:bg-blue-100 text-blue-600 rounded transition "
-                          title="Sửa công"
-                        >
-                          <Edit size={14} />
-                        </button>
-                      </td>
+              {loadingDetail ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <p className="text-sm text-gray-500">Đang tải chi tiết chấm công...</p>
+                  </div>
+                </div>
+              ) : (
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-white sticky top-0 z-10 border-b border-gray-100 shadow-sm">
+                    <tr>
+                      <th className="p-4 text-gray-500 font-medium">Ngày</th>
+                      <th className="p-4 text-gray-500 font-medium text-center">
+                        Vào
+                      </th>
+                      <th className="p-4 text-gray-500 font-medium text-center">
+                        Ra
+                      </th>
+                      <th className="p-4 text-gray-500 font-medium">
+                        Trạng thái
+                      </th>
+                      <th className="p-4"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {employeeDetail.map((item, idx) => {
+                      const status = mapStatusLabel(item);
+                      const checkOutText = item.checkOut ? item.checkOut : "--:--";
+
+                      return (
+                        <tr key={item._id || idx} className="hover:bg-gray-50 group">
+                          <td className="p-4 font-medium text-gray-800">
+                            {formatDDMMYYYY(item.date)}
+                          </td>
+
+                          <td className="p-4 text-center font-mono text-gray-600">
+                            {item.checkIn || "--:--"}
+                          </td>
+
+                          <td
+                            className={`p-4 text-center font-mono font-bold ${!item.checkOut ? "text-red-500" : "text-gray-600"
+                              }`}
+                          >
+                            {checkOutText}
+                          </td>
+
+                          <td className="p-4">
+                            {status === "Missing Out" ? (
+                              <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded font-bold">
+                                Lỗi
+                              </span>
+                            ) : status === "Late" ? (
+                              <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded font-bold">
+                                Muộn
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-500">{status}</span>
+                            )}
+                          </td>
+
+                          <td className="p-4 text-right">
+                            <button
+                              onClick={() => setIsEditModalOpen(true)}
+                              className="p-1.5 hover:bg-blue-100 text-blue-600 rounded transition"
+                              title="Sửa công"
+                            >
+                              <Edit size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         </div>
