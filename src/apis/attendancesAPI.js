@@ -11,5 +11,8 @@ export const attendancesAPI = {
     getdatamoth: (month, year) => {
         return apiClient.get(`/attendances/my-timesheet?month=${month}&year=${year}`);
     },
+    getme: (month, year) => {
+        return apiClient.get(`/attendances/my-attendance?month=${month}&year=${year}`);
+    },
 
 };
