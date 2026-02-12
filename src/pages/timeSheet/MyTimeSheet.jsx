@@ -17,12 +17,16 @@ import StatusBadge from "../../components/common/StatusBadge";
 import LeaveRequestModal from "../../components/modals/CreateLeaveModal";
 import { toast } from "react-toastify";
 import { leaveAPI } from "../../apis/leaveAPI";
+import ModalOT from "../../components/modals/OTModal";
+import { OTApi } from "../../apis/OTAPI";
 
 const MyTimesheet = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [defaultFromDate, setDefaultFromDate] = useState("");
-  
+  const [isOTModalOpen, setIsOTModalOpen] = useState(false);
+  const [otPrefillDate, setOtPrefillDate] = useState(""); // YYYY-MM-DD
+
   const [todayInfo] = useState(() => {
     const now = new Date();
     const nowVN = new Date(now.getTime() + 7 * 60 * 60 * 1000);
@@ -33,8 +37,27 @@ const MyTimesheet = () => {
       day: nowVN.getUTCDate(),
     };
   });
+  const callOTAPI = async (payload) => {
+    try {
+      // payload dạng:
+      // { date:"YYYY-MM-DD", otType:"WEEKDAY", startTime:"HH:mm", endTime:"HH:mm", reason:"" }
 
-console.log("defaultFromDate gửi vào modal:", defaultFromDate);
+      // Đổi đúng theo hàm backend của bạn:
+      // ví dụ OTApi.post(payload) hoặc OTApi.create(payload)
+      const id = localStorage.getItem("accountID")
+      console.log("ACCOUNT ID : ", id)
+      const res = await OTApi.post(payload);
+
+      console.log("OT created:", res);
+      setIsOTModalOpen(false);
+      toast.success("Đăng ký OT thành công, vui lòng chờ quản trị duyệt");
+    } catch (error) {
+      console.log("OT create error:", error);
+      setIsOTModalOpen(false);
+      toast.error(`Đăng ký OT thất bại ${error}`);
+    }
+  };
+  console.log("defaultFromDate gửi vào modal:", defaultFromDate);
 
   const pad2 = (n) => String(n).padStart(2, "0");
 
@@ -53,19 +76,30 @@ console.log("defaultFromDate gửi vào modal:", defaultFromDate);
   }
 
 
-const handleTest = () => {
-  if (!selectedDate?.inMonth || !selectedDate?.isoDate) return;
+  const handleOT = () => {
+    if (!selectedDate?.inMonth || !selectedDate?.isoDate) {
+      toast.info("Vui lòng chọn ngày trên lịch trước khi đăng ký OT.");
+      return;
+    }
+    setOtPrefillDate(selectedDate.isoDate); // YYYY-MM-DD
+    setIsOTModalOpen(true);
+  };
 
-  setDefaultFromDate(selectedDate.isoDate); // ✅ dùng isoDate đúng của ô
-  setIsLeaveModalOpen(true);
-};
+
+
+  const handleTest = () => {
+    if (!selectedDate?.inMonth || !selectedDate?.isoDate) return;
+
+    setDefaultFromDate(selectedDate.isoDate); // ✅ dùng isoDate đúng của ô
+    setIsLeaveModalOpen(true);
+  };
 
 
 
   const CURRENT_YEAR = todayInfo.year;
   const CURRENT_MONTH = todayInfo.month;
   const TODAY = todayInfo.day;
-  
+
   const generateCalendarData = () => {
     const days = [];
     // Ngày đầu tháng 12/2025 là Thứ 2 (Index = 1)
@@ -202,6 +236,21 @@ const handleTest = () => {
 
   return (
     <div className="space-y-6 max-w-full">
+      {isOTModalOpen && (
+        <>
+          {console.log("[OT] Rendering ModalOT...")}
+          <ModalOT
+            open={isOTModalOpen}
+            onClose={() => setIsOTModalOpen(false)}
+            onSubmit={(payload) => callOTAPI(payload)}
+            initialValues={{
+              otType: "WEEKDAY",
+              date: otPrefillDate, // ✅ tự điền ngày đã chọn
+            }}
+          />
+
+        </>
+      )}
       {/* Open modal xin nghi*/}
       {isLeaveModalOpen && (
         <LeaveRequestModal
@@ -536,6 +585,7 @@ const handleTest = () => {
               <Coffee size={20} /> <span className="text-xs">Xin nghỉ</span>
             </Button>
             <Button
+              onClick={handleOT}
               variant="OT"
               className="flex flex-col items-center gap-1 py-3 bg-orange-400 text-white shadow-md hover:bg-orange-600"
             >

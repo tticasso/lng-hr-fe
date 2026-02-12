@@ -38,8 +38,8 @@ const Login = () => {
 
       // Lấy token từ response (cấu trúc có thể là res.data.accessToken hoặc res.accessToken)
       const payload = res.data || res;
-      console.log("API LOGIN : ",res)
-      localStorage.setItem("role",res.data.data.role)
+      console.log("API LOGIN : ", res)
+      localStorage.setItem("role", res.data.data.role)
       const accessToken = payload.accessToken || payload.token;
 
       if (!accessToken) {
@@ -56,7 +56,8 @@ const Login = () => {
       // Cấu trúc response getMe thường là { status: "success", data: { employee: {...} } }
       const responseBody = resMe.data;
       const employeeData = responseBody?.data?.employee;
-      console.log("login/employeeData:", employeeData);
+      console.log("login/employeeData:", employeeData.accountId._id);
+      localStorage.setItem("accountID", employeeData.accountId._id);
       if (!employeeData) {
         throw new Error("Không thể lấy thông tin nhân viên.");
       }
@@ -80,8 +81,8 @@ const Login = () => {
       console.error("Login Flow Error:", err);
       setError(
         err.response?.data?.message ||
-          err.message ||
-          "Đăng nhập thất bại. Vui lòng kiểm tra lại.",
+        err.message ||
+        "Đăng nhập thất bại. Vui lòng kiểm tra lại.",
       );
     } finally {
       setLoading(false);
