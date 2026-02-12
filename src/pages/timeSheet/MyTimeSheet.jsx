@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -19,6 +19,7 @@ import { toast } from "react-toastify";
 import { leaveAPI } from "../../apis/leaveAPI";
 import ModalOT from "../../components/modals/OTModal";
 import { OTApi } from "../../apis/OTAPI";
+import { attendancesAPI } from "../../apis/attendancesAPI";
 
 const MyTimesheet = () => {
   const [selectedDate, setSelectedDate] = useState(null);
@@ -26,6 +27,7 @@ const MyTimesheet = () => {
   const [defaultFromDate, setDefaultFromDate] = useState("");
   const [isOTModalOpen, setIsOTModalOpen] = useState(false);
   const [otPrefillDate, setOtPrefillDate] = useState(""); // YYYY-MM-DD
+  const [timesheetData, setTimesheetData] = useState(null);
 
   const [todayInfo] = useState(() => {
     const now = new Date();
@@ -37,6 +39,28 @@ const MyTimesheet = () => {
       day: nowVN.getUTCDate(),
     };
   });
+
+
+  useEffect(() => {
+    const callAPItimesheet = async () => {
+      try {
+        const now = new Date();
+        const month = now.getMonth() + 1; // 0-11 → +1 thành 1-12
+        const year = now.getFullYear();
+
+        const res = await attendancesAPI.getdatamoth(month, year);
+        console.log("[test_3]Timesheet:", res.data.data);
+        setTimesheetData(res.data.data);
+      } catch (error) {
+        console.error("[test_3]API ERROR:", error);
+      }
+    };
+
+    callAPItimesheet();
+  }, []);
+
+
+
   const callOTAPI = async (payload) => {
     try {
       // payload dạng:
@@ -295,21 +319,16 @@ const MyTimesheet = () => {
           <div className="mt-2 space-y-1">
             <div className="flex justify-between items-center text-sm">
               <span className="opacity-80">Sáng:</span>
-              <span className="font-mono font-bold text-lg">08:00 - 11:30</span>
+              <span className="font-mono font-bold text-lg">
+                {timesheetData?.shift?.morning || "08:00 - 11:30"}
+              </span>
             </div>
             <div className="flex justify-between items-center text-sm border-t border-white/10 pt-1">
               <span className="opacity-80">Chiều:</span>
-              <span className="font-mono font-bold text-lg">13:00 - 17:30</span>
+              <span className="font-mono font-bold text-lg">
+                {timesheetData?.shift?.afternoon || "13:00 - 17:30"}
+              </span>
             </div>
-            {/* <div>
-              <p className="text-gray-500 text-[11px] font-bold uppercase tracking-wide">
-                {label}
-              </p>
-              <h4 className="text-xl font-bold text-gray-800 mt-0.5">
-                {value}
-              </h4>
-              <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
-            </div> */}
           </div>
         </Card>
 
@@ -317,31 +336,31 @@ const MyTimesheet = () => {
         <StatCard
           icon={<Briefcase size={20} />}
           label="Tổng giờ làm"
-          value="168h"
-          sub="21 công"
+          value={`${timesheetData?.work?.totalHours || 0}h`}
+          sub={`${timesheetData?.work?.totalDays || 0} công`}
           color="blue"
         />
         <StatCard
           icon={<Zap size={20} />}
           label="Tổng giờ OT"
-          value="3.5h"
-          sub="Đã duyệt"
+          value={`${timesheetData?.overtime?.totalHours || 0}h`}
+          sub={timesheetData?.overtime?.status || "Chưa có"}
           color="orange"
         />
         <StatCard
           icon={<Coffee size={20} />}
           label="Phép năm"
-          value="2/12"
-          sub="Còn lại: 10"
+          value={`${timesheetData?.leave?.used || 0}/${timesheetData?.leave?.totalLimit || 12}`}
+          sub={`Còn lại: ${timesheetData?.leave?.remaining || 0}`}
           color="purple"
         />
         <StatCard
           icon={<AlertCircle size={20} />}
           label="Đi muộn"
-          value="2"
+          value={`${timesheetData?.late?.count || 0}`}
           sub="Lần vi phạm"
           color="red"
-          isWarning
+          isWarning={timesheetData?.late?.count > 0}
         />
       </div>
 
