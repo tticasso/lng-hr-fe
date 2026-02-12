@@ -28,12 +28,56 @@ import LeaveRequestModal from "../components/modals/CreateLeaveModal";
 import { leaveAPI } from "../../src/apis/leaveAPI";
 import { toast } from "react-toastify";
 import { OTApi } from "../apis/OTAPI";
+import { attendancesAPI } from "../apis/attendancesAPI";
 const Dashboard = () => {
 
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isOTModalOpen, setIsOTModalOpen] = useState(false);
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [otRequests, setOTRequests] = useState([]);
+
+
+
+  useEffect(() => {
+    const callAPICompany = async () => {
+      try {
+        const now = new Date();
+        const month = now.getMonth() + 1; // getMonth() trả về 0-11
+        const year = now.getFullYear();
+
+        const resEmploye = await attendancesAPI.getall(month, year);
+
+        console.log("[TEST_2] DỮ LIỆU Chấm công:", resEmploye);
+      } catch (error) {
+        console.log("API ERROR:", error);
+      }
+    };
+
+    callAPICompany();
+  }, []);
+
+
+
+
+
+  useEffect(() => {
+    const callAPIrequest = async () => {
+      try {
+        const resLeave = await leaveAPI.getbyUSER();
+        const resOT = await OTApi.get();
+        console.log("[TEST_1]DỮ LIỆU XIN NGHỈ :", resLeave.data.data[0]);
+        console.log("[TEST_1]DỮ LIỆU OT :", resOT.data.data[0]);
+
+        setLeaveRequests(resLeave.data.data || []);
+        setOTRequests(resOT.data.data || []);
+      } catch (error) {
+        console.log("API ERROR :", error)
+      }
+    }
+    callAPIrequest();
+  }, [])
 
   useEffect(() => {
     console.log("[OT] isOTModalOpen changed:", isOTModalOpen);
@@ -54,8 +98,8 @@ const Dashboard = () => {
 
       // Đổi đúng theo hàm backend của bạn:
       // ví dụ OTApi.post(payload) hoặc OTApi.create(payload)
-      const id=localStorage.getItem("accountID")
-      console.log("ACCOUNT ID : ",id)
+      const id = localStorage.getItem("accountID")
+      console.log("ACCOUNT ID : ", id)
       const res = await OTApi.post(payload);
 
       console.log("OT created:", res);
@@ -165,26 +209,43 @@ const Dashboard = () => {
     },
   ];
 
+  // Map leaveType và otType sang tên tiếng Việt
+  const leaveTypeMap = {
+    ANNUAL: "Nghỉ phép năm",
+    UNPAID: "Nghỉ không lương",
+    SICK: "Nghỉ ốm",
+    MATERNITY: "Nghỉ thai sản",
+  };
+
+  const otTypeMap = {
+    WEEKDAY: "OT Ngày thường",
+    WEEKEND: "OT Cuối tuần",
+    HOLIDAY: "OT Ngày lễ",
+  };
+
+  // Merge dữ liệu từ 2 API thành 1 danh sách requests
   const requests = [
-    {
-      id: 1,
-      title: "Xin nghỉ phép (Annual Leave)",
-      date: "05/09/2025",
-      status: "Pending",
-    },
-    {
-      id: 2,
-      title: "Đăng ký OT dự án X",
-      date: "01/09/2025",
-      status: "Approved",
-    },
-    {
-      id: 3,
-      title: "Xác nhận bảng công T8",
-      date: "31/08/2025",
-      status: "Approved",
-    },
-  ];
+    ...leaveRequests.map((leave) => ({
+      id: leave._id,
+      title: leaveTypeMap[leave.leaveType] || leave.leaveType,
+      date: new Date(leave.createdAt).toLocaleDateString("vi-VN"),
+      status: leave.status === "PENDING" ? "Pending" : "Approved",
+      type: "leave",
+      rawData: leave,
+    })),
+    ...otRequests.map((ot) => ({
+      id: ot._id,
+      title: otTypeMap[ot.otType] || ot.otType,
+      date: new Date(ot.createdAt).toLocaleDateString("vi-VN"),
+      status: ot.status === "PENDING" ? "Pending" : "Approved",
+      type: "ot",
+      rawData: ot,
+    })),
+  ].sort((a, b) => new Date(b.rawData.createdAt) - new Date(a.rawData.createdAt)); // Sắp xếp theo ngày mới nhất
+
+  // Tính số lượng Pending và Approved
+  const pendingCount = requests.filter((r) => r.status === "Pending").length;
+  const approvedCount = requests.filter((r) => r.status === "Approved").length;
 
   return (
     <div className="space-y-6">
@@ -383,43 +444,58 @@ const Dashboard = () => {
               </h3>
               <div className="flex gap-2">
                 {/* Mini Stats Badges */}
-                <div className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded text-xs font-medium text-orange-600 border border-orange-100">
-                  <Clock size={12} /> 1 Pending
-                </div>
-                <div className="flex items-center gap-1 bg-green-50 px-2 py-1 rounded text-xs font-medium text-green-600 border border-green-100">
-                  <CheckCircle2 size={12} /> 12 Approved
-                </div>
+                {pendingCount > 0 && (
+                  <div className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded text-xs font-medium text-orange-600 border border-orange-100">
+                    <Clock size={12} /> {pendingCount} Pending
+                  </div>
+                )}
+                {approvedCount > 0 && (
+                  <div className="flex items-center gap-1 bg-green-50 px-2 py-1 rounded text-xs font-medium text-green-600 border border-green-100">
+                    <CheckCircle2 size={12} /> {approvedCount} Approved
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
-                  <tr>
-                    <th className="px-4 py-3 rounded-l-md">Loại yêu cầu</th>
-                    <th className="px-4 py-3">Ngày gửi</th>
-                    <th className="px-4 py-3 rounded-r-md text-right">
-                      Trạng thái
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {requests.map((req) => (
-                    <tr key={req.id} className="hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-medium text-gray-800">
-                        {req.title}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">{req.date}</td>
-                      <td className="px-4 py-3 text-right">
-                        <StatusBadge status={req.status} />
-                      </td>
+              {requests.length > 0 ? (
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
+                    <tr>
+                      <th className="px-4 py-3 rounded-l-md">Loại yêu cầu</th>
+                      <th className="px-4 py-3">Ngày gửi</th>
+                      <th className="px-4 py-3 rounded-r-md text-right">
+                        Trạng thái
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {requests.map((req) => (
+                      <tr key={req.id} className="hover:bg-gray-50/50">
+                        <td className="px-4 py-3 font-medium text-gray-800">
+                          {req.title}
+                        </td>
+                        <td className="px-4 py-3 text-gray-500">{req.date}</td>
+                        <td className="px-4 py-3 text-right">
+                          <StatusBadge status={req.status} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="text-center py-8 text-gray-400">
+                  <FileText size={32} className="mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Chưa có yêu cầu nào</p>
+                </div>
+              )}
             </div>
             <div className="mt-4 text-center">
-              <Button variant="ghost" className="text-sm w-full py-1">
+              <Button
+                variant="ghost"
+                className="text-sm w-full py-1"
+                onClick={() => navigate("/leave")}
+              >
                 Xem lịch sử yêu cầu
               </Button>
             </div>
