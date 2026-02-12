@@ -26,47 +26,46 @@ const Sidebar = () => {
 
   const menuGroups = [
     {
-      title: "PERSONAL WORKSPACE",
+      title: "KHÔNG GIAN CÁ NHÂN",
       items: [
-        { path: "/", label: "Dashboard", icon: <Home size={20} /> },
+        { path: "/", label: "Tổng quan", icon: <Home size={20} /> },
         {
           path: "/timesheet",
-          label: "My Calendar",
+          label: "Lịch làm việc",
           icon: <CalendarCheck2 size={20} />,
         },
-        // ✅ Không phải ADMIN mới hiển thị My Request
         ...(isAdmin
           ? []
           : [
               {
                 path: "/leave",
-                label: "My Request",
+                label: "Yêu cầu của tôi",
                 icon: <Plane size={20} />,
               },
             ]),
       ],
     },
     {
-      title: "HR MANAGEMENT",
+      title: "QUẢN LÝ NHÂN SỰ",
       items: [
         {
           path: "/hr/employees",
-          label: "Employee",
+          label: "Nhân viên",
           icon: <Users size={20} />,
         },
         {
           path: "/hr/attendance-admin",
-          label: "Management",
+          label: "Quản lý chấm công",
           icon: <Coins size={20} />,
         },
         {
           path: "/hr/announcements",
-          label: "Announcement",
+          label: "Thông báo",
           icon: <SquareStar size={20} />,
         },
         {
           path: "/hr/recruitment",
-          label: "Recruitment",
+          label: "Tuyển dụng",
           icon: <BriefcaseBusiness size={20} />,
         },
         {
@@ -74,12 +73,11 @@ const Sidebar = () => {
           label: "On/Off Boarding",
           icon: <Presentation size={20} />,
         },
-        // ✅ ADMIN mới hiển thị Requesting Manager trong HR MANAGEMENT
         ...(isAdmin
           ? [
               {
                 path: "/leave",
-                label: "Requesting Manager",
+                label: "Quản lý yêu cầu",
                 icon: <Plane size={20} />,
               },
             ]
@@ -87,28 +85,28 @@ const Sidebar = () => {
       ],
     },
     {
-      title: "PAYROLL & C&B",
+      title: "TIỀN LƯƠNG & PHÚC LỢI",
       items: [
-        { path: "/payroll", label: "Payroll", icon: <DollarSign size={20} /> },
-        { path: "/hr/reports", label: "Reports", icon: <FileText size={20} /> },
+        { path: "/payroll", label: "Bảng lương", icon: <DollarSign size={20} /> },
+        { path: "/hr/reports", label: "Báo cáo", icon: <FileText size={20} /> },
         {
-          path: "hr/payroll-engine",
-          label: "Payroll Engine",
+          path: "/hr/payroll-engine",
+          label: "Công cụ tính lương",
           icon: <Landmark size={20} />,
         },
       ],
     },
     {
-      title: "SYSTEM ADMIN",
+      title: "QUẢN TRỊ HỆ THỐNG",
       items: [
         {
           path: "/admin/user-management",
-          label: "User Management",
+          label: "Quản lý người dùng",
           icon: <UserCog size={20} />,
         },
         {
           path: "/admin/system-admin",
-          label: "Settings",
+          label: "Cài đặt hệ thống",
           icon: <Settings size={20} />,
         },
       ],
@@ -126,7 +124,6 @@ const Sidebar = () => {
 
   return (
     <div className="h-screen w-64 bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0">
-      {/* 1. LOGO AREA */}
       <div className="h-20 flex items-center">
         <div className="flex items-center gap-2 px-6">
           <img src={logoLNG} alt="LNG Logo" className="w-36" />
@@ -180,7 +177,9 @@ const Sidebar = () => {
         </button>
       </div>
 
-      <div className="p-4 text-xs text-center text-gray-400">© 2026 LNG Inc.</div>
+      <div className="p-4 text-xs text-center text-gray-400">
+        © 2026 LNG Inc.
+      </div>
     </div>
   );
 };
