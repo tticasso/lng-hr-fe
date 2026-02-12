@@ -2,9 +2,16 @@ import apiClient from "./apiClient";
 
 export const leaveAPI = {
     // Post dữ liệu xin nghỉ
-    post: (data) => {
-        return apiClient.post("/leaves", data);
+    post: async (data) => {
+        try {
+            const res = await apiClient.post("/leaves", data);
+            return res.data; // chỉ trả data
+        } catch (error) {
+            // ném lại nguyên bản axios error (giữ response)
+            throw error;
+        }
     },
+
     getbyADMIN: () => {
         return apiClient.get("/leaves");
     },
