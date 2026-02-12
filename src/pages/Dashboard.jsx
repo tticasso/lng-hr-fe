@@ -106,24 +106,34 @@ const Dashboard = () => {
       setIsOTModalOpen(false);
       toast.success("Đăng ký OT thành công, vui lòng chờ quản trị duyệt");
     } catch (error) {
-      console.log("OT create error:", error);
+      console.log("OT create error:", error.response.data.message);
       setIsOTModalOpen(false);
-      toast.error(`Đăng ký OT thất bại ${error}`);
+      toast.error(`Đăng ký OT thất bại : ${error.response.data.message}`,{autoClose:5000});
     }
   };
   const CallleaveAPI = async (data) => {
-    console.log("ĐANG CALL API: CallleaveAPI")
     try {
-      const res = await leaveAPI.post(data)
-      console.log("DỮ LIỆU API TRẢ VỀ : ", res)
+      const res = await leaveAPI.post(data);
+      console.log("DỮ LIỆU API TRẢ VỀ:", res);
+
       setIsLeaveModalOpen(false);
       toast.success("Xin nghỉ thành công, Vui lòng chờ quản trị duyệt");
+
     } catch (error) {
       setIsLeaveModalOpen(false);
-      toast.error("Xin nghỉ thất bại");
-      console.log("CÓ LỖI API : ", error)
+
+      const errors = error?.response?.data?.errors;
+      const errorMessage = Array.isArray(errors) && errors.length
+        ? errors.map(e => e.message).join(", ")
+        : (error?.response?.data?.message || error?.message || "Có lỗi xảy ra");
+
+      toast.error(`Xin nghỉ thất bại: ${errorMessage}`,{autoClose:5000});
+
+      console.log("FULL ERROR:", error);
+      console.log("RESPONSE DATA:", error?.response?.data);
     }
-  }
+  };
+
 
   const employee = {
     name: "Nguyễn Hữu Tần",

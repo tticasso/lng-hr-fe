@@ -76,9 +76,9 @@ const MyTimesheet = () => {
       setIsOTModalOpen(false);
       toast.success("Đăng ký OT thành công, vui lòng chờ quản trị duyệt");
     } catch (error) {
-      console.log("OT create error:", error);
+      console.log("OT create error:", error.response.data.message);
       setIsOTModalOpen(false);
-      toast.error(`Đăng ký OT thất bại ${error}`);
+      toast.error(`Xin nghỉ thất bại : ${error.response.data.message}`, { autoClose: 5000 });
     }
   };
   console.log("defaultFromDate gửi vào modal:", defaultFromDate);
@@ -94,8 +94,8 @@ const MyTimesheet = () => {
       toast.success("Xin nghỉ thành công, Vui lòng chờ quản trị duyệt");
     } catch (error) {
       setIsLeaveModalOpen(false);
-      toast.error("Xin nghỉ thất bại");
-      console.log("CÓ LỖI API : ", error)
+      toast.error(`Xin nghỉ thất bại : ${error.response.data.errors[0].message}`, { autoClose: 5000 });
+      console.log("CÓ LỖI API : ", error.response.data.errors[0].message)
     }
   }
 

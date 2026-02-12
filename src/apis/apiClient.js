@@ -20,16 +20,21 @@ export function setAuthToken(token) {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    let message = "Request failed";
+    // Chuẩn hoá message nhưng KHÔNG bọc new Error()
+    const errors = error?.response?.data?.errors;
+    const normalizedMessage =
+      (Array.isArray(errors) && errors.length
+        ? errors.map(e => e.message).join(", ")
+        : null) ||
+      error?.response?.data?.message ||
+      error?.message ||
+      "Request failed";
 
-    if (error.response?.data?.message) {
-      message = error.response.data.message;
-    } else if (error.message) {
-      message = error.message;
-    }
+    // gắn thêm field để dùng nhanh ở UI
+    error.normalizedMessage = normalizedMessage;
 
-    return Promise.reject(new Error(message));
-  },
+    return Promise.reject(error); // giữ nguyên AxiosError
+  }
 );
 
 export default apiClient;
