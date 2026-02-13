@@ -67,7 +67,19 @@ const MyProfile = () => {
 
   useEffect(() => {
     if (user) {
-      setProfile(user);
+      // Bổ sung các field thiếu với giá trị mặc định
+      const enrichedUser = {
+        ...user,
+        identityCard: user.identityCard || "",
+        baseSalary: user.baseSalary || 0,
+        contractStartDate: user.contractStartDate || user.startDate,
+        contractEndDate: user.contractEndDate || null,
+        annualLeaveBalance: user.annualLeaveBalance ?? 0,
+        department: user.departmentId?.name || user.department || "--",
+      };
+      
+      setProfile(enrichedUser);
+      
       if (user.isProfileUpdated === false) {
         setIsEditing(true);
         setFormData({
@@ -87,6 +99,12 @@ const MyProfile = () => {
       }
     }
   }, [user]);
+
+
+  useEffect(() => {
+    console.log("userData :", user)
+  }, [user])
+
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -675,11 +693,7 @@ const MyProfile = () => {
                   <ProfileField label="Mã nhân viên" value={profile.employeeCode} />
                   <ProfileField
                     label="Phòng ban"
-                    value={
-                      typeof profile.department === "object"
-                        ? profile.department?.name
-                        : profile.department
-                    }
+                    value={profile.department}
                   />
                   <ProfileField label="Chức danh" value={profile.jobTitle} />
                   <ProfileField label="Cấp bậc (Level)" value={profile.jobLevel} />
@@ -697,7 +711,7 @@ const MyProfile = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <ProfileField
                       label="Ngày bắt đầu"
-                      value={formatDate(profile.contractStartDate || profile.startDate)}
+                      value={formatDate(profile.contractStartDate)}
                     />
                     <ProfileField
                       label="Ngày kết thúc"
@@ -710,7 +724,7 @@ const MyProfile = () => {
                   />
                   <ProfileField
                     label="Phép năm còn lại"
-                    value={`${profile.annualLeaveBalance || 0} ngày`}
+                    value={`${profile.annualLeaveBalance} ngày`}
                     className="text-green-600 font-bold"
                   />
                 </div>
@@ -790,7 +804,10 @@ const MyProfile = () => {
                   <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
                     <p className="text-xs text-gray-500 uppercase mb-1">Số tài khoản</p>
                     <p className="text-base font-mono font-bold text-gray-800 tracking-wide">
-                      {profile.bankAccount?.accountNumber || "--"}
+                      {showSalary 
+                        ? (profile.bankAccount?.accountNumber || "--")
+                        : profile.bankAccount?.accountNumber ? "••••••••" : "--"
+                      }
                     </p>
                   </div>
                 </div>

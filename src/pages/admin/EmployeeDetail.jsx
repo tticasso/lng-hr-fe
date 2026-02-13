@@ -47,7 +47,7 @@ const EmployeeDetail = () => {
       try {
         setLoading(true);
         const res = await employeeApi.getById(id);
-        console.log("Emp Deltail, res: ", res);
+        console.log("[test123]Emp Deltail, res: ", res);
         // Handle response structure
         const responseBody = res.data || {};
         const realData = responseBody.data || responseBody;

@@ -294,7 +294,7 @@ const MyLeave = () => {
                 <div className="flex items-start gap-4">
                     <div>
                         <div className="flex items-center gap-4 flex-wrap">
-                            <h1 className="text-2xl font-bold text-gray-800">My Request</h1>
+                            <h1 className="text-2xl font-bold text-gray-800">Yêu cầu của tôi</h1>
 
                             {/* Tabs */}
                             <div className="flex rounded-lg border bg-gray-100 p-1">

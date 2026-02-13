@@ -29,6 +29,16 @@ const MyTimesheet = () => {
   const [otPrefillDate, setOtPrefillDate] = useState(""); // YYYY-MM-DD
   const [timesheetData, setTimesheetData] = useState(null);
   const [attendanceData, setAttendanceData] = useState([]);
+  
+  // State cho việc chọn tháng
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return now.getMonth(); // 0-11
+  });
+  const [selectedYear, setSelectedYear] = useState(() => {
+    const now = new Date();
+    return now.getFullYear();
+  });
 
   const [todayInfo] = useState(() => {
     const now = new Date();
@@ -45,9 +55,8 @@ const MyTimesheet = () => {
   useEffect(() => {
     const callAPIAttendences = async () => {
       try {
-        const now = new Date();
-        const month = now.getMonth() + 1; // 0-11 → +1 thành 1-12
-        const year = now.getFullYear();
+        const month = selectedMonth + 1; // 0-11 → +1 thành 1-12
+        const year = selectedYear;
 
         const res = await attendancesAPI.getme(month, year);
         console.log("[DEBUG1] API returned records:", res.data.data?.length);
@@ -59,14 +68,13 @@ const MyTimesheet = () => {
       }
     }
     callAPIAttendences();
-  }, [])
+  }, [selectedMonth, selectedYear]) // Thêm dependencies
 
   useEffect(() => {
     const callAPItimesheet = async () => {
       try {
-        const now = new Date();
-        const month = now.getMonth() + 1; // 0-11 → +1 thành 1-12
-        const year = now.getFullYear();
+        const month = selectedMonth + 1; // 0-11 → +1 thành 1-12
+        const year = selectedYear;
 
         const res = await attendancesAPI.getdatamoth(month, year);
         console.log("[test_3]Timesheet:", res.data.data);
@@ -77,7 +85,7 @@ const MyTimesheet = () => {
     };
 
     callAPItimesheet();
-  }, []);
+  }, [selectedMonth, selectedYear]); // Thêm dependencies
 
 
 
@@ -140,9 +148,28 @@ const MyTimesheet = () => {
 
 
 
-  const CURRENT_YEAR = todayInfo.year;
-  const CURRENT_MONTH = todayInfo.month;
+  const CURRENT_YEAR = selectedYear;
+  const CURRENT_MONTH = selectedMonth;
   const TODAY = todayInfo.day;
+
+  // Hàm xử lý chuyển tháng
+  const handlePreviousMonth = () => {
+    if (selectedMonth === 0) {
+      setSelectedMonth(11);
+      setSelectedYear(selectedYear - 1);
+    } else {
+      setSelectedMonth(selectedMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (selectedMonth === 11) {
+      setSelectedMonth(0);
+      setSelectedYear(selectedYear + 1);
+    } else {
+      setSelectedMonth(selectedMonth + 1);
+    }
+  };
 
   const generateCalendarData = () => {
     const days = [];
@@ -340,13 +367,19 @@ const MyTimesheet = () => {
 
         {/* Month Filter */}
         <div className="flex items-center bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
-          <button className="p-2 hover:bg-gray-100 rounded-md text-gray-500">
+          <button 
+            onClick={handlePreviousMonth}
+            className="p-2 hover:bg-gray-100 rounded-md text-gray-500 transition-colors"
+          >
             <ChevronLeft size={20} />
           </button>
           <span className="px-4 font-semibold text-gray-700 min-w-[140px] text-center">
             Tháng {CURRENT_MONTH + 1}, {CURRENT_YEAR}
           </span>
-          <button className="p-2 hover:bg-gray-100 rounded-md text-gray-500">
+          <button 
+            onClick={handleNextMonth}
+            className="p-2 hover:bg-gray-100 rounded-md text-gray-500 transition-colors"
+          >
             <ChevronRight size={20} />
           </button>
         </div>

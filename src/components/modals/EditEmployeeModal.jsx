@@ -113,7 +113,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
       try {
         // 1. Fetch Departments (Internal API)
         const deptRes = await departmentApi.getAll();
-        console.log("CHECK LOG : ",deptRes)
+        console.log("CHECK LOG : ", deptRes)
         const deptList = deptRes.data?.data || deptRes.data || [];
         setDepartments(deptList);
 
@@ -222,7 +222,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Normalize dữ liệu trước khi validate và submit
     const phone = normalizeSpaces(formData.phoneNumber);
     const id = normalizeSpaces(formData.identityCard);
@@ -252,7 +252,8 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
         address: normalizeTrim(formData.address) || undefined,
         personalEmail: personalEmail || undefined,
         workEmail: workEmail || undefined,
-
+        contractStartDate: formatDateInput(formData.contractStartDate),
+        contractEndDate: formatDateInput(formData.contractEndDate),
         // Organization - Đảm bảo có giá trị
         departmentId: formData.department || undefined,
         jobTitle: jobTitle || undefined,
@@ -260,11 +261,11 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
         employmentType: formData.employmentType || undefined,
         workMode: formData.workMode || undefined,
         status: formData.status || undefined,
-
+        identityCard: formData.identityCard || "",
         // Lifecycle
         startDate: normalizeTrim(formData.startDate) || undefined,
         probationEndDate: normalizeTrim(formData.probationEndDate) || undefined,
-
+        baseSalary: formData.baseSalary || 0,
         // Nested Objects Reconstruction
         emergencyContact: {
           name: normalizeTrim(formData.emergencyName) || undefined,
@@ -305,7 +306,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
     } catch (error) {
       console.error("Update failed:", error);
       console.error("Error response:", error.response?.data); // Debug log
-      
+
       // Xử lý validation errors từ backend
       if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
         const backendErrors = {};
@@ -314,14 +315,14 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
             backendErrors[err.field] = err.message;
           }
         });
-        
+
         if (Object.keys(backendErrors).length > 0) {
           setErrors(backendErrors);
           toast.error("Vui lòng kiểm tra lại các trường báo lỗi màu đỏ.");
           return;
         }
       }
-      
+
       // Lỗi khác (không phải validation)
       toast.error(error.response?.data?.message || "Cập nhật thất bại.");
     } finally {
@@ -329,6 +330,11 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
     }
   };
 
+
+  useEffect(() => {
+    console.log("LƯƠNG :", formData.baseSalary)
+    console.log("LƯƠNG 2: ", employee)
+  }, [formData.baseSalary])
   // --- UI HELPERS ---
   const inputClass = (field) =>
     `w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 ${errors[field] ? "border-red-500 focus:ring-red-200" : "border-gray-300 focus:ring-blue-500"}`;
