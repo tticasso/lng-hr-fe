@@ -34,83 +34,90 @@ const Sidebar = () => {
           label: "Lịch làm việc",
           icon: <CalendarCheck2 size={20} />,
         },
-        ...(isAdmin
-          ? []
-          : [
-              {
-                path: "/leave",
-                label: "Yêu cầu của tôi",
-                icon: <Plane size={20} />,
-              },
-            ]),
+        {
+          path: "/leave",
+          label: "Yêu cầu của tôi",
+          icon: <Plane size={20} />,
+        },
       ],
     },
-    {
-      title: "QUẢN LÝ NHÂN SỰ",
-      items: [
-        {
-          path: "/hr/employees",
-          label: "Nhân viên",
-          icon: <Users size={20} />,
-        },
-        {
-          path: "/hr/attendance-admin",
-          label: "Quản lý chấm công",
-          icon: <Coins size={20} />,
-        },
-        {
-          path: "/hr/announcements",
-          label: "Thông báo",
-          icon: <SquareStar size={20} />,
-        },
-        {
-          path: "/hr/recruitment",
-          label: "Tuyển dụng",
-          icon: <BriefcaseBusiness size={20} />,
-        },
-        {
-          path: "/hr/boarding",
-          label: "On/Off Boarding",
-          icon: <Presentation size={20} />,
-        },
-        ...(isAdmin
-          ? [
+    // Chỉ hiển thị nhóm này cho ADMIN
+    ...(isAdmin
+      ? [
+          {
+            title: "QUẢN LÝ NHÂN SỰ",
+            items: [
+              {
+                path: "/hr/employees",
+                label: "Nhân viên",
+                icon: <Users size={20} />,
+              },
+              {
+                path: "/hr/attendance-admin",
+                label: "Quản lý chấm công",
+                icon: <Coins size={20} />,
+              },
+              {
+                path: "/hr/announcements",
+                label: "Thông báo",
+                icon: <SquareStar size={20} />,
+              },
+              {
+                path: "/hr/recruitment",
+                label: "Tuyển dụng",
+                icon: <BriefcaseBusiness size={20} />,
+              },
+              {
+                path: "/hr/boarding",
+                label: "On/Off Boarding",
+                icon: <Presentation size={20} />,
+              },
               {
                 path: "/leave",
                 label: "Quản lý yêu cầu",
                 icon: <Plane size={20} />,
               },
-            ]
-          : []),
-      ],
-    },
+            ],
+          },
+        ]
+      : []),
     {
       title: "TIỀN LƯƠNG & PHÚC LỢI",
       items: [
         { path: "/payroll", label: "Bảng lương", icon: <DollarSign size={20} /> },
-        { path: "/hr/reports", label: "Báo cáo", icon: <FileText size={20} /> },
-        {
-          path: "/hr/payroll-engine",
-          label: "Công cụ tính lương",
-          icon: <Landmark size={20} />,
-        },
+        // Chỉ hiển thị 2 menu này cho ADMIN
+        ...(isAdmin
+          ? [
+              { path: "/hr/reports", label: "Báo cáo", icon: <FileText size={20} /> },
+              {
+                path: "/hr/payroll-engine",
+                label: "Công cụ tính lương",
+                icon: <Landmark size={20} />,
+              },
+            ]
+          : []),
       ],
     },
-    {
-      title: "QUẢN TRỊ HỆ THỐNG",
-      items: [
-        {
-          path: "/admin/user-management",
-          label: "Quản lý người dùng",
-          icon: <UserCog size={20} />,
-        },
-        {
-          path: "/admin/system-admin",
-          label: "Cài đặt hệ thống",
-          icon: <Settings size={20} />,
-        },
-      ],
-    },
+    // Chỉ hiển thị nhóm này cho ADMIN
+    ...(isAdmin
+      ? [
+          {
+            title: "QUẢN TRỊ HỆ THỐNG",
+            items: [
+              {
+                path: "/admin/user-management",
+                label: "Quản lý người dùng",
+                icon: <UserCog size={20} />,
+              },
+              {
+                path: "/admin/system-admin",
+                label: "Cài đặt hệ thống",
+                icon: <Settings size={20} />,
+              },
+            ],
+          },
+        ]
+      : []),
   ];
 
   const { logout } = useAuth();

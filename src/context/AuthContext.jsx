@@ -39,6 +39,7 @@ export function AuthProvider({ children }) {
             // Gọi API refresh ngầm
             try {
               const res = await employeeApi.getMe();
+              console.log("GET ME :",res)
               // Lấy đúng data từ cấu trúc JSON của bạn
               const rawData = res.data?.data?.employee || res.data?.employee;
               if (rawData) {

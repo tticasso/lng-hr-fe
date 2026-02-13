@@ -64,6 +64,7 @@ const EmployeeList = () => {
       const res = await employeeApi.getAll(cleanParams);
 
       const responseBody = res.data || {};
+      console.log("DỮ LIỆU LƯƠNG :", responseBody)
       const listData = Array.isArray(responseBody)
         ? responseBody
         : responseBody.data || [];
@@ -112,7 +113,7 @@ const EmployeeList = () => {
   };
 
   const handleOpenEdit = (employee) => {
-    console.log("click edit")
+    console.log("click edit:", employee)
     setSelectedEmployee(employee);
     setIsEditModalOpen(true);
   };
@@ -147,13 +148,12 @@ const EmployeeList = () => {
         onClick={() => typeof p === "number" && handlePageChange(p)}
         disabled={p === "..."}
         className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-medium transition-colors
-                ${
-                  p === page
-                    ? "bg-blue-600 text-white"
-                    : p === "..."
-                      ? "bg-transparent text-gray-500 cursor-default"
-                      : "border border-gray-300 hover:bg-gray-50 text-gray-700"
-                }`}
+                ${p === page
+            ? "bg-blue-600 text-white"
+            : p === "..."
+              ? "bg-transparent text-gray-500 cursor-default"
+              : "border border-gray-300 hover:bg-gray-50 text-gray-700"
+          }`}
       >
         {p}
       </button>

@@ -151,12 +151,17 @@ const Header = () => {
             to="/profile"
             className="flex items-center gap-3 p-2 hover:bg-gray-100 rounded-full"
           >
-            <div className="text-right hidden md:block">
-              <p className="text-sm font-semibold text-gray-800">
+            <div
+              className="text-right hidden md:flex flex-col justify-around gap-y-1"
+            >
+              <p className="text-sm font-semibold text-gray-800 m-0">
                 {fullName || "--"}
               </p>
-              <p className="text-xs text-gray-500">{jobTitle || "--"}</p>
+              <p className="text-xs text-gray-500 m-0">
+                {jobTitle || "--"}
+              </p>
             </div>
+
             <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
               {initials}
             </div>
@@ -205,10 +210,9 @@ const Header = () => {
                 type="button"
                 onClick={() => setNotifyTab("unread")}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition
-                  ${
-                    notifyTab === "unread"
-                      ? "bg-white text-gray-900 shadow-sm"
-                      : "text-gray-600 hover:text-gray-800"
+                  ${notifyTab === "unread"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-600 hover:text-gray-800"
                   }`}
               >
                 Chưa đọc
@@ -217,10 +221,9 @@ const Header = () => {
                 type="button"
                 onClick={() => setNotifyTab("read")}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition
-                  ${
-                    notifyTab === "read"
-                      ? "bg-white text-gray-900 shadow-sm"
-                      : "text-gray-600 hover:text-gray-800"
+                  ${notifyTab === "read"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-600 hover:text-gray-800"
                   }`}
               >
                 Đã đọc
@@ -233,10 +236,9 @@ const Header = () => {
               onClick={handleMarkAllRead}
               disabled={unreadCount === 0}
               className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition
-                ${
-                  unreadCount === 0
-                    ? "text-gray-300 border-gray-200 cursor-not-allowed"
-                    : "text-blue-600 border-blue-200 hover:bg-blue-50"
+                ${unreadCount === 0
+                  ? "text-gray-300 border-gray-200 cursor-not-allowed"
+                  : "text-blue-600 border-blue-200 hover:bg-blue-50"
                 }`}
             >
               Đánh dấu tất cả là đã đọc
@@ -253,10 +255,9 @@ const Header = () => {
                 onClick={() => handleClickNotification(n.id)}
                 className={`group flex gap-3 p-3 rounded-xl border transition
                   hover:bg-gray-50 hover:border-gray-200 cursor-pointer
-                  ${
-                    n.unread
-                      ? "bg-red-50/30 border-red-100"
-                      : "bg-white border-gray-100"
+                  ${n.unread
+                    ? "bg-red-50/30 border-red-100"
+                    : "bg-white border-gray-100"
                   }
                 `}
               >

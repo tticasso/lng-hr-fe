@@ -37,25 +37,40 @@ const Dashboard = () => {
   const [isOTModalOpen, setIsOTModalOpen] = useState(false);
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [otRequests, setOTRequests] = useState([]);
+  const [mySheetData, setMySheetData] = useState(null); // Thêm state cho My Sheet data
+
+
 
 
 
   useEffect(() => {
+    let isMounted = true;
+    
     const callAPICompany = async () => {
       try {
         const now = new Date();
         const month = now.getMonth() + 1; // getMonth() trả về 0-11
         const year = now.getFullYear();
 
-        const resEmploye = await attendancesAPI.getall(month, year);
-
-        console.log("[TEST_2] DỮ LIỆU Chấm công:", resEmploye);
+        const resMySheet = await attendancesAPI.getdatamoth(month, year);
+        console.log("[TEST_2] DỮ LIỆU My sheet:", resMySheet.data.data);
+        
+        if (isMounted) {
+          setMySheetData(resMySheet.data.data);
+        }
       } catch (error) {
         console.log("API ERROR:", error);
+        if (isMounted) {
+          setMySheetData(null);
+        }
       }
     };
 
     callAPICompany();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
 
@@ -63,6 +78,8 @@ const Dashboard = () => {
 
 
   useEffect(() => {
+    let isMounted = true;
+    
     const callAPIrequest = async () => {
       try {
         const resLeave = await leaveAPI.getbyUSER();
@@ -70,14 +87,21 @@ const Dashboard = () => {
         console.log("[TEST_1]DỮ LIỆU XIN NGHỈ :", resLeave.data.data[0]);
         console.log("[TEST_1]DỮ LIỆU OT :", resOT.data.data[0]);
 
-        setLeaveRequests(resLeave.data.data || []);
-        setOTRequests(resOT.data.data || []);
+        if (isMounted) {
+          setLeaveRequests(resLeave.data.data || []);
+          setOTRequests(resOT.data.data || []);
+        }
       } catch (error) {
-        console.log("API ERROR :", error)
+        console.log("API ERROR :", error);
       }
-    }
+    };
+    
     callAPIrequest();
-  }, [])
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     console.log("[OT] isOTModalOpen changed:", isOTModalOpen);
@@ -108,7 +132,7 @@ const Dashboard = () => {
     } catch (error) {
       console.log("OT create error:", error.response.data.message);
       setIsOTModalOpen(false);
-      toast.error(`Đăng ký OT thất bại : ${error.response.data.message}`,{autoClose:5000});
+      toast.error(`Đăng ký OT thất bại : ${error.response.data.message}`, { autoClose: 5000 });
     }
   };
   const CallleaveAPI = async (data) => {
@@ -127,7 +151,7 @@ const Dashboard = () => {
         ? errors.map(e => e.message).join(", ")
         : (error?.response?.data?.message || error?.message || "Có lỗi xảy ra");
 
-      toast.error(`Xin nghỉ thất bại: ${errorMessage}`,{autoClose:5000});
+      toast.error(`Xin nghỉ thất bại: ${errorMessage}`, { autoClose: 5000 });
 
       console.log("FULL ERROR:", error);
       console.log("RESPONSE DATA:", error?.response?.data);
@@ -171,24 +195,25 @@ const Dashboard = () => {
     fetchDashboardData();
   }, [user]);
 
+  // Tạo summaryStats từ dữ liệu API
   const summaryStats = [
     {
       label: "Ngày công thực tế",
-      value: "18.5",
+      value: mySheetData?.work?.totalDays?.toFixed(1) || "0.0",
       unit: "công",
       icon: <Briefcase size={18} className="text-blue-600" />,
       bg: "bg-blue-100",
     },
     {
       label: "Giờ tăng ca (OT)",
-      value: "4.0",
+      value: mySheetData?.overtime?.totalHours?.toFixed(1) || "0.0",
       unit: "giờ",
       icon: <Clock size={18} className="text-orange-600" />,
       bg: "bg-orange-100",
     },
     {
       label: "Phép năm còn lại",
-      value: "8.5",
+      value: mySheetData?.leave?.remaining?.toFixed(1) || "0.0",
       unit: "ngày",
       icon: <Coffee size={18} className="text-green-600" />,
       bg: "bg-green-100",
