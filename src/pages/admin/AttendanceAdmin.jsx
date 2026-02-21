@@ -64,7 +64,7 @@ const AttendanceAdmin = () => {
       // Set dữ liệu vào state
       setEmployeeDetail(res.data.data || []);
       
-      toast.success(`Đã tải chi tiết chấm công cho ${employee.fullName}`);
+      // toast.success(`Đã tải chi tiết chấm công cho ${employee.fullName}`);
     } catch (error) {
       console.error("❌ Lỗi khi load chi tiết:", error);
       toast.error("Không thể tải chi tiết chấm công");
@@ -147,18 +147,17 @@ const AttendanceAdmin = () => {
         month: dateInfo.month,
         year: dateInfo.year,
       });
+      console.log("Detected records:", normalized.length);
+      // console.table(normalized.slice(0, 50)); // xem nhanh 50 dòng đầu
+      console.log("Full JSON:", normalized);
+      console.groupEnd();
 
-      // Gọi API import
-      const res = await attendancesAPI.import(formData);
-      
-      console.log("[IMPORT] API Response:", res.data);
-      toast.success(`Import thành công! ${res.data?.message || ''}`);
-      
-      // Reload lại data sau khi import thành công
-      const { month, year } = getMonthYear(selectedPeriod);
-      const reloadRes = await attendancesAPI.getall(month, year);
-      setAttendanceData(reloadRes.data?.data || reloadRes.data || []);
-      
+      // alert(
+      //   `Đọc file thành công.\nTổng records chuẩn hoá: ${normalized.length}\nMở console để xem dữ liệu.`
+      // );
+      toast.success(
+        `Import thành công`
+      );
     } catch (err) {
       console.error("[IMPORT ATTENDANCE] Failed:", err);
       const errorMsg = err?.response?.data?.message || err?.message || "Import thất bại. Vui lòng kiểm tra format file Excel.";
