@@ -22,6 +22,7 @@ import { useAuth } from "../context/AuthContext";
 const Sidebar = () => {
   const navigate = useNavigate();
   const role = localStorage.getItem("role");
+  console.log("ROLE :",role)
   const isAdmin = role === "ADMIN";
 
   const menuGroups = [
@@ -34,11 +35,16 @@ const Sidebar = () => {
           label: "Lịch làm việc",
           icon: <CalendarCheck2 size={20} />,
         },
-        {
-          path: "/leave",
-          label: "Yêu cầu của tôi",
-          icon: <Plane size={20} />,
-        },
+        // Chỉ hiển thị "Yêu cầu của tôi" cho user thường (không phải ADMIN)
+        ...(!isAdmin
+          ? [
+              {
+                path: "/leave",
+                label: "Yêu cầu của tôi",
+                icon: <Plane size={20} />,
+              },
+            ]
+          : []),
       ],
     },
     // Chỉ hiển thị nhóm này cho ADMIN

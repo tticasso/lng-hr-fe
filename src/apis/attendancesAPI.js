@@ -12,7 +12,7 @@ export const attendancesAPI = {
         return apiClient.get(`/attendances/my-timesheet?month=${month}&year=${year}`);
     },
     getme: (month, year) => {
-        return apiClient.get(`/attendances/me?month=${month}&year=${year}`);
+        return apiClient.get(`/attendances/my-attendance?month=${month}&year=${year}`);
     },
     
     // Import attendance từ Excel
