@@ -4,6 +4,8 @@ import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import { leaveAPI } from "../../apis/leaveAPI";
 import { OTApi } from "../../apis/OTAPI";
+import ApproveOTModal from "../../components/modals/ApproveOTModal";
+import { toast } from "react-toastify";
 
 const leaveTypeLabel = {
     ANNUAL: "Nghỉ phép năm",
@@ -112,6 +114,12 @@ const MyLeave = () => {
         searchName: "",
         statusGroup: "", // "" | "PENDING" | "APPROVED"
         otType: "", // "" | "WEEKDAY" | "WEEKEND" | "HOLIDAY"
+    });
+
+    // ✅ OT Approve Modal
+    const [approveOTModal, setApproveOTModal] = useState({
+        isOpen: false,
+        otData: null,
     });
 
     const pendingOTCount = useMemo(() => {
@@ -274,14 +282,30 @@ const MyLeave = () => {
         }
     };
 
-    const handleApproveOT = async (otId) => {
+    const handleApproveOT = async (otId, approvedHours) => {
+        console.log("RES otId: ", otId);
+        console.log("RES approvedHours: ", approvedHours);
         try {
-            const res = await OTApi.put(otId);
-            console.log("RES OT: ", res);
+            const res = await OTApi.put(otId, approvedHours);
+            toast.success("DUYỆT THÀNH CÔNG")
+            setApproveOTModal({ isOpen: false, otData: null });
             fetchOTs();
         } catch (e) {
+            setApproveOTModal({ isOpen: false, otData: null });
+            toast.error("DUYỆT THẤT BẠI")
             console.error("approve OT error:", e);
         }
+    };
+
+    const openApproveOTModal = (ot) => {
+        setApproveOTModal({
+            isOpen: true,
+            otData: ot,
+        });
+    };
+
+    const closeApproveOTModal = () => {
+        setApproveOTModal({ isOpen: false, otData: null });
     };
 
     const colSpanCount = isAdmin ? 10 : 9;
@@ -686,7 +710,7 @@ const MyLeave = () => {
                                                         <div className="flex justify-center">
                                                             <button
                                                                 disabled={!canApprove}
-                                                                onClick={() => handleApproveOT(ot._id)}
+                                                                onClick={() => openApproveOTModal(ot)}
                                                                 className={`p-2 rounded border text-xs font-semibold inline-flex items-center gap-1
                                   ${canApprove
                                                                         ? "text-green-600 border-green-200 hover:bg-green-50"
@@ -709,6 +733,14 @@ const MyLeave = () => {
                     </div>
                 </Card>
             )}
+
+            {/* Approve OT Modal */}
+            <ApproveOTModal
+                isOpen={approveOTModal.isOpen}
+                onClose={closeApproveOTModal}
+                otData={approveOTModal.otData}
+                onConfirm={handleApproveOT}
+            />
         </div>
     );
 };

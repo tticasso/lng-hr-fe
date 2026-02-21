@@ -107,32 +107,67 @@ const AttendanceAdmin = () => {
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.log("[IMPORT] No file selected");
+      return;
+    }
+
+    console.group("🔵 [IMPORT] Starting file import process");
+    console.log("[IMPORT] File info:", {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      lastModified: new Date(file.lastModified).toLocaleString()
+    });
 
     try {
       setLoading(true);
       toast.info("Đang xử lý file Excel...");
       
       // Parse Excel để lấy fromDate và toDate
+      console.log("[IMPORT] Step 1: Reading file buffer...");
       const buf = await file.arrayBuffer();
+      console.log("[IMPORT] Buffer size:", buf.byteLength, "bytes");
+      
+      console.log("[IMPORT] Step 2: Parsing Excel workbook...");
       const wb = XLSX.read(buf, { type: "array" });
+      console.log("[IMPORT] Workbook sheets:", wb.SheetNames);
 
       const sheetName = wb.SheetNames?.[0];
+      console.log("[IMPORT] Using sheet:", sheetName);
+      
       const ws = wb.Sheets?.[sheetName];
-      if (!ws) throw new Error("Không đọc được sheet trong file Excel.");
+      if (!ws) {
+        console.error("[IMPORT] ❌ Cannot read sheet from workbook");
+        throw new Error("Không đọc được sheet trong file Excel.");
+      }
 
+      console.log("[IMPORT] Step 3: Converting sheet to grid...");
       const grid = XLSX.utils.sheet_to_json(ws, {
         header: 1,
         raw: false,
         defval: "",
       });
+      console.log("[IMPORT] Grid dimensions:", {
+        rows: grid.length,
+        columns: grid[0]?.length || 0
+      });
+      console.log("[IMPORT] First 3 rows:", grid.slice(0, 3));
 
       // Extract fromDate và toDate từ Excel
+      console.log("[IMPORT] Step 4: Extracting date range...");
       const dateInfo = extractDateRangeFromGrid(grid, selectedPeriod);
-      
-      console.log("[IMPORT] Date info extracted:", dateInfo);
+      console.log("[IMPORT] ✅ Date info extracted:", dateInfo);
+
+      // Parse attendance data
+      console.log("[IMPORT] Step 5: Parsing attendance records...");
+      const normalized = parseAttendanceGrid(grid, selectedPeriod);
+      console.log("[IMPORT] ✅ Parsed records:", normalized.length);
+      console.log("[IMPORT] Sample records (first 5):", normalized.slice(0, 5));
+      console.log("[IMPORT] Full JSON data:", normalized);
 
       // Chuẩn bị FormData để gửi API
+      console.log("[IMPORT] Step 6: Preparing FormData for API...");
       const formData = new FormData();
       formData.append("file", file);
       formData.append("fromDate", dateInfo.fromDate); // YYYY-MM-DD
@@ -140,31 +175,42 @@ const AttendanceAdmin = () => {
       formData.append("month", dateInfo.month);       // 1-12
       formData.append("year", dateInfo.year);         // YYYY
 
-      console.log("[IMPORT] Sending to API:", {
+      console.log("[IMPORT] FormData prepared:", {
         fileName: file.name,
         fromDate: dateInfo.fromDate,
         toDate: dateInfo.toDate,
         month: dateInfo.month,
         year: dateInfo.year,
       });
-      console.log("Detected records:", normalized.length);
-      // console.table(normalized.slice(0, 50)); // xem nhanh 50 dòng đầu
-      console.log("Full JSON:", normalized);
-      console.groupEnd();
 
-      // alert(
-      //   `Đọc file thành công.\nTổng records chuẩn hoá: ${normalized.length}\nMở console để xem dữ liệu.`
-      // );
-      toast.success(
-        `Import thành công`
-      );
+      console.log("[IMPORT] Step 7: Sending to API...");
+      const response = await attendancesAPI.import(formData);
+      console.log("[IMPORT] ✅ API Response:", response);
+
+      toast.success(`Import thành công ${normalized.length} bản ghi chấm công`);
+      
+      // Reload data after successful import
+      console.log("[IMPORT] Step 8: Reloading attendance data...");
+      const { month, year } = getMonthYear(selectedPeriod);
+      const res = await attendancesAPI.getall(month, year);
+      setAttendanceData(res.data?.data || res.data || []);
+      console.log("[IMPORT] ✅ Data reloaded successfully");
+
     } catch (err) {
-      console.error("[IMPORT ATTENDANCE] Failed:", err);
+      console.error("[IMPORT] ❌ Import failed:", err);
+      console.error("[IMPORT] Error details:", {
+        message: err?.message,
+        response: err?.response?.data,
+        stack: err?.stack
+      });
+      
       const errorMsg = err?.response?.data?.message || err?.message || "Import thất bại. Vui lòng kiểm tra format file Excel.";
       toast.error(errorMsg);
     } finally {
       setLoading(false);
       e.target.value = "";
+      console.groupEnd();
+      console.log("🔵 [IMPORT] Process completed\n");
     }
   };
 
@@ -172,9 +218,18 @@ const AttendanceAdmin = () => {
   // IMPORT EXCEL: PARSER CORE
   // =========================
   const parseAttendanceGrid = (grid, fallbackPeriodYYYYMM) => {
-    if (!Array.isArray(grid) || grid.length === 0) return [];
+    console.log("[PARSE] Starting parseAttendanceGrid...");
+    console.log("[PARSE] Grid length:", grid.length);
+    console.log("[PARSE] Fallback period:", fallbackPeriodYYYYMM);
+    
+    if (!Array.isArray(grid) || grid.length === 0) {
+      console.warn("[PARSE] ⚠️ Empty or invalid grid");
+      return [];
+    }
 
+    console.log("[PARSE] Detecting context...");
     const ctx = detectContext(grid, fallbackPeriodYYYYMM);
+    console.log("[PARSE] Context detected:", ctx);
 
     const {
       headerRowIndex,
@@ -188,13 +243,30 @@ const AttendanceAdmin = () => {
     } = ctx;
 
     if (headerRowIndex === -1 || dayRowIndex === -1 || !dayColumns.length) {
+      console.error("[PARSE] ❌ Invalid structure:", {
+        headerRowIndex,
+        dayRowIndex,
+        dayColumnsCount: dayColumns.length
+      });
       throw new Error(
         "Không nhận diện được cấu trúc file (header/ngày). Vui lòng kiểm tra template chấm công."
       );
     }
 
+    console.log("[PARSE] Structure validated:", {
+      headerRowIndex,
+      dayRowIndex,
+      dayColumnsCount: dayColumns.length,
+      startDate,
+      columns: { sttCol, empCodeCol, empNameCol, deptCol }
+    });
+
     const records = [];
     const startScan = dayRowIndex + 1;
+    console.log("[PARSE] Starting to scan from row:", startScan);
+
+    let employeeCount = 0;
+    let recordCount = 0;
 
     for (let r = startScan; r < grid.length; r++) {
       const row = grid[r] || [];
@@ -210,6 +282,7 @@ const AttendanceAdmin = () => {
           rowText.includes("ký") ||
           rowText.includes("xác nhận")
         ) {
+          console.log("[PARSE] Stopping at row", r, "- detected summary section");
           break;
         }
         continue;
@@ -222,6 +295,15 @@ const AttendanceAdmin = () => {
       const employeeName = String(rowIn?.[empNameCol] || "").trim();
       const department = String(rowIn?.[deptCol] || "").trim();
 
+      employeeCount++;
+      console.log(`[PARSE] Processing employee #${employeeCount}:`, {
+        sttNum,
+        employeeCode,
+        employeeName,
+        department,
+        rowIndex: r
+      });
+
       // Nếu không có mã NV thì vẫn log nhưng gắn warning (tuỳ bạn)
       // Ở bước DB sẽ cần mapping/validate
       const baseInfo = {
@@ -229,6 +311,8 @@ const AttendanceAdmin = () => {
         employeeName,
         department,
       };
+
+      let employeeRecords = 0;
 
       // Với mỗi cột ngày: lấy vào/ra
       for (let i = 0; i < dayColumns.length; i++) {
@@ -251,7 +335,7 @@ const AttendanceAdmin = () => {
           fallbackPeriodYYYYMM,
         });
 
-        records.push({
+        const record = {
           ...baseInfo,
           date: dateISO,
           checkIn: inNorm.value || null,
@@ -261,19 +345,36 @@ const AttendanceAdmin = () => {
             in: inRaw ?? "",
             out: outRaw ?? "",
           },
-        });
+        };
+
+        records.push(record);
+        employeeRecords++;
+        recordCount++;
       }
+
+      console.log(`[PARSE] Employee #${employeeCount} generated ${employeeRecords} records`);
 
       // Nhảy qua dòng "Ra" vì đã dùng r+1
       r += 1;
     }
 
+    console.log("[PARSE] ✅ Parsing completed:", {
+      totalEmployees: employeeCount,
+      totalRecords: recordCount,
+      recordsArray: records.length
+    });
+
     return records;
   };
 
   const detectContext = (grid, fallbackPeriodYYYYMM) => {
+    console.log("[DETECT] Starting context detection...");
+    
     const headerRowIndex = findHeaderRowIndex(grid);
+    console.log("[DETECT] Header row index:", headerRowIndex);
+    
     if (headerRowIndex === -1) {
+      console.warn("[DETECT] ⚠️ Header row not found");
       return {
         headerRowIndex: -1,
         sttCol: -1,
@@ -287,6 +388,8 @@ const AttendanceAdmin = () => {
     }
 
     const headerRow = grid[headerRowIndex] || [];
+    console.log("[DETECT] Header row content:", headerRow);
+    
     const sttCol = findColIndex(headerRow, ["stt"]);
     const empCodeCol = findColIndex(headerRow, [
       "mã nhân viên",
@@ -307,17 +410,31 @@ const AttendanceAdmin = () => {
       "phong ban",
     ]);
 
+    console.log("[DETECT] Column indices found:", {
+      sttCol,
+      empCodeCol,
+      empNameCol,
+      deptCol
+    });
+
     // Tìm dòng ngày (1..31)
     const dayRowIndex = findDayRowIndex(grid, headerRowIndex);
+    console.log("[DETECT] Day row index:", dayRowIndex);
+    
     const dayRow = grid[dayRowIndex] || [];
+    console.log("[DETECT] Day row content:", dayRow);
+    
     const dayColumns = extractDayColumns(dayRow);
+    console.log("[DETECT] Day columns extracted:", dayColumns.length, "days");
+    console.log("[DETECT] Day columns detail:", dayColumns);
 
     // Gắn offsetIndex để resolve date theo startDate + offset (ổn cho template có 1..31 liên tiếp)
     dayColumns.forEach((d, idx) => (d.offsetIndex = idx));
 
     const startDate = extractStartDateISO(grid, fallbackPeriodYYYYMM);
+    console.log("[DETECT] Start date extracted:", startDate);
 
-    return {
+    const result = {
       headerRowIndex,
       sttCol: sttCol === -1 ? 0 : sttCol,
       empCodeCol: empCodeCol === -1 ? 1 : empCodeCol,
@@ -327,6 +444,9 @@ const AttendanceAdmin = () => {
       dayColumns,
       startDate, // ISO YYYY-MM-DD hoặc null
     };
+
+    console.log("[DETECT] ✅ Context detection completed:", result);
+    return result;
   };
 
   const findHeaderRowIndex = (grid) => {
@@ -423,6 +543,9 @@ const AttendanceAdmin = () => {
   // HELPER: EXTRACT DATE RANGE FROM EXCEL (for API)
   // =========================
   const extractDateRangeFromGrid = (grid, fallbackPeriodYYYYMM) => {
+    console.log("[DATE_RANGE] Extracting date range from grid...");
+    console.log("[DATE_RANGE] Fallback period:", fallbackPeriodYYYYMM);
+    
     // Tìm text kiểu: "Từ ngày 17/12/2025 đến ngày 17/12/2025"
     const max = Math.min(grid.length, 40);
     const regex =
@@ -438,29 +561,39 @@ const AttendanceAdmin = () => {
       if (m?.[1] && m?.[2]) {
         fromDate = ddmmyyyyToISO(m[1]); // YYYY-MM-DD
         toDate = ddmmyyyyToISO(m[2]);   // YYYY-MM-DD
+        console.log("[DATE_RANGE] Found date range in row", i, ":", {
+          raw: joined,
+          fromDate,
+          toDate
+        });
         break;
       }
     }
 
     // Fallback: dùng selectedPeriod (YYYY-MM)
     if (!fromDate || !toDate) {
+      console.log("[DATE_RANGE] Date range not found in file, using fallback");
       if (/^\d{4}-\d{2}$/.test(fallbackPeriodYYYYMM)) {
         const [year, month] = fallbackPeriodYYYYMM.split("-");
         const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
         fromDate = `${fallbackPeriodYYYYMM}-01`;
         toDate = `${fallbackPeriodYYYYMM}-${String(lastDay).padStart(2, "0")}`;
+        console.log("[DATE_RANGE] Fallback dates:", { fromDate, toDate });
       }
     }
 
     // Extract month và year từ fromDate
     const [year, month] = (fromDate || fallbackPeriodYYYYMM + "-01").split("-");
 
-    return {
+    const result = {
       fromDate: fromDate || `${fallbackPeriodYYYYMM}-01`,
       toDate: toDate || `${fallbackPeriodYYYYMM}-31`,
       month: parseInt(month, 10),
       year: parseInt(year, 10),
     };
+
+    console.log("[DATE_RANGE] ✅ Final date range:", result);
+    return result;
   };
 
   const resolveDateISO = ({

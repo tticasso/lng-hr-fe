@@ -3,7 +3,7 @@ import apiClient from "./apiClient";
 export const OTApi = {
 
     get: () => {
-        return apiClient.get("/overtimes/my-ot");
+        return apiClient.get("/overtimes");
     },
     getALL: () => {
         return apiClient.get("/overtimes");
@@ -22,8 +22,8 @@ export const OTApi = {
         }
     },
 
-    put: (id) => {
-        return apiClient.patch(`/overtimes/approve/${id}`, { status: "APPROVED" }
+    put: (id,approvedHours) => {
+        return apiClient.patch(`/overtimes/approve/${id}`, { status: "APPROVED",approvedHours }
         );
     },
 }
