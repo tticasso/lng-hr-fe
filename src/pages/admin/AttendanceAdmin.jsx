@@ -110,29 +110,42 @@ const AttendanceAdmin = () => {
     if (!file) return;
 
     try {
+      setLoading(true);
+      toast.info("Đang xử lý file Excel...");
+      
+      // Parse Excel để lấy fromDate và toDate
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
 
-      // Ưu tiên sheet đầu tiên
       const sheetName = wb.SheetNames?.[0];
       const ws = wb.Sheets?.[sheetName];
       if (!ws) throw new Error("Không đọc được sheet trong file Excel.");
 
-      // Dữ liệu dạng ma trận (array of arrays)
       const grid = XLSX.utils.sheet_to_json(ws, {
         header: 1,
-        raw: false, // lấy value đã format (vd "07:53")
+        raw: false,
         defval: "",
       });
 
-      const normalized = parseAttendanceGrid(grid, selectedPeriod);
+      // Extract fromDate và toDate từ Excel
+      const dateInfo = extractDateRangeFromGrid(grid, selectedPeriod);
+      
+      console.log("[IMPORT] Date info extracted:", dateInfo);
 
-      // LOG KẾT QUẢ CHUẨN HÓA
-      console.group("[IMPORT ATTENDANCE] Normalized Result");
-      console.log("File:", {
-        name: file.name,
-        size: file.size,
-        type: file.type,
+      // Chuẩn bị FormData để gửi API
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("fromDate", dateInfo.fromDate); // YYYY-MM-DD
+      formData.append("toDate", dateInfo.toDate);     // YYYY-MM-DD
+      formData.append("month", dateInfo.month);       // 1-12
+      formData.append("year", dateInfo.year);         // YYYY
+
+      console.log("[IMPORT] Sending to API:", {
+        fileName: file.name,
+        fromDate: dateInfo.fromDate,
+        toDate: dateInfo.toDate,
+        month: dateInfo.month,
+        year: dateInfo.year,
       });
       console.log("Detected records:", normalized.length);
       // console.table(normalized.slice(0, 50)); // xem nhanh 50 dòng đầu
@@ -147,11 +160,10 @@ const AttendanceAdmin = () => {
       );
     } catch (err) {
       console.error("[IMPORT ATTENDANCE] Failed:", err);
-      alert(
-        err?.message || "Import thất bại. Vui lòng kiểm tra format file Excel."
-      );
+      const errorMsg = err?.response?.data?.message || err?.message || "Import thất bại. Vui lòng kiểm tra format file Excel.";
+      toast.error(errorMsg);
     } finally {
-      // reset để chọn lại cùng file vẫn trigger onChange
+      setLoading(false);
       e.target.value = "";
     }
   };
@@ -405,6 +417,50 @@ const AttendanceAdmin = () => {
       return `${fallbackPeriodYYYYMM}-01`;
     }
     return null;
+  };
+
+  // =========================
+  // HELPER: EXTRACT DATE RANGE FROM EXCEL (for API)
+  // =========================
+  const extractDateRangeFromGrid = (grid, fallbackPeriodYYYYMM) => {
+    // Tìm text kiểu: "Từ ngày 17/12/2025 đến ngày 17/12/2025"
+    const max = Math.min(grid.length, 40);
+    const regex =
+      /từ\s*ngày\s*(\d{1,2}\/\d{1,2}\/\d{4}).*đến\s*ngày\s*(\d{1,2}\/\d{1,2}\/\d{4})/i;
+
+    let fromDate = null;
+    let toDate = null;
+
+    for (let i = 0; i < max; i++) {
+      const row = grid[i] || [];
+      const joined = row.map((c) => String(c || "")).join(" ");
+      const m = joined.match(regex);
+      if (m?.[1] && m?.[2]) {
+        fromDate = ddmmyyyyToISO(m[1]); // YYYY-MM-DD
+        toDate = ddmmyyyyToISO(m[2]);   // YYYY-MM-DD
+        break;
+      }
+    }
+
+    // Fallback: dùng selectedPeriod (YYYY-MM)
+    if (!fromDate || !toDate) {
+      if (/^\d{4}-\d{2}$/.test(fallbackPeriodYYYYMM)) {
+        const [year, month] = fallbackPeriodYYYYMM.split("-");
+        const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+        fromDate = `${fallbackPeriodYYYYMM}-01`;
+        toDate = `${fallbackPeriodYYYYMM}-${String(lastDay).padStart(2, "0")}`;
+      }
+    }
+
+    // Extract month và year từ fromDate
+    const [year, month] = (fromDate || fallbackPeriodYYYYMM + "-01").split("-");
+
+    return {
+      fromDate: fromDate || `${fallbackPeriodYYYYMM}-01`,
+      toDate: toDate || `${fallbackPeriodYYYYMM}-31`,
+      month: parseInt(month, 10),
+      year: parseInt(year, 10),
+    };
   };
 
   const resolveDateISO = ({
