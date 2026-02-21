@@ -267,10 +267,13 @@ const MyTimesheet = () => {
         }
       }
 
+      // Kiểm tra isToday: phải cùng ngày, tháng VÀ năm
+      const isToday = (i === TODAY && CURRENT_MONTH === todayInfo.month && CURRENT_YEAR === todayInfo.year);
+
       days.push({
         day: i,
         inMonth: true,
-        isToday: i === TODAY,
+        isToday,
         type,
         status,
         checkIn,
@@ -309,7 +312,7 @@ const MyTimesheet = () => {
     if (day.type === "holiday")
       return `${baseClass} bg-red-50 hover:bg-red-100`;
 
-    // Cuối tuần
+    // Cuối tuần (T7, CN) - giữ nguyên
     if (day.type === "weekend")
       return `${baseClass} bg-orange-100 text-gray-400 hover:bg-orange-200`;
 
@@ -317,14 +320,24 @@ const MyTimesheet = () => {
     if (day.type === "leave")
       return `${baseClass} bg-purple-50 hover:bg-purple-100`;
 
-    // Ngày hôm nay
+    // Ngày hôm nay - viền xanh nước biển
     if (day.isToday)
       return `${baseClass} bg-blue-100 ring-2 ring-inset ring-blue-400 z-10`;
 
-    // Ngày đã đi làm
-    if (day.day <= TODAY) {
+    // Kiểm tra xem đang xem tháng hiện tại hay không
+    const isCurrentMonth = CURRENT_YEAR === todayInfo.year && CURRENT_MONTH === todayInfo.month;
+    
+    // Ngày đã qua (trước ngày hiện tại) - màu xanh
+    if (isCurrentMonth && day.day < TODAY) {
       return `${baseClass} bg-green-100 hover:bg-green-200`;
     }
+    
+    // Ngày trong quá khứ (tháng trước tháng hiện tại)
+    if (CURRENT_YEAR < todayInfo.year || (CURRENT_YEAR === todayInfo.year && CURRENT_MONTH < todayInfo.month)) {
+      return `${baseClass} bg-green-100 hover:bg-green-200`;
+    }
+    
+    // Ngày trong tương lai - màu trắng
     return `${baseClass} bg-white`;
   };
 
@@ -548,38 +561,50 @@ const MyTimesheet = () => {
                       </div>
                     )}
 
-                    {/* Trường hợp Đi làm (Hiện giờ thực tế) */}
-                    {day.type === "work" && (
-                      <>
-                        {day.checkIn || day.checkOut ? (
-                          <div className="flex justify-center items-center text-[11px] text-gray-500 px-1.5 py-0.5 rounded">
-                            <span
-                              className={`font-mono font-bold ${day.status.includes("late")
-                                ? "text-red-600"
-                                : "text-gray-700"
-                                }`}
-                            >
-                              {day.checkIn || "--:--"}
-                            </span>
-                            <span className="px-2"> - </span>
-                            <span className="font-mono font-bold text-gray-700">
-                              {day.checkOut || "--:--"}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="text-[10px] text-center text-gray-400 mt-2">
-                            Chưa chấm công
-                          </div>
-                        )}
+                    {/* Trường hợp Đi làm */}
+                    {day.type === "work" && (() => {
+                      // Kiểm tra xem có phải ngày trong tương lai không
+                      const isCurrentMonth = CURRENT_YEAR === todayInfo.year && CURRENT_MONTH === todayInfo.month;
+                      const isFutureDay = isCurrentMonth ? day.day > TODAY : 
+                        (CURRENT_YEAR > todayInfo.year || (CURRENT_YEAR === todayInfo.year && CURRENT_MONTH > todayInfo.month));
+                      
+                      // Nếu là ngày tương lai và không có dữ liệu chấm công, không hiển thị gì
+                      if (isFutureDay && !day.checkIn && !day.checkOut) {
+                        return null;
+                      }
+                      
+                      return (
+                        <>
+                          {day.checkIn || day.checkOut ? (
+                            <div className="flex justify-center items-center text-[11px] text-gray-500 px-1.5 py-0.5 rounded">
+                              <span
+                                className={`font-mono font-bold ${day.status.includes("late")
+                                  ? "text-red-600"
+                                  : "text-gray-700"
+                                  }`}
+                              >
+                                {day.checkIn || "--:--"}
+                              </span>
+                              <span className="px-2"> - </span>
+                              <span className="font-mono font-bold text-gray-700">
+                                {day.checkOut || "--:--"}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="text-[10px] text-center text-gray-400 mt-2">
+                              Chưa chấm công
+                            </div>
+                          )}
 
-                        {/* Nếu có OT thì hiện thêm dòng OT */}
-                        {day.status.includes("ot") && day.otHours > 0 && (
-                          <div className="text-[10px] text-center font-bold text-orange-600 bg-orange-50 px-1 rounded mt-0.5">
-                            OT: {day.otHours}h
-                          </div>
-                        )}
-                      </>
-                    )}
+                          {/* Nếu có OT thì hiện thêm dòng OT */}
+                          {day.status.includes("ot") && day.otHours > 0 && (
+                            <div className="text-[10px] text-center font-bold text-orange-600 bg-orange-50 px-1 rounded mt-0.5">
+                              OT: {day.otHours}h
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
@@ -718,18 +743,44 @@ const MyTimesheet = () => {
 
           {/* Quick Actions (Bottom Right) */}
           <div className="grid grid-cols-2 gap-3">
-            <Button
-              onClick={handleTest}
-              className="flex flex-col items-center gap-1 py-3 bg-blue-600 text-white shadow-md hover:bg-blue-700">
-              <Coffee size={20} /> <span className="text-xs">Xin nghỉ</span>
-            </Button>
-            <Button
-              onClick={handleOT}
-              variant="OT"
-              className="flex flex-col items-center gap-1 py-3 bg-orange-400 text-white shadow-md hover:bg-orange-600"
-            >
-              <Zap size={20} /> <span className="text-xs ">Đăng ký OT</span>
-            </Button>
+            {(() => {
+              // Kiểm tra xem ngày được chọn có phải là ngày trong quá khứ không
+              const isCurrentMonth = CURRENT_YEAR === todayInfo.year && CURRENT_MONTH === todayInfo.month;
+              const isPastDay = isCurrentMonth 
+                ? selectedDate?.day < TODAY 
+                : (CURRENT_YEAR < todayInfo.year || (CURRENT_YEAR === todayInfo.year && CURRENT_MONTH < todayInfo.month));
+              
+              // Nếu là ngày quá khứ, ẩn nút xin nghỉ
+              if (isPastDay) {
+                return (
+                  <Button
+                    onClick={handleOT}
+                    variant="OT"
+                    className="col-span-2 flex flex-col items-center gap-1 py-3 bg-orange-400 text-white shadow-md hover:bg-orange-600"
+                  >
+                    <Zap size={20} /> <span className="text-xs">Đăng ký OT</span>
+                  </Button>
+                );
+              }
+              
+              // Ngày hiện tại hoặc tương lai, hiển thị cả 2 nút
+              return (
+                <>
+                  <Button
+                    onClick={handleTest}
+                    className="flex flex-col items-center gap-1 py-3 bg-blue-600 text-white shadow-md hover:bg-blue-700">
+                    <Coffee size={20} /> <span className="text-xs">Xin nghỉ</span>
+                  </Button>
+                  <Button
+                    onClick={handleOT}
+                    variant="OT"
+                    className="flex flex-col items-center gap-1 py-3 bg-orange-400 text-white shadow-md hover:bg-orange-600"
+                  >
+                    <Zap size={20} /> <span className="text-xs">Đăng ký OT</span>
+                  </Button>
+                </>
+              );
+            })()}
           </div>
         </div>
       </div>

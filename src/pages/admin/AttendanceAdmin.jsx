@@ -64,7 +64,7 @@ const AttendanceAdmin = () => {
       // Set dữ liệu vào state
       setEmployeeDetail(res.data.data || []);
       
-      toast.success(`Đã tải chi tiết chấm công cho ${employee.fullName}`);
+      // toast.success(`Đã tải chi tiết chấm công cho ${employee.fullName}`);
     } catch (error) {
       console.error("❌ Lỗi khi load chi tiết:", error);
       toast.error("Không thể tải chi tiết chấm công");
@@ -143,7 +143,7 @@ const AttendanceAdmin = () => {
       //   `Đọc file thành công.\nTổng records chuẩn hoá: ${normalized.length}\nMở console để xem dữ liệu.`
       // );
       toast.success(
-        `Đọc file thành công.\nTổng records chuẩn hoá: ${normalized.length}\nMở console để xem dữ liệu.`
+        `Import thành công`
       );
     } catch (err) {
       console.error("[IMPORT ATTENDANCE] Failed:", err);
