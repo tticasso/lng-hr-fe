@@ -32,9 +32,11 @@ const IDENTITY_CARD_LENGTH_REGEX = /^\d{9,12}$/;
 const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const isISODate = (v) => !!v && ISO_DATE_REGEX.test(v);
 // --- NORMALIZE HELPERS ---
-const normalizeSpaces = (v) => String(v ?? "").replace(/\s+/g, "").trim(); // bỏ mọi space
+const normalizeSpaces = (v) =>
+  String(v ?? "")
+    .replace(/\s+/g, "")
+    .trim(); // bỏ mọi space
 const normalizeTrim = (v) => String(v ?? "").trim(); // chỉ trim đầu/cuối
-
 
 const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
   // Helper format date
@@ -113,7 +115,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
       try {
         // 1. Fetch Departments (Internal API)
         const deptRes = await departmentApi.getAll();
-        console.log("CHECK LOG : ", deptRes)
+        console.log("CHECK LOG : ", deptRes);
         const deptList = deptRes.data?.data || deptRes.data || [];
         setDepartments(deptList);
 
@@ -141,7 +143,8 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
     if (!employeeCode) {
       newErrors.employeeCode = "Employee code is required";
     } else if (employeeCode.length < 5 || employeeCode.length > 10) {
-      newErrors.employeeCode = "Employee code must be between 5 and 10 characters";
+      newErrors.employeeCode =
+        "Employee code must be between 5 and 10 characters";
     }
 
     // 2) jobTitle (required)
@@ -155,7 +158,8 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
     if (!phone) {
       newErrors.phoneNumber = "Phone number is required";
     } else if (!VIETNAM_PHONE_REGEX.test(phone)) {
-      newErrors.phoneNumber = "Phone number is not in the correct Vietnamese format";
+      newErrors.phoneNumber =
+        "Phone number is not in the correct Vietnamese format";
     }
 
     // 4) birthDate (ISO yyyy-mm-dd)
@@ -213,7 +217,6 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
     return true;
   };
 
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -245,7 +248,8 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
         fullName: normalizeTrim(formData.fullName) || undefined,
         gender: formData.gender || undefined,
         birthDate: birthDate || undefined,
-        taxIdentification: normalizeTrim(formData.taxIdentification) || undefined,
+        taxIdentification:
+          normalizeTrim(formData.taxIdentification) || undefined,
 
         // Contacts - Đảm bảo format đúng
         phoneNumber: phone || undefined,
@@ -265,7 +269,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
         // Lifecycle
         startDate: normalizeTrim(formData.startDate) || undefined,
         probationEndDate: normalizeTrim(formData.probationEndDate) || undefined,
-        baseSalary: formData.baseSalary || 0,
+
         // Nested Objects Reconstruction
         emergencyContact: {
           name: normalizeTrim(formData.emergencyName) || undefined,
@@ -275,7 +279,8 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
 
         bankAccount: {
           bankName: normalizeTrim(formData.bankName) || undefined,
-          accountNumber: normalizeSpaces(formData.bankAccountNumber) || undefined,
+          accountNumber:
+            normalizeSpaces(formData.bankAccountNumber) || undefined,
         },
 
         // Compensation
@@ -292,7 +297,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
       };
 
       // Remove undefined values để không gửi lên backend
-      Object.keys(submitData).forEach(key => {
+      Object.keys(submitData).forEach((key) => {
         if (submitData[key] === undefined) {
           delete submitData[key];
         }
@@ -308,7 +313,10 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
       console.error("Error response:", error.response?.data); // Debug log
 
       // Xử lý validation errors từ backend
-      if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+      if (
+        error.response?.data?.errors &&
+        Array.isArray(error.response.data.errors)
+      ) {
         const backendErrors = {};
         error.response.data.errors.forEach((err) => {
           if (err.field && err.message) {
@@ -330,11 +338,10 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
     }
   };
 
-
   useEffect(() => {
-    console.log("LƯƠNG :", formData.baseSalary)
-    console.log("LƯƠNG 2: ", employee)
-  }, [formData.baseSalary])
+    console.log("LƯƠNG :", formData.baseSalary);
+    console.log("LƯƠNG 2: ", employee);
+  }, [formData.baseSalary]);
   // --- UI HELPERS ---
   const inputClass = (field) =>
     `w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 ${errors[field] ? "border-red-500 focus:ring-red-200" : "border-gray-300 focus:ring-blue-500"}`;
@@ -524,9 +531,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className={labelClass}>
-                        Ngày vào làm
-                      </label>
+                      <label className={labelClass}>Ngày vào làm</label>
                       <input
                         type="date"
                         name="startDate"
@@ -643,9 +648,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                     </div>
                   </div>
                   <div>
-                    <label className={labelClass}>
-                      CCCD / CMND
-                    </label>
+                    <label className={labelClass}>CCCD / CMND</label>
                     <input
                       name="identityCard"
                       value={formData.identityCard}
@@ -707,9 +710,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
-                    <label className={labelClass}>
-                      Họ tên người thân
-                    </label>
+                    <label className={labelClass}>Họ tên người thân</label>
                     <input
                       name="emergencyName"
                       value={formData.emergencyName}
@@ -719,9 +720,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                     <ErrorMsg field="emergencyName" />
                   </div>
                   <div>
-                    <label className={labelClass}>
-                      Mối quan hệ
-                    </label>
+                    <label className={labelClass}>Mối quan hệ</label>
                     <input
                       name="emergencyRelation"
                       value={formData.emergencyRelation}
@@ -731,9 +730,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                     <ErrorMsg field="emergencyRelation" />
                   </div>
                   <div>
-                    <label className={labelClass}>
-                      SĐT Người thân
-                    </label>
+                    <label className={labelClass}>SĐT Người thân</label>
                     <input
                       name="emergencyPhone"
                       value={formData.emergencyPhone}
