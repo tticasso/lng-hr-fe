@@ -29,7 +29,7 @@ const MyTimesheet = () => {
   const [otPrefillDate, setOtPrefillDate] = useState(""); // YYYY-MM-DD
   const [timesheetData, setTimesheetData] = useState(null);
   const [attendanceData, setAttendanceData] = useState([]);
-  
+
   // State cho việc chọn tháng
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
@@ -61,7 +61,7 @@ const MyTimesheet = () => {
         const res = await attendancesAPI.getme(month, year);
         console.log("[DEBUG1] API returned records:", res.data.data?.length);
         console.log("[DEBUG1] Sample record:", res.data.data?.[0]);
-        
+
         setAttendanceData(res.data.data || []);
       } catch (error) {
         console.log("[DEBUG1] API ERROR:", error);
@@ -122,7 +122,9 @@ const MyTimesheet = () => {
       toast.success("Xin nghỉ thành công, Vui lòng chờ quản trị duyệt");
     } catch (error) {
       setIsLeaveModalOpen(false);
-      toast.error(`Xin nghỉ thất bại : ${error.response.data.errors[0].message}`, { autoClose: 5000 });
+      // console.log('lỗi API :', error)
+      toast.error(`Xin nghỉ thất bại : ${error.response.data.message}`, { autoClose: 5000 });
+      // toast.error(`Xin nghỉ thất bại `);
       console.log("CÓ LỖI API : ", error.response.data.errors[0].message)
     }
   }
@@ -184,7 +186,7 @@ const MyTimesheet = () => {
     // Tạo map từ API data theo ngày (dùng ISO date làm key)
     const attendanceMap = {};
     console.log("[DEBUG1] Processing", attendanceData.length, "records from API");
-    
+
     attendanceData.forEach((record, index) => {
       // Xử lý nhiều format ngày từ backend
       let dateKey;
@@ -198,12 +200,12 @@ const MyTimesheet = () => {
           dateKey = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
         }
       }
-      
+
       if (dateKey) {
         attendanceMap[dateKey] = record;
       }
     });
-    
+
     console.log("[DEBUG1] Mapped", Object.keys(attendanceMap).length, "unique dates");
     console.log("[DEBUG1] Keys:", Object.keys(attendanceMap).sort());
 
@@ -213,15 +215,15 @@ const MyTimesheet = () => {
       const dateObj = new Date(CURRENT_YEAR, CURRENT_MONTH, i);
       const dayOfWeek = dateObj.getDay();
       const isoDate = `${CURRENT_YEAR}-${pad2(CURRENT_MONTH + 1)}-${pad2(i)}`;
-      
+
       // Lấy dữ liệu từ API theo ISO date key
       const apiData = attendanceMap[isoDate];
-      
+
       // Log chi tiết cho 5 ngày đầu và những ngày có data
       if (i <= 5 || apiData) {
         console.log(`[DEBUG1] Day ${i}: isoDate="${isoDate}", apiData exists=${!!apiData}, checkIn=${apiData?.checkIn}, checkOut=${apiData?.checkOut}`);
       }
-      
+
       let type = "work";
       let status = [];
       let checkIn = null;
@@ -251,16 +253,16 @@ const MyTimesheet = () => {
           type = "work";
           status.push("absent");
         }
-        
+
         // Check late (áp dụng cho tất cả status)
         if (lateMinutes > 0) {
           status.push("late");
         }
-        
+
         // Check OT (áp dụng cho tất cả status)
-        const totalOT = (apiData.finalOtHours?.weekday || 0) + 
-                       (apiData.finalOtHours?.weekend || 0) + 
-                       (apiData.finalOtHours?.holiday || 0);
+        const totalOT = (apiData.finalOtHours?.weekday || 0) +
+          (apiData.finalOtHours?.weekend || 0) +
+          (apiData.finalOtHours?.holiday || 0);
         if (totalOT > 0) {
           status.push("ot");
           otHours = totalOT;
@@ -286,9 +288,9 @@ const MyTimesheet = () => {
         apiData, // Lưu toàn bộ data từ API để dùng sau
       });
     }
-    
+
     console.log("[DEBUG1] Final result: Generated", days.length, "days,", days.filter(d => d.apiData).length, "have data");
-    
+
     return days;
   };
 
@@ -326,17 +328,17 @@ const MyTimesheet = () => {
 
     // Kiểm tra xem đang xem tháng hiện tại hay không
     const isCurrentMonth = CURRENT_YEAR === todayInfo.year && CURRENT_MONTH === todayInfo.month;
-    
+
     // Ngày đã qua (trước ngày hiện tại) - màu xanh
     if (isCurrentMonth && day.day < TODAY) {
       return `${baseClass} bg-green-100 hover:bg-green-200`;
     }
-    
+
     // Ngày trong quá khứ (tháng trước tháng hiện tại)
     if (CURRENT_YEAR < todayInfo.year || (CURRENT_YEAR === todayInfo.year && CURRENT_MONTH < todayInfo.month)) {
       return `${baseClass} bg-green-100 hover:bg-green-200`;
     }
-    
+
     // Ngày trong tương lai - màu trắng
     return `${baseClass} bg-white`;
   };
@@ -380,7 +382,7 @@ const MyTimesheet = () => {
 
         {/* Month Filter */}
         <div className="flex items-center bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
-          <button 
+          <button
             onClick={handlePreviousMonth}
             className="p-2 hover:bg-gray-100 rounded-md text-gray-500 transition-colors"
           >
@@ -389,7 +391,7 @@ const MyTimesheet = () => {
           <span className="px-4 font-semibold text-gray-700 min-w-[140px] text-center">
             Tháng {CURRENT_MONTH + 1}, {CURRENT_YEAR}
           </span>
-          <button 
+          <button
             onClick={handleNextMonth}
             className="p-2 hover:bg-gray-100 rounded-md text-gray-500 transition-colors"
           >
@@ -565,14 +567,14 @@ const MyTimesheet = () => {
                     {day.type === "work" && (() => {
                       // Kiểm tra xem có phải ngày trong tương lai không
                       const isCurrentMonth = CURRENT_YEAR === todayInfo.year && CURRENT_MONTH === todayInfo.month;
-                      const isFutureDay = isCurrentMonth ? day.day > TODAY : 
+                      const isFutureDay = isCurrentMonth ? day.day > TODAY :
                         (CURRENT_YEAR > todayInfo.year || (CURRENT_YEAR === todayInfo.year && CURRENT_MONTH > todayInfo.month));
-                      
+
                       // Nếu là ngày tương lai và không có dữ liệu chấm công, không hiển thị gì
                       if (isFutureDay && !day.checkIn && !day.checkOut) {
                         return null;
                       }
-                      
+
                       return (
                         <>
                           {day.checkIn || day.checkOut ? (
@@ -680,7 +682,7 @@ const MyTimesheet = () => {
                         </span>
                       </div>
                     )}
-                    
+
                     {selectedDate.checkOut && (
                       <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-center gap-2">
@@ -746,10 +748,10 @@ const MyTimesheet = () => {
             {(() => {
               // Kiểm tra xem ngày được chọn có phải là ngày trong quá khứ không
               const isCurrentMonth = CURRENT_YEAR === todayInfo.year && CURRENT_MONTH === todayInfo.month;
-              const isPastDay = isCurrentMonth 
-                ? selectedDate?.day < TODAY 
+              const isPastDay = isCurrentMonth
+                ? selectedDate?.day < TODAY
                 : (CURRENT_YEAR < todayInfo.year || (CURRENT_YEAR === todayInfo.year && CURRENT_MONTH < todayInfo.month));
-              
+
               // Nếu là ngày quá khứ, ẩn nút xin nghỉ
               if (isPastDay) {
                 return (
@@ -762,7 +764,7 @@ const MyTimesheet = () => {
                   </Button>
                 );
               }
-              
+
               // Ngày hiện tại hoặc tương lai, hiển thị cả 2 nút
               return (
                 <>

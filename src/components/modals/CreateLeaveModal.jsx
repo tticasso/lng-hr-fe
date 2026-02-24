@@ -95,10 +95,9 @@ const LeaveRequestModal = ({ onClose, onConfirm, defaultFromDate = "" }) => {
   };
 
   const inputClass = (field) =>
-    `w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 ${
-      errors[field]
-        ? "border-red-500 focus:ring-red-200"
-        : "border-gray-300 focus:ring-blue-500"
+    `w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 ${errors[field]
+      ? "border-red-500 focus:ring-red-200"
+      : "border-gray-300 focus:ring-blue-500"
     }`;
 
   const labelClass =
@@ -143,7 +142,7 @@ const LeaveRequestModal = ({ onClose, onConfirm, defaultFromDate = "" }) => {
             >
               <option value="ANNUAL">Nghỉ phép năm (Annual Leave)</option>
               <option value="UNPAID">Nghỉ không lương (Unpaid Leave)</option>
-              <option value="SICK">Nghỉ ốm / bệnh (Sick Leave)</option>
+              {/* <option value="SICK">Nghỉ ốm / bệnh 123 (Sick Leave)</option> */}
               <option value="MATERNITY">Nghỉ thai sản (Maternity Leave)</option>
             </select>
             <ErrorMsg field="leaveType" />
@@ -248,6 +247,7 @@ const LeaveRequestModal = ({ onClose, onConfirm, defaultFromDate = "" }) => {
                 <option value="">-- Chọn ca --</option>
                 <option value="MORNING">MORNING (08:00 - 12:00)</option>
                 <option value="AFTERNOON">AFTERNOON (13:30 - 17:30)</option>
+                <option value="FULL_DAY">FULL DAY (NGHỈ CẢ NGÀY)</option>
               </select>
               <ErrorMsg field="leaveScope" />
             </div>
