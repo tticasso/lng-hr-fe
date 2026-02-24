@@ -47,14 +47,31 @@ const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh }) => {
   // Handle Update Role
   const handleUpdateRole = async () => {
     if (selectedRole === user.role?._id) return; // Không đổi thì không gọi
+    
+    // Tìm role object từ selectedRole ID
+    const selectedRoleObj = rolesList.find((r) => r._id === selectedRole);
+    const roleName = selectedRoleObj?.name;
+    
+    if (!roleName) {
+      toast.error("Không tìm thấy vai trò");
+      return;
+    }
+    
+    console.log("Đổi vai trò thành:", roleName);
+    console.log("Role ID:", selectedRole);
+    console.log("User ID:", user._id);
+    
     setIsUpdatingRole(true);
     try {
-      // Gọi API update (giả sử endpoint update account hỗ trợ field role)
-      await accountApi.update(user._id, { role: { _id: selectedRole } });
-      toast.success("Cập nhật vai trò thành công!");
-      onRefresh(); 
+      // Gọi API update với roleName
+      const res = await accountApi.updateRole(user._id, roleName);
+      console.log("API RES:", res);
+      toast.success(`Cập nhật vai trò thành công! Vai trò mới: ${roleName}`);
+      onRefresh();
+      onClose(); // Đóng modal sau khi cập nhật thành công
       // eslint-disable-next-line no-unused-vars
     } catch (error) {
+      console.error("Lỗi cập nhật vai trò:", error);
       toast.error("Cập nhật vai trò thất bại");
     } finally {
       setIsUpdatingRole(false);
@@ -123,11 +140,10 @@ const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh }) => {
             </Button>
             <Button
               variant="secondary"
-              className={`flex-1 justify-center ${
-                user.isActive
+              className={`flex-1 justify-center ${user.isActive
                   ? "border-red-200 text-red-600 hover:bg-red-50"
                   : "border-green-200 text-green-600 hover:bg-green-50"
-              }`}
+                }`}
               onClick={() => {
                 onClose();
                 onAction("toggle_status", user);

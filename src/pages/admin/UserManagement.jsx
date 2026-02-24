@@ -35,6 +35,7 @@ const UserManagement = () => {
   const userInfo = user;
   console.log("userManagement, user: ", user);
   const [users, setUsers] = useState([]);
+  const [allUsers, setAllUsers] = useState([]); // Lưu toàn bộ data gốc
   const [rolesList, setRolesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({
@@ -75,24 +76,16 @@ const UserManagement = () => {
       }
     };
     fetchRoles();
+    fetchUsers(); // Gọi fetch users khi mount
   }, []);
 
-  // --- 2. Fetch Users ---
+  // --- 2. Fetch Users (Chỉ gọi 1 lần khi mount) ---
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const params = {
-        page: pagination.page,
-        limit: pagination.limit,
-        ...(filters.search && { search: filters.search }),
-        ...(filters.role && { role: filters.role }),
-      };
-      if (filters.status === "Active") params.isActive = true;
-      if (filters.status === "Locked") params.isActive = false;
-
       // Parallel Fetch: Accounts + Employees
       const [accRes, empRes] = await Promise.all([
-        accountApi.getAll(params),
+        accountApi.getAll({ limit: 1000 }), // Lấy tất cả
         employeeApi.getAll({ limit: 1000 }), // Lấy cache employee để map
       ]);
 
@@ -103,15 +96,17 @@ const UserManagement = () => {
       const merged = accounts.map((acc) => {
         // Tìm employee có account._id trùng với acc._id
         const emp = employees.find((e) => e.accountId?._id === acc._id);
-        console.log("emp : ", emp);
         return { ...acc, employee: emp };
+      
       });
+        console.log('ID USER :',merged)
       console.log("user management, merged: ", merged);
-      setUsers(merged);
+      setAllUsers(merged); // Lưu data gốc
+      setUsers(merged); // Hiển thị ban đầu
       setPagination((prev) => ({
         ...prev,
-        total: accRes.data?.results || 0,
-        totalPages: Math.ceil((accRes.data?.results || 0) / prev.limit) || 1,
+        total: merged.length,
+        totalPages: Math.ceil(merged.length / prev.limit) || 1,
       }));
     } catch (error) {
       console.error(error);
@@ -121,11 +116,56 @@ const UserManagement = () => {
     }
   };
 
+  // --- 3. Local Filter Logic ---
   useEffect(() => {
-    const timer = setTimeout(() => fetchUsers(), 500);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line
-  }, [filters, pagination.page]);
+    let filtered = [...allUsers];
+
+    // Filter by search (username, fullName, email, employeeCode)
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      filtered = filtered.filter((user) => {
+        const username = user.username?.toLowerCase() || "";
+        const fullName = user.employee?.fullName?.toLowerCase() || "";
+        const email = (user.email || user.employee?.workEmail || user.employee?.personalEmail || "").toLowerCase();
+        const empCode = user.employee?.employeeCode?.toLowerCase() || "";
+        
+        return (
+          username.includes(searchLower) ||
+          fullName.includes(searchLower) ||
+          email.includes(searchLower) ||
+          empCode.includes(searchLower)
+        );
+      });
+    }
+
+    // Filter by role
+    if (filters.role) {
+      filtered = filtered.filter((user) => user.role?._id === filters.role);
+    }
+
+    // Filter by status
+    if (filters.status === "Active") {
+      filtered = filtered.filter((user) => user.isActive === true);
+    } else if (filters.status === "Locked") {
+      filtered = filtered.filter((user) => user.isActive === false);
+    }
+
+    // Update pagination
+    setPagination((prev) => ({
+      ...prev,
+      page: 1, // Reset về trang 1 khi filter
+      total: filtered.length,
+      totalPages: Math.ceil(filtered.length / prev.limit) || 1,
+    }));
+
+    setUsers(filtered);
+  }, [filters, allUsers]);
+
+  // --- 4. Paginated Data ---
+  const paginatedUsers = users.slice(
+    (pagination.page - 1) * pagination.limit,
+    pagination.page * pagination.limit
+  );
 
   // --- Handlers ---
   const handleConfirmAction = async () => {
@@ -258,7 +298,7 @@ const UserManagement = () => {
               </tr>
             </thead>
             <tbody className="divide-y bg-white">
-              {users.map((user) => (
+              {paginatedUsers.map((user) => (
                 <tr key={user._id} className="hover:bg-blue-50/30">
                   <td className="p-4">
                     <div className="flex items-center gap-3">
@@ -367,6 +407,69 @@ const UserManagement = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {pagination.totalPages > 1 && (
+          <div className="p-4 border-t bg-gray-50 flex justify-between items-center">
+            <div className="text-sm text-gray-600">
+              Hiển thị {(pagination.page - 1) * pagination.limit + 1} -{" "}
+              {Math.min(pagination.page * pagination.limit, pagination.total)} trong tổng số{" "}
+              {pagination.total} người dùng
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  setPagination((prev) => ({ ...prev, page: prev.page - 1 }))
+                }
+                disabled={pagination.page === 1}
+                className="px-3 py-1 text-sm"
+              >
+                Trước
+              </Button>
+              <div className="flex gap-1">
+                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                  .filter((p) => {
+                    // Hiển thị: trang đầu, trang cuối, và 2 trang xung quanh trang hiện tại
+                    return (
+                      p === 1 ||
+                      p === pagination.totalPages ||
+                      Math.abs(p - pagination.page) <= 1
+                    );
+                  })
+                  .map((p, idx, arr) => (
+                    <React.Fragment key={p}>
+                      {idx > 0 && arr[idx - 1] !== p - 1 && (
+                        <span className="px-2 py-1 text-gray-400">...</span>
+                      )}
+                      <button
+                        onClick={() =>
+                          setPagination((prev) => ({ ...prev, page: p }))
+                        }
+                        className={`px-3 py-1 text-sm rounded ${
+                          pagination.page === p
+                            ? "bg-blue-600 text-white"
+                            : "bg-white border hover:bg-gray-100"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    </React.Fragment>
+                  ))}
+              </div>
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  setPagination((prev) => ({ ...prev, page: prev.page + 1 }))
+                }
+                disabled={pagination.page === pagination.totalPages}
+                className="px-3 py-1 text-sm"
+              >
+                Sau
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* --- MODALS --- */}

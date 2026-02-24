@@ -22,8 +22,12 @@ import { useAuth } from "../context/AuthContext";
 const Sidebar = () => {
   const navigate = useNavigate();
   const role = localStorage.getItem("role");
-  console.log("ROLE :",role)
+  console.log("ROLE :", role);
+  
   const isAdmin = role === "ADMIN";
+  const isHR = role === "HR";
+  const isManager = role === "MANAGER";
+  const isEmployee = role === "EMPLOYEE";
 
   const menuGroups = [
     {
@@ -35,8 +39,8 @@ const Sidebar = () => {
           label: "Lịch làm việc",
           icon: <CalendarCheck2 size={20} />,
         },
-        // Chỉ hiển thị "Yêu cầu của tôi" cho user thường (không phải ADMIN)
-        ...(!isAdmin
+        // Hiển thị "Yêu cầu của tôi" cho EMPLOYEE (không phải ADMIN, HR, MANAGER)
+        ...(isEmployee
           ? [
               {
                 path: "/leave",
@@ -47,37 +51,43 @@ const Sidebar = () => {
           : []),
       ],
     },
-    // Chỉ hiển thị nhóm này cho ADMIN
-    ...(isAdmin
+    // Hiển thị nhóm QUẢN LÝ NHÂN SỰ cho ADMIN, HR, MANAGER
+    ...(isAdmin || isHR || isManager
       ? [
           {
             title: "QUẢN LÝ NHÂN SỰ",
             items: [
-              {
-                path: "/hr/employees",
-                label: "Nhân viên",
-                icon: <Users size={20} />,
-              },
-              {
-                path: "/hr/attendance-admin",
-                label: "Quản lý chấm công",
-                icon: <Coins size={20} />,
-              },
-              {
-                path: "/hr/announcements",
-                label: "Thông báo",
-                icon: <SquareStar size={20} />,
-              },
-              {
-                path: "/hr/recruitment",
-                label: "Tuyển dụng",
-                icon: <BriefcaseBusiness size={20} />,
-              },
-              {
-                path: "/hr/boarding",
-                label: "On/Off Boarding",
-                icon: <Presentation size={20} />,
-              },
+              // ADMIN và HR có đầy đủ menu
+              ...(isAdmin || isHR
+                ? [
+                    {
+                      path: "/hr/employees",
+                      label: "Nhân viên",
+                      icon: <Users size={20} />,
+                    },
+                    {
+                      path: "/hr/attendance-admin",
+                      label: "Quản lý chấm công",
+                      icon: <Coins size={20} />,
+                    },
+                    {
+                      path: "/hr/announcements",
+                      label: "Thông báo",
+                      icon: <SquareStar size={20} />,
+                    },
+                    {
+                      path: "/hr/recruitment",
+                      label: "Tuyển dụng",
+                      icon: <BriefcaseBusiness size={20} />,
+                    },
+                    {
+                      path: "/hr/boarding",
+                      label: "On/Off Boarding",
+                      icon: <Presentation size={20} />,
+                    },
+                  ]
+                : []),
+              // ADMIN, HR, MANAGER đều có "Quản lý yêu cầu"
               {
                 path: "/leave",
                 label: "Quản lý yêu cầu",
@@ -91,8 +101,8 @@ const Sidebar = () => {
       title: "TIỀN LƯƠNG & PHÚC LỢI",
       items: [
         { path: "/payroll", label: "Bảng lương", icon: <DollarSign size={20} /> },
-        // Chỉ hiển thị 2 menu này cho ADMIN
-        ...(isAdmin
+        // Chỉ hiển thị 2 menu này cho ADMIN và HR
+        ...(isAdmin || isHR
           ? [
               { path: "/hr/reports", label: "Báo cáo", icon: <FileText size={20} /> },
               {
@@ -104,7 +114,7 @@ const Sidebar = () => {
           : []),
       ],
     },
-    // Chỉ hiển thị nhóm này cho ADMIN
+    // Chỉ hiển thị nhóm QUẢN TRỊ HỆ THỐNG cho ADMIN (không có HR)
     ...(isAdmin
       ? [
           {
