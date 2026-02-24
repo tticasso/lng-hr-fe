@@ -81,7 +81,7 @@ const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh }) => {
                 {user.employee?.fullName || user.username}
               </h2>
               <p className="text-sm text-gray-500 mb-2">
-                {user.email || user.employee?.workEmail || "No Email"}
+                {user.email || user.employee?.workEmail || "Chưa có email"}
               </p>
               <div className="flex gap-2">
                 <StatusBadge status={user.isActive ? "Active" : "Locked"} />
@@ -100,13 +100,13 @@ const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh }) => {
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Info Cards */}
           <div className="grid grid-cols-2 gap-4">
-            <InfoCard label="Employee ID" value={user.employee?.employeeCode} />
+            <InfoCard label="Mã nhân viên" value={user.employee?.employeeCode} />
             <InfoCard
-              label="Department"
+              label="Phòng ban"
               value={user.employee?.department?.name}
             />
-            <InfoCard label="Created At" value={formatDate(user.createdAt)} />
-            <InfoCard label="Last Login" value={formatDate(user.lastLogin)} />
+            <InfoCard label="Ngày tạo" value={formatDate(user.createdAt)} />
+            <InfoCard label="Đăng nhập lần cuối" value={formatDate(user.lastLogin)} />
           </div>
 
           {/* Quick Actions */}
@@ -119,7 +119,7 @@ const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh }) => {
                 onAction("reset", user);
               }}
             >
-              <RefreshCcw size={16} className="mr-2" /> Reset Password
+              <RefreshCcw size={16} className="mr-2" /> Đặt lại mật khẩu
             </Button>
             <Button
               variant="secondary"
@@ -189,15 +189,15 @@ const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh }) => {
                 <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
                   <tr>
                     <th className="px-4 py-3">Module</th>
-                    <th className="px-4 py-3 text-center">View</th>
-                    <th className="px-4 py-3 text-center">Create</th>
-                    <th className="px-4 py-3 text-center">Update</th>
-                    <th className="px-4 py-3 text-center">Delete</th>
+                    <th className="px-4 py-3 text-center">Xem</th>
+                    <th className="px-4 py-3 text-center">Tạo</th>
+                    <th className="px-4 py-3 text-center">Cập nhật</th>
+                    <th className="px-4 py-3 text-center">Xóa</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y text-gray-600">
                   {/* Mock permission display based on selected role name (visual only) */}
-                  {["System Admin", "User Management", "Reports"].map(
+                  {["Quản trị hệ thống", "Quản lý người dùng", "Báo cáo"].map(
                     (mod, i) => (
                       <tr key={i}>
                         <td className="px-4 py-3 font-medium">{mod}</td>
