@@ -27,11 +27,9 @@ import {
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import StatusBadge from "../../components/common/StatusBadge";
+import EditEmployeeModal from "../../components/modals/EditEmployeeModal";
 import { employeeApi } from "../../apis/employeeApi";
 import { toast } from "react-toastify";
-
-// Import Modal Edit (nếu bạn đã tách file, hoặc giữ logic edit sau)
-// import EditEmployeeModal from "../../components/modals/EditEmployeeModal";
 
 const EmployeeDetail = () => {
   const navigate = useNavigate();
@@ -40,6 +38,9 @@ const EmployeeDetail = () => {
 
   const [employeeData, setEmployeeData] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // State cho Modal Edit
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // --- 1. FETCH DATA ---
   useEffect(() => {
@@ -69,6 +70,29 @@ const EmployeeDetail = () => {
     if (id) fetchEmployeeDetail();
   }, [id, navigate]);
 
+  // --- 2. HANDLERS ---
+  const handleOpenEdit = () => {
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateSuccess = () => {
+    setIsEditModalOpen(false);
+    // Reload employee data
+    const fetchEmployeeDetail = async () => {
+      try {
+        const res = await employeeApi.getById(id);
+        const responseBody = res.data || {};
+        const realData = responseBody.data || responseBody;
+        if (realData) {
+          setEmployeeData(realData);
+        }
+      } catch (error) {
+        console.error("Error reloading employee:", error);
+      }
+    };
+    fetchEmployeeDetail();
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return "--";
     return new Date(dateString).toLocaleDateString("vi-VN");
@@ -81,9 +105,67 @@ const EmployeeDetail = () => {
     }).format(amount || 0);
   };
 
+  // Hàm tính tổng số công chuẩn trong tháng
+  const calculateStandardWorkDays = (month, year, monthlyOffDays = 2) => {
+    const daysInMonth = new Date(year, month, 0).getDate(); // Số ngày trong tháng
+    let workDays = 0;
+    let saturdayCount = 0;
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month - 1, day);
+      const dayOfWeek = date.getDay(); // 0 = Chủ nhật, 6 = Thứ 7
+
+      // Bỏ qua Chủ nhật
+      if (dayOfWeek === 0) continue;
+
+      // Kiểm tra Thứ 7
+      if (dayOfWeek === 6) {
+        saturdayCount++;
+        // Chỉ tính Thứ 7 lẻ (1, 3, 5...) nếu monthlyOffDays = 2
+        // Hoặc tính tất cả Thứ 7 nếu monthlyOffDays = 0
+        if (monthlyOffDays === 2) {
+          // Thứ 7 lẻ (1, 3, 5...) thì làm việc
+          if (saturdayCount % 2 === 1) {
+            workDays++;
+          }
+        } else if (monthlyOffDays === 0) {
+          // Tất cả Thứ 7 đều làm việc
+          workDays++;
+        }
+        // monthlyOffDays = 4 → Tất cả Thứ 7 nghỉ (không tính)
+      } else {
+        // Các ngày từ Thứ 2 đến Thứ 6
+        workDays++;
+      }
+    }
+
+    return workDays;
+  };
+
+  // Hàm tính % chuyên cần
+  const calculateAttendanceRate = (employeeData) => {
+    if (!employeeData?.monthlyStats || employeeData.monthlyStats.length === 0) {
+      return 0;
+    }
+
+    const currentMonth = employeeData.monthlyStats[0];
+    const { month, year, actualWorkDays } = currentMonth;
+    const monthlyOffDays = employeeData.departmentId?.monthlyOffDays || 2;
+
+    // Tính tổng số công chuẩn
+    const standardWorkDays = calculateStandardWorkDays(month, year, monthlyOffDays);
+
+    // Tính % chuyên cần
+    if (standardWorkDays === 0) return 0;
+    const rate = (actualWorkDays / standardWorkDays) * 100;
+
+    return Math.min(100, Math.round(rate * 10) / 10); // Làm tròn 1 chữ số, max 100%
+  };
+
   const employee = employeeData
     ? {
         id: employeeData._id || employeeData.id,
+        employeeCode: employeeData.employeeCode || "N/A", // [MỚI]
         name: employeeData.fullName || "User",
         avatar: employeeData.avatar || "default-avatar.jpg",
         position: employeeData.jobTitle || "N/A",
@@ -95,14 +177,13 @@ const EmployeeDetail = () => {
         status: employeeData.status || "Active",
         joinDate: formatDate(employeeData.startDate),
         contractType: employeeData.contractType || "Hợp đồng lao động",
+        employmentType: employeeData.employmentType || "Full-time", // [MỚI]
 
         // [MỚI] Stats mapping
         stats: {
-          attendanceScore: 98, // Mock
-          lastReview: employeeData.jobLevel
-            ? `Level ${employeeData.jobLevel}`
-            : "N/A",
-          leaveBalance: employeeData.annualLeaveBalance || 0, // [MỚI]
+          attendanceScore: calculateAttendanceRate(employeeData), // Tính từ monthlyStats
+          lastReview: employeeData.jobTitle, // Mock - API không có jobLevel
+          leaveBalance: employeeData.leaveBalance?.currentBalance || 0, // Từ API
           seniority:
             Math.floor(
               (new Date() - new Date(employeeData.startDate)) /
@@ -119,21 +200,20 @@ const EmployeeDetail = () => {
               : employeeData.gender === "Female"
                 ? "Nữ"
                 : "Khác",
-          email: employeeData.account?.username
-            ? `${employeeData.account.username}@company.com`
-            : "---",
+          email: employeeData.workEmail || "---", // [SỬA] Dùng workEmail thay vì account.username
           personalEmail: employeeData.personalEmail,
           phone: employeeData.phoneNumber,
           address: employeeData.address,
           idCard: employeeData.identityCard,
-          taxCode: employeeData.taxIdentification, // [MỚI]
+          taxCode: employeeData.taxIdentification,
+          dependants: employeeData.dependants || 0, // [MỚI]
 
           // Emergency
           emergencyName: employeeData.emergencyContact?.name,
           emergencyPhone: employeeData.emergencyContact?.phone,
           emergencyRelation: employeeData.emergencyContact?.relation,
 
-          // Bank Info [MỚI]
+          // Bank Info
           bankName: employeeData.bankAccount?.bankName,
           bankNumber: employeeData.bankAccount?.accountNumber,
         },
@@ -143,26 +223,29 @@ const EmployeeDetail = () => {
           number: employeeData.contractNumber,
           startDate: formatDate(employeeData.contractStartDate),
           endDate: formatDate(employeeData.contractEndDate),
-          probationEnd: formatDate(employeeData.probationEndDate),
+          probationEnd: "N/A", // API không có probationEndDate
           type: employeeData.contractType,
           workMode: employeeData.workMode,
           workEmail: employeeData.workEmail,
         },
 
-        // Financials [MỚI]
+        // Financials
         financials: {
-          baseSalary: employeeData.baseSalary || 0,
+          baseSalary: 0, // API không trả về baseSalary
           lunchAllowance: employeeData.allowances?.lunch || 0,
           fuelAllowance: employeeData.allowances?.fuel || 0,
+          otherAllowance: employeeData.allowances?.other || 0, // [MỚI]
           currency: employeeData.baseCurrency || "VND",
         },
 
         // Mock Lists (Giữ nguyên vì chưa có API chi tiết)
-        attendance: [
-          { month: "T12", present: 22, late: 1, leave: 0 },
-          { month: "T11", present: 21, late: 0, leave: 1 },
-          { month: "T10", present: 22, late: 2, leave: 0 },
-        ],
+        attendance: employeeData.monthlyStats?.map((stat) => ({
+          month: `T${stat.month}`,
+          year: stat.year,
+          present: stat.actualWorkDays,
+          standardDays: stat.standardWorkDays,
+          rate: stat.attendanceRate,
+        })) || [],
         assets: [
           {
             code: "AST-001",
@@ -194,6 +277,15 @@ const EmployeeDetail = () => {
 
   return (
     <div className="space-y-6">
+      {/* --- EDIT MODAL --- */}
+      {isEditModalOpen && employeeData && (
+        <EditEmployeeModal
+          employee={employeeData}
+          onClose={() => setIsEditModalOpen(false)}
+          onSuccess={handleUpdateSuccess}
+        />
+      )}
+
       {/* Back Button */}
       <button
         onClick={() => navigate(-1)}
@@ -232,6 +324,8 @@ const EmployeeDetail = () => {
               <div className="flex gap-2 text-sm text-gray-500 items-center justify-center sm:justify-start">
                 <span>{employee.departmentId}</span>
                 <span>•</span>
+                <span>Mã NV: {employee.employeeCode}</span>
+                <span>•</span>
                 <span>{employee.contract.workEmail}</span>
               </div>
               <div className="flex gap-4 text-xs text-gray-500 mt-1 justify-center sm:justify-start">
@@ -241,19 +335,21 @@ const EmployeeDetail = () => {
                 <span className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded">
                   <Monitor size={12} /> {employee.contract.workMode}
                 </span>
+                <span className="flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded font-medium">
+                  {employee.employmentType}
+                </span>
               </div>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-3 justify-center sm:justify-end w-full lg:w-auto">
-            <Button variant="secondary" className="text-sm">
+            {/* <Button variant="secondary" className="text-sm">
               <History size={16} className="mr-2" /> Lịch sử
-            </Button>
-            {/* Nút chỉnh sửa có thể gọi Modal EditEmployeeModal tại đây */}
+            </Button> */}
             <Button
               variant="secondary"
               className="text-sm"
-              onClick={() => toast.info("Mở Modal Edit...")}
+              onClick={handleOpenEdit}
             >
               <Edit size={16} className="mr-2" /> Chỉnh sửa
             </Button>
@@ -284,7 +380,7 @@ const EmployeeDetail = () => {
           {activeTab === "overview" && (
             <div className="animate-in fade-in duration-300 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <SummaryCard
-                label="Chấm công (30 ngày)"
+                label="Chấm công"
                 value={`${employee.stats.attendanceScore}%`}
                 sub="Chuyên cần"
                 icon={<Clock size={20} />}
@@ -382,6 +478,10 @@ const EmployeeDetail = () => {
                   value={employee.personal.taxCode}
                   bold
                 />
+                <InfoField
+                  label="Số người phụ thuộc"
+                  value={employee.personal.dependants}
+                />
 
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mt-4">
                   <div className="flex items-center gap-2 mb-3 text-blue-700 font-bold text-sm">
@@ -446,16 +546,13 @@ const EmployeeDetail = () => {
                 <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2">
                   <DollarSign size={16} /> Lương & Phụ cấp
                 </h3>
-                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                  <p className="text-sm text-green-800 uppercase font-semibold mb-1">
-                    Lương cơ bản (Gross)
-                  </p>
-                  <p className="text-2xl font-bold text-green-700">
-                    {formatCurrency(employee.financials.baseSalary)}
+                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                  <p className="text-sm text-yellow-800 flex items-center gap-2">
+                    <AlertTriangle size={14} /> Lương cơ bản chưa được cập nhật từ API
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="bg-gray-50 p-3 rounded border border-gray-200">
                     <p className="text-xs text-gray-500 uppercase mb-1">
                       Phụ cấp ăn trưa
@@ -472,49 +569,67 @@ const EmployeeDetail = () => {
                       {formatCurrency(employee.financials.fuelAllowance)}
                     </p>
                   </div>
+                  <div className="bg-gray-50 p-3 rounded border border-gray-200">
+                    <p className="text-xs text-gray-500 uppercase mb-1">
+                      Phụ cấp khác
+                    </p>
+                    <p className="font-bold text-gray-700">
+                      {formatCurrency(employee.financials.otherAllowance)}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* 4. ATTENDANCE (Mock) */}
+          {/* 4. ATTENDANCE (Real Data from API) */}
           {activeTab === "attendance" && (
             <div className="animate-in fade-in duration-300">
-              <div className="p-4 bg-yellow-50 text-yellow-800 rounded mb-4 text-sm flex items-center gap-2">
-                <AlertTriangle size={16} /> Dữ liệu chấm công đang được đồng bộ.
-                Dưới đây là dữ liệu mẫu.
-              </div>
               <h3 className="font-bold text-gray-800 mb-6">
                 Thống kê chuyên cần
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {employee.attendance.map((m, idx) => (
-                  <Card key={idx} className="bg-gray-50 border border-gray-200">
-                    <h4 className="font-bold text-gray-700 mb-4 flex justify-between">
-                      Tháng {m.month}
-                      <span className="text-xs bg-white border px-2 py-0.5 rounded text-gray-500">
-                        22 công chuẩn
-                      </span>
-                    </h4>
-                    <div className="space-y-3">
-                      <div>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-green-700 font-medium">
-                            Đi làm đúng giờ
-                          </span>
-                          <span className="font-bold">{m.present}</span>
+              {employee.attendance.length === 0 ? (
+                <div className="p-4 bg-yellow-50 text-yellow-800 rounded text-sm flex items-center gap-2">
+                  <AlertTriangle size={16} /> Chưa có dữ liệu chấm công.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {employee.attendance.map((m, idx) => (
+                    <Card key={idx} className="bg-gray-50 border border-gray-200">
+                      <h4 className="font-bold text-gray-700 mb-4 flex justify-between">
+                        Tháng {m.month}/{m.year}
+                        <span className="text-xs bg-white border px-2 py-0.5 rounded text-gray-500">
+                          {m.standardDays} công chuẩn
+                        </span>
+                      </h4>
+                      <div className="space-y-3">
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-green-700 font-medium">
+                              Số ngày đi làm
+                            </span>
+                            <span className="font-bold">{m.present} ngày</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-green-500 h-2 rounded-full"
+                              style={{ width: `${Math.min(100, (m.present / m.standardDays) * 100)}%` }}
+                            ></div>
+                          </div>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-green-500 h-2 rounded-full"
-                            style={{ width: `${(m.present / 22) * 100}%` }}
-                          ></div>
+                        <div className="pt-2 border-t border-gray-200">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-gray-500">Tỷ lệ chuyên cần</span>
+                            <span className="text-lg font-bold text-blue-600">
+                              {m.rate.toFixed(1)}%
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

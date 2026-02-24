@@ -74,12 +74,25 @@ const AttendanceAdmin = () => {
       const res = await attendancesAPI.updateAtendances(id, payload)
       toast.success("SỬA DỮ LIỆU CHẤM CÔNG THÀNH CÔNG")
       console.log("DỮ LIỆU API :", res)
+      
+      // Refresh attendance list
+      const { month, year } = getMonthYear(selectedPeriod);
+      console.log("🔄 Refreshing attendance data...");
+      const listRes = await attendancesAPI.getall(month, year);
+      setAttendanceData(listRes.data?.data || listRes.data || []);
+      
+      // Refresh employee detail if panel is open
+      if (selectedEmployee) {
+        console.log("🔄 Refreshing employee detail...");
+        const detailRes = await attendancesAPI.getbyid(month, year, selectedEmployee.employeeId);
+        setEmployeeDetail(detailRes.data.data || []);
+      }
+      
+      console.log("✅ Data refreshed successfully");
     } catch (error) {
       toast.error("SỬA DỮ LIỆU CHẤM CÔNG THẤT BẠI")
+      console.error("❌ Error:", error);
     }
-
-    // TODO: Call API to update attendance
-    // await attendancesAPI.update(selectedAttendanceLog._id, formData);
   };
 
   // Parse month và year từ selectedPeriod (format: "YYYY-MM")
