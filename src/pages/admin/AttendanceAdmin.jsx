@@ -22,6 +22,7 @@ import * as XLSX from "xlsx";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import StatusBadge from "../../components/common/StatusBadge";
+import EditAttendanceModal from "../../components/modals/EditAttendanceModal";
 import { toast } from "react-toastify";
 import { attendancesAPI } from "../../apis/attendancesAPI";
 
@@ -34,11 +35,52 @@ const AttendanceAdmin = () => {
   const [loading, setLoading] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [employeeDetail, setEmployeeDetail] = useState(null); // Chi tiết chấm công theo ngày
+  const [selectedAttendanceLog, setSelectedAttendanceLog] = useState(null); // Dòng chấm công đang chỉnh sửa
 
   // =========================
   // IMPORT EXCEL: UI HOOKS
   // =========================
   const fileInputRef = useRef(null);
+
+  // =========================
+  // HANDLE OPEN EDIT MODAL
+  // =========================
+  const handleOpenEditModal = (log) => {
+    setSelectedAttendanceLog(log);
+    setIsEditModalOpen(true);
+  };
+
+  // =========================
+  // HANDLE SAVE ATTENDANCE EDIT
+  // =========================
+  const handleSaveAttendance = async (formData) => {
+    console.group("💾 [SAVE ATTENDANCE] Updating attendance record");
+    console.log("🆔 Attendance ID:", selectedAttendanceLog?._id);
+    console.log("📋 Form Data CHECKIN:", formData.checkIn);
+    console.log("👤 Employee ID:", selectedEmployee?.employeeId);
+    console.log("👤 Employee Code:", selectedEmployee?.employeeCode);
+    console.log("📅 Date:", selectedAttendanceLog?.date);
+    console.groupEnd();
+
+    try {
+      const id = selectedAttendanceLog?._id;
+      const payload =
+      {
+        checkIn: formData.checkIn,
+        checkOut: formData.checkOut,
+        status: "PRESENT",
+        note: formData.reason
+      }
+      const res = await attendancesAPI.updateAtendances(id, payload)
+      toast.success("SỬA DỮ LIỆU CHẤM CÔNG THÀNH CÔNG")
+      console.log("DỮ LIỆU API :", res)
+    } catch (error) {
+      toast.error("SỬA DỮ LIỆU CHẤM CÔNG THẤT BẠI")
+    }
+
+    // TODO: Call API to update attendance
+    // await attendancesAPI.update(selectedAttendanceLog._id, formData);
+  };
 
   // Parse month và year từ selectedPeriod (format: "YYYY-MM")
   const getMonthYear = (period) => {
@@ -52,18 +94,18 @@ const AttendanceAdmin = () => {
     try {
       setSelectedEmployee(employee);
       setLoadingDetail(true);
-      
+
       const { month, year } = getMonthYear(selectedPeriod);
-      
+
       console.log("CHECK : ", employee);
       console.log(`🔍 Fetching detail for employee: ${employee.employeeCode} (${month}/${year})`);
-      
+
       const res = await attendancesAPI.getbyid(month, year, employee.employeeId);
       console.log("✅ DỮ LIỆU API CHI TIẾT:", res.data.data);
-      
+
       // Set dữ liệu vào state
       setEmployeeDetail(res.data.data || []);
-      
+
       // toast.success(`Đã tải chi tiết chấm công cho ${employee.fullName}`);
     } catch (error) {
       console.error("❌ Lỗi khi load chi tiết:", error);
@@ -80,14 +122,14 @@ const AttendanceAdmin = () => {
       try {
         setLoading(true);
         const { month, year } = getMonthYear(selectedPeriod);
-        
+
         console.log(`📅 Fetching attendance data for: ${month}/${year}`);
         const res = await attendancesAPI.getall(month, year);
-        
+
         console.log("✅ DỮ LIỆU CHẤM CÔNG:", res.data);
         setAttendanceData(res.data?.data || res.data || []);
-        
-      //  toast.success(`Đã tải dữ liệu chấm công tháng 123 ${month}/${year}`);
+
+        //  toast.success(`Đã tải dữ liệu chấm công tháng 123 ${month}/${year}`);
       } catch (error) {
         console.error("❌ DỮ LIỆU CHẤM CÔNG có lỗi:", error);
         toast.error("Không thể tải dữ liệu chấm công");
@@ -96,7 +138,7 @@ const AttendanceAdmin = () => {
         setLoading(false);
       }
     };
-    
+
     callAPIattendances();
   }, [selectedPeriod])
 
@@ -123,19 +165,19 @@ const AttendanceAdmin = () => {
     try {
       setLoading(true);
       toast.info("Đang xử lý file Excel...");
-      
+
       // Parse Excel để lấy fromDate và toDate
       console.log("[IMPORT] Step 1: Reading file buffer...");
       const buf = await file.arrayBuffer();
       console.log("[IMPORT] Buffer size:", buf.byteLength, "bytes");
-      
+
       console.log("[IMPORT] Step 2: Parsing Excel workbook...");
       const wb = XLSX.read(buf, { type: "array" });
       console.log("[IMPORT] Workbook sheets:", wb.SheetNames);
 
       const sheetName = wb.SheetNames?.[0];
       console.log("[IMPORT] Using sheet:", sheetName);
-      
+
       const ws = wb.Sheets?.[sheetName];
       if (!ws) {
         console.error("[IMPORT] ❌ Cannot read sheet from workbook");
@@ -188,7 +230,7 @@ const AttendanceAdmin = () => {
       console.log("[IMPORT] ✅ API Response:", response);
 
       toast.success(`Import thành công ${normalized.length} bản ghi chấm công`);
-      
+
       // Reload data after successful import
       console.log("[IMPORT] Step 8: Reloading attendance data...");
       const { month, year } = getMonthYear(selectedPeriod);
@@ -203,7 +245,7 @@ const AttendanceAdmin = () => {
         response: err?.response?.data,
         stack: err?.stack
       });
-      
+
       const errorMsg = err?.response?.data?.message || err?.message || "Import thất bại. Vui lòng kiểm tra format file Excel.";
       toast.error(errorMsg);
     } finally {
@@ -221,7 +263,7 @@ const AttendanceAdmin = () => {
     console.log("[PARSE] Starting parseAttendanceGrid...");
     console.log("[PARSE] Grid length:", grid.length);
     console.log("[PARSE] Fallback period:", fallbackPeriodYYYYMM);
-    
+
     if (!Array.isArray(grid) || grid.length === 0) {
       console.warn("[PARSE] ⚠️ Empty or invalid grid");
       return [];
@@ -369,10 +411,10 @@ const AttendanceAdmin = () => {
 
   const detectContext = (grid, fallbackPeriodYYYYMM) => {
     console.log("[DETECT] Starting context detection...");
-    
+
     const headerRowIndex = findHeaderRowIndex(grid);
     console.log("[DETECT] Header row index:", headerRowIndex);
-    
+
     if (headerRowIndex === -1) {
       console.warn("[DETECT] ⚠️ Header row not found");
       return {
@@ -389,7 +431,7 @@ const AttendanceAdmin = () => {
 
     const headerRow = grid[headerRowIndex] || [];
     console.log("[DETECT] Header row content:", headerRow);
-    
+
     const sttCol = findColIndex(headerRow, ["stt"]);
     const empCodeCol = findColIndex(headerRow, [
       "mã nhân viên",
@@ -420,10 +462,10 @@ const AttendanceAdmin = () => {
     // Tìm dòng ngày (1..31)
     const dayRowIndex = findDayRowIndex(grid, headerRowIndex);
     console.log("[DETECT] Day row index:", dayRowIndex);
-    
+
     const dayRow = grid[dayRowIndex] || [];
     console.log("[DETECT] Day row content:", dayRow);
-    
+
     const dayColumns = extractDayColumns(dayRow);
     console.log("[DETECT] Day columns extracted:", dayColumns.length, "days");
     console.log("[DETECT] Day columns detail:", dayColumns);
@@ -545,7 +587,7 @@ const AttendanceAdmin = () => {
   const extractDateRangeFromGrid = (grid, fallbackPeriodYYYYMM) => {
     console.log("[DATE_RANGE] Extracting date range from grid...");
     console.log("[DATE_RANGE] Fallback period:", fallbackPeriodYYYYMM);
-    
+
     // Tìm text kiểu: "Từ ngày 17/12/2025 đến ngày 17/12/2025"
     const max = Math.min(grid.length, 40);
     const regex =
@@ -822,8 +864,8 @@ const AttendanceAdmin = () => {
 
           <Button
             className={`w-48 flex items-center gap-2 text-white shadow-md ${isPeriodLocked
-                ? "bg-gray-500 hover:bg-gray-600"
-                : "bg-blue-600 hover:bg-blue-700"
+              ? "bg-gray-500 hover:bg-gray-600"
+              : "bg-blue-600 hover:bg-blue-700"
               }`}
             onClick={() => setIsPeriodLocked(!isPeriodLocked)}
           >
@@ -904,7 +946,7 @@ const AttendanceAdmin = () => {
                 {attendanceData.map((emp, index) => {
                   // Generate avatar từ fullName
                   const avatar = emp.fullName?.substring(0, 2).toUpperCase() || "??";
-                  
+
                   return (
                     <tr
                       key={emp.employeeId || emp._id || index}
@@ -1042,107 +1084,106 @@ const AttendanceAdmin = () => {
                 </div>
               ) : (
                 <table className="w-full text-left text-sm">
-                <thead className="bg-white sticky top-0 z-10 border-b border-gray-100 shadow-sm">
-                  <tr>
-                    <th className="p-4 text-gray-500 font-medium">Ngày</th>
-                    <th className="p-4 text-gray-500 font-medium text-center">
-                      Vào
-                    </th>
-                    <th className="p-4 text-gray-500 font-medium text-center">
-                      Ra
-                    </th>
-                    <th className="p-4 text-gray-500 font-medium">
-                      Trạng thái
-                    </th>
-                    <th className="p-4"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {employeeDetail && employeeDetail.length > 0 ? (
-                    employeeDetail.map((log, idx) => {
-                      // Format date
-                      const dateObj = new Date(log.date);
-                      const formattedDate = dateObj.toLocaleDateString('vi-VN');
-                      
-                      // Determine status display
-                      let statusBadge;
-                      if (!log.checkOut) {
-                        statusBadge = (
-                          <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded font-bold">
-                            Thiếu ra
-                          </span>
-                        );
-                      } else if (log.lateMinutes > 0) {
-                        statusBadge = (
-                          <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded font-bold">
-                            Muộn {log.lateMinutes}p
-                          </span>
-                        );
-                      } else if (log.status === "LEAVE") {
-                        statusBadge = (
-                          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold">
-                            Nghỉ phép
-                          </span>
-                        );
-                      } else if (log.status === "ABSENT") {
-                        statusBadge = (
-                          <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded font-bold">
-                            Vắng
-                          </span>
-                        );
-                      } else {
-                        statusBadge = (
-                          <span className="text-xs text-green-600 font-medium">
-                            Bình thường
-                          </span>
-                        );
-                      }
-                      
-                      return (
-                        <tr key={log._id || idx} className="hover:bg-gray-50 group">
-                          <td className="p-4 font-medium text-gray-800">
-                            {formattedDate}
-                          </td>
-                          <td className="p-4 text-center font-mono text-gray-600">
-                            {log.checkIn || "--:--"}
-                          </td>
-                          <td
-                            className={`p-4 text-center font-mono font-bold ${
-                              !log.checkOut ? "text-red-500" : "text-gray-600"
-                            }`}
-                          >
-                            {log.checkOut || "--:--"}
-                          </td>
-                          <td className="p-4">
-                            {statusBadge}
-                            {log.deductedBlocks > 0 && (
-                              <span className="ml-2 text-xs text-red-500">
-                                (-{log.deductedBlocks} block)
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-4 text-right">
-                            <button
-                              onClick={() => setIsEditModalOpen(true)}
-                              className="p-1.5 hover:bg-blue-100 text-blue-600 rounded transition"
-                              title="Sửa công"
-                            >
-                              <Edit size={14} />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  ) : (
+                  <thead className="bg-white sticky top-0 z-10 border-b border-gray-100 shadow-sm">
                     <tr>
-                      <td colSpan="5" className="p-8 text-center text-gray-400">
-                        <Clock size={32} className="mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">Không có dữ liệu chấm công</p>
-                      </td>
+                      <th className="p-4 text-gray-500 font-medium">Ngày</th>
+                      <th className="p-4 text-gray-500 font-medium text-center">
+                        Vào
+                      </th>
+                      <th className="p-4 text-gray-500 font-medium text-center">
+                        Ra
+                      </th>
+                      <th className="p-4 text-gray-500 font-medium">
+                        Trạng thái
+                      </th>
+                      <th className="p-4"></th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {employeeDetail && employeeDetail.length > 0 ? (
+                      employeeDetail.map((log, idx) => {
+                        // Format date
+                        const dateObj = new Date(log.date);
+                        const formattedDate = dateObj.toLocaleDateString('vi-VN');
+
+                        // Determine status display
+                        let statusBadge;
+                        if (!log.checkOut) {
+                          statusBadge = (
+                            <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded font-bold">
+                              Thiếu ra
+                            </span>
+                          );
+                        } else if (log.lateMinutes > 0) {
+                          statusBadge = (
+                            <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded font-bold">
+                              Muộn {log.lateMinutes}p
+                            </span>
+                          );
+                        } else if (log.status === "LEAVE") {
+                          statusBadge = (
+                            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold">
+                              Nghỉ phép
+                            </span>
+                          );
+                        } else if (log.status === "ABSENT") {
+                          statusBadge = (
+                            <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded font-bold">
+                              Vắng
+                            </span>
+                          );
+                        } else {
+                          statusBadge = (
+                            <span className="text-xs text-green-600 font-medium">
+                              Bình thường
+                            </span>
+                          );
+                        }
+
+                        return (
+                          <tr key={log._id || idx} className="hover:bg-gray-50 group">
+                            <td className="p-4 font-medium text-gray-800">
+                              {formattedDate}
+                            </td>
+                            <td className="p-4 text-center font-mono text-gray-600">
+                              {log.checkIn || "--:--"}
+                            </td>
+                            <td
+                              className={`p-4 text-center font-mono font-bold ${!log.checkOut ? "text-red-500" : "text-gray-600"
+                                }`}
+                            >
+                              {log.checkOut || "--:--"}
+                            </td>
+                            <td className="p-4">
+                              {statusBadge}
+                              {log.deductedBlocks > 0 && (
+                                <span className="ml-2 text-xs text-red-500">
+                                  (-{log.deductedBlocks} block)
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-4 text-right">
+                              <button
+                                onClick={() => handleOpenEditModal(log)}
+                                className="p-1.5 hover:bg-blue-100 text-blue-600 rounded transition"
+                                title="Sửa công"
+                              >
+                                <Edit size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan="5" className="p-8 text-center text-gray-400">
+                          <Clock size={32} className="mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">Không có dữ liệu chấm công</p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               )}
             </div>
           </div>
@@ -1150,76 +1191,13 @@ const AttendanceAdmin = () => {
       )}
 
       {/* --- EDIT MODAL (POPUP) --- */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-              <h3 className="font-bold text-gray-800">
-                Hiệu chỉnh dữ liệu công
-              </h3>
-              <button onClick={() => setIsEditModalOpen(false)}>
-                <X size={20} className="text-gray-400 hover:text-red-500" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                    Giờ vào (Mới)
-                  </label>
-                  <input
-                    type="time"
-                    className="w-full border border-gray-300 rounded-lg p-2 font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                    defaultValue="08:30"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                    Giờ ra (Mới)
-                  </label>
-                  <input
-                    type="time"
-                    className="w-full border border-gray-300 rounded-lg p-2 font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                    defaultValue="17:30"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Lý do điều chỉnh <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  rows="3"
-                  className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                  placeholder="Nhập lý do (VD: Quên chấm công, Máy hỏng...)"
-                ></textarea>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Đính kèm minh chứng
-                </label>
-                <div className="border border-dashed border-gray-300 rounded-lg p-3 flex items-center justify-center text-gray-400 hover:bg-gray-50 cursor-pointer transition">
-                  <Paperclip size={16} className="mr-2" />{" "}
-                  <span className="text-xs">Upload ảnh/file</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
-              <Button
-                variant="secondary"
-                onClick={() => setIsEditModalOpen(false)}
-              >
-                Hủy
-              </Button>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2">
-                <Save size={16} /> Lưu thay đổi
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <EditAttendanceModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        attendanceLog={selectedAttendanceLog}
+        employee={selectedEmployee}
+        onSave={handleSaveAttendance}
+      />
     </div>
   );
 };

@@ -165,7 +165,7 @@ const Announcements = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">
-            Company Announcements
+            Quản lý thông báo (Not yet active)
           </h1>
           <p className="text-sm text-gray-500">
             Quản lý thông báo nội bộ gửi đến toàn công ty.

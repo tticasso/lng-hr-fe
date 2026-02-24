@@ -14,7 +14,7 @@ export const attendancesAPI = {
     getme: (month, year) => {
         return apiClient.get(`/attendances/my-attendance?month=${month}&year=${year}`);
     },
-    
+
     // Import attendance từ Excel
     import: (formData) => {
         return apiClient.post('/attendances/import-excel', formData, {
@@ -23,5 +23,10 @@ export const attendancesAPI = {
             },
         });
     },
+
+    updateAtendances: (id, payload) => {
+        return apiClient.patch(`/attendances/${id}`, payload);
+    },
+
 
 };
