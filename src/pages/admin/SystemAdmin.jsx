@@ -20,6 +20,88 @@ import Card from "../../components/common/Card";
 import Button from "../../components/common/Button"; // Đảm bảo component này tồn tại
 
 const SystemAdmin = () => {
+  // --- MAPPING TIẾNG VIỆT ---
+  const permissionNameMap = {
+    // AUTH Module
+    "LOGIN_SUCCESS": "Đăng nhập thành công",
+    "LOGIN_FAILED": "Đăng nhập thất bại",
+    
+    // ADMIN Module
+    "UPDATE_ACCOUNT": "Cập nhật tài khoản",
+    "UPDATE_EMPLOYEE": "Cập nhật nhân viên",
+    "UPDATE_EMPLOYEE_BY_HR": "Cập nhật nhân viên (HR)",
+    
+    // EMPLOYEE Module
+    "READ_MY_PROFILE": "Xem hồ sơ của tôi",
+    "UPDATE_MY_PROFILE": "Cập nhật hồ sơ của tôi",
+    "UPDATE_PROFILE": "Cập nhật hồ sơ",
+    "READ_EMPLOYEES": "Xem danh sách nhân viên",
+    "WRITE_EMPLOYEES": "Chỉnh sửa nhân viên",
+    "CREATE_EMPLOYEE": "Tạo nhân viên",
+    "DELETE_EMPLOYEE": "Xóa nhân viên",
+    
+    // DEPARTMENT Module
+    "READ_DEPARTMENTS": "Xem phòng ban",
+    "WRITE_DEPARTMENTS": "Chỉnh sửa phòng ban",
+    "CREATE_DEPARTMENT": "Tạo phòng ban",
+    "UPDATE_DEPARTMENT": "Cập nhật phòng ban",
+    "DELETE_DEPARTMENT": "Xóa phòng ban",
+    
+    // ATTENDANCE Module
+    "READ_MY_ATTENDANCE": "Xem chấm công của tôi",
+    "READ_ATTENDANCE": "Xem chấm công",
+    "WRITE_ATTENDANCE": "Chỉnh sửa chấm công",
+    "CREATE_ATTENDANCE": "Tạo chấm công",
+    "UPDATE_ATTENDANCE": "Cập nhật chấm công",
+    "DELETE_ATTENDANCE": "Xóa chấm công",
+    "APPROVE_ATTENDANCE": "Duyệt chấm công",
+    
+    // REQUEST Module
+    "CREATE_REQUEST": "Tạo yêu cầu",
+    "READ_MY_REQUEST": "Xem yêu cầu của tôi",
+    "READ_REQUESTS": "Xem danh sách yêu cầu",
+    "APPROVE_REQUEST": "Duyệt yêu cầu",
+    "DELETE_REQUEST": "Xóa yêu cầu",
+    "UPDATE_REQUEST": "Cập nhật yêu cầu",
+    
+    // PAYROLL Module
+    "RUN_PAYROLL": "Chạy bảng lương",
+    "READ_PAYROLLS": "Xem bảng lương",
+    "READ_MY_PAYSLIP": "Xem phiếu lương của tôi",
+    "CREATE_PAYROLL": "Tạo bảng lương",
+    "UPDATE_PAYROLL": "Cập nhật bảng lương",
+    "DELETE_PAYROLL": "Xóa bảng lương",
+    
+    // SYSTEM Module
+    "MANAGE_SYSTEM": "Quản lý hệ thống",
+    "MANAGE_ROLES": "Quản lý vai trò",
+    "MANAGE_PERMISSIONS": "Quản lý quyền hạn",
+    
+    // LEAVE Module
+    "CREATE_LEAVE": "Tạo đơn nghỉ",
+    "READ_LEAVE": "Xem đơn nghỉ",
+    "UPDATE_LEAVE": "Cập nhật đơn nghỉ",
+    "DELETE_LEAVE": "Xóa đơn nghỉ",
+    "APPROVE_LEAVE": "Duyệt đơn nghỉ",
+    
+    // OT Module
+    "CREATE_OT": "Tạo đơn OT",
+    "READ_OT": "Xem đơn OT",
+    "UPDATE_OT": "Cập nhật đơn OT",
+    "DELETE_OT": "Xóa đơn OT",
+    "APPROVE_OT": "Duyệt đơn OT",
+    
+    // USER Module
+    "CREATE_USER": "Tạo người dùng",
+    "READ_USER": "Xem người dùng",
+    "UPDATE_USER": "Cập nhật người dùng",
+    "DELETE_USER": "Xóa người dùng",
+  };
+
+  const getVietnameseName = (permName) => {
+    return permissionNameMap[permName] || permName;
+  };
+
   // --- STATE ---
   const [roles, setRoles] = useState([]);
   const [permissions, setPermissions] = useState([]);
@@ -104,6 +186,7 @@ const SystemAdmin = () => {
     if (!newRoleName.trim()) return;
     try {
       const res = await roleApi.create({ name: newRoleName });
+      console.log('API: ',res)
       toast.success("Create Role Success");
 
       // Xử lý response linh hoạt
@@ -372,7 +455,7 @@ const SystemAdmin = () => {
                   <span className="text-blue-600">{selectedRole.name}</span>
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">
-                  Quản lý các quyền hạn cho vai trò này.
+                  Quản lý các quyền hạn cho vai trò này .
                 </p>
               </div>
 
@@ -458,7 +541,7 @@ const SystemAdmin = () => {
                                   <p
                                     className={`text-sm font-medium ${isAssigned ? "text-blue-800" : "text-gray-700"}`}
                                   >
-                                    {perm.name}
+                                    {getVietnameseName(perm.name)}
                                   </p>
                                   <p className="text-xs text-gray-500 mt-0.5">
                                     {perm.description ||
