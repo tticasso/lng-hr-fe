@@ -31,4 +31,10 @@ export const accountApi = {
   resetPassword: (accountId) => {
     return apiClient.patch("/accounts/reset-password", { accountId });
   },
+
+  //update role
+  updateRole: (id, roleName) => {
+    return apiClient.put(`/accounts/${id}`, {roleName:roleName});
+  },
+
 };

@@ -142,6 +142,25 @@ const MyLeave = () => {
         return false;
     }, [role]);
 
+    const isHR = useMemo(() => {
+        if (typeof role === "string") return role === "HR";
+        if (Array.isArray(role)) return role.includes("HR");
+        if (role?.name) return role.name === "HR";
+        return false;
+    }, [role]);
+
+    const isManager = useMemo(() => {
+        if (typeof role === "string") return role === "MANAGER";
+        if (Array.isArray(role)) return role.includes("MANAGER");
+        if (role?.name) return role.name === "MANAGER";
+        return false;
+    }, [role]);
+
+    // Kiểm tra có quyền duyệt không (ADMIN, HR, MANAGER)
+    const canApprove = useMemo(() => {
+        return isAdmin || isHR || isManager;
+    }, [isAdmin, isHR, isManager]);
+
     const searchQuery = useMemo(() => filters.search.trim().toLowerCase(), [filters.search]);
     const otSearchQuery = useMemo(
         () => otFilters.searchName.trim().toLowerCase(),
@@ -160,8 +179,12 @@ const MyLeave = () => {
             const raw = localStorage.getItem("role");
             let res;
 
-            if (raw === "ADMIN") res = await leaveAPI.getbyADMIN();
-            else res = await leaveAPI.getbyUSER();
+            // ADMIN, HR, MANAGER gọi API getbyADMIN, còn lại gọi getbyUSER
+            if (raw === "ADMIN" || raw === "HR" || raw === "MANAGER") {
+                res = await leaveAPI.getbyADMIN();
+            } else {
+                res = await leaveAPI.getbyUSER();
+            }
 
             const root = res?.data?.data?.data ? res.data.data : res?.data;
             const rows = root?.data || [];
@@ -191,8 +214,12 @@ const MyLeave = () => {
             const raw = localStorage.getItem("role");
             let res;
 
-            if (raw === "ADMIN") res = await OTApi.getALL();
-            else res = await OTApi.get();
+            // ADMIN, HR, MANAGER gọi API getALL, còn lại gọi get
+            if (raw === "ADMIN" || raw === "HR" || raw === "MANAGER") {
+                res = await OTApi.getALL();
+            } else {
+                res = await OTApi.get();
+            }
 
             const root = res?.data?.data?.data ? res.data.data : res?.data;
             const rows = root?.data || root || [];
@@ -308,8 +335,8 @@ const MyLeave = () => {
         setApproveOTModal({ isOpen: false, otData: null });
     };
 
-    const colSpanCount = isAdmin ? 10 : 9;
-    const otColSpanCount = isAdmin ? 10 : 9;
+    const colSpanCount = canApprove ? 10 : 9;
+    const otColSpanCount = canApprove ? 10 : 9;
 
     return (
         <div className="h-[calc(100vh-100px)] flex flex-col gap-6">
@@ -449,7 +476,7 @@ const MyLeave = () => {
                                     <th className="p-4">Lý do</th>
                                     <th className="p-4">Trạng thái</th>
                                     <th className="p-4">Ngày tạo</th>
-                                    {isAdmin && <th className="p-4 text-center">Action</th>}
+                                    {canApprove && <th className="p-4 text-center">Action</th>}
                                 </tr>
                             </thead>
 
@@ -509,7 +536,7 @@ const MyLeave = () => {
 
                                                 <td className="p-4 text-xs text-gray-500">{formatDateTime(lv.createdAt)}</td>
 
-                                                {isAdmin && (
+                                                {canApprove && (
                                                     <td className="p-4">
                                                         <div className="flex justify-center gap-2">
                                                             <button
@@ -641,7 +668,7 @@ const MyLeave = () => {
                                     <th className="p-4">Lý do</th>
                                     <th className="p-4">Trạng thái</th>
                                     <th className="p-4">Ngày tạo</th>
-                                    {isAdmin && <th className="p-4 text-center">Action</th>}
+                                    {canApprove && <th className="p-4 text-center">Action</th>}
                                 </tr>
                             </thead>
 
@@ -664,7 +691,7 @@ const MyLeave = () => {
                                 ) : (
                                     filteredOTs.map((ot) => {
                                         const st = normalizeStatus(ot?.status);
-                                        const canApprove = isAdmin && st === "PENDING";
+                                        const canApproveOT = canApprove && st === "PENDING";
 
                                         return (
                                             <tr
@@ -705,14 +732,14 @@ const MyLeave = () => {
                                                     {formatDateTime(ot?.createdAt)}
                                                 </td>
 
-                                                {isAdmin && (
+                                                {canApprove && (
                                                     <td className="p-4">
                                                         <div className="flex justify-center">
                                                             <button
-                                                                disabled={!canApprove}
+                                                                disabled={!canApproveOT}
                                                                 onClick={() => openApproveOTModal(ot)}
                                                                 className={`p-2 rounded border text-xs font-semibold inline-flex items-center gap-1
-                                  ${canApprove
+                                  ${canApproveOT
                                                                         ? "text-green-600 border-green-200 hover:bg-green-50"
                                                                         : "text-gray-300 border-gray-200 cursor-not-allowed"
                                                                     }`}
