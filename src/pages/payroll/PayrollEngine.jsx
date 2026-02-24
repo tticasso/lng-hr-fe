@@ -105,7 +105,8 @@ const PayrollEngine = () => {
     <div className="h-[calc(100vh-100px)] flex flex-col gap-6">
       {/* --- HEADER --- */}
       <div className="shrink-0">
-        <h1 className="text-2xl font-bold text-gray-800">Payroll Engine</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Công cụ tính lương(Not yet active)</h1>
+        
         <p className="text-sm text-gray-500">
           Hệ thống tính toán và chốt lương tự động
         </p>

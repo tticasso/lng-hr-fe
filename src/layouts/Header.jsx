@@ -246,7 +246,7 @@ const Header = () => {
                   className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b last:border-b-0 border-gray-100"
                 >
                   <p className="text-sm font-medium text-gray-900">{result.label}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{result.path}</p>
+                  {/* <p className="text-xs text-gray-500 mt-0.5">{result.path}</p> */}
                 </button>
               ))}
             </div>

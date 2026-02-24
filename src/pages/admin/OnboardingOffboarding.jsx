@@ -176,7 +176,7 @@ const OnboardingOffboarding = () => {
       <div className="flex justify-between items-center shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">
-            Onboarding & Offboarding
+            Onboarding & Offboarding(Not yet active)
           </h1>
           <p className="text-sm text-gray-500">
             Quản lý quy trình nhân sự vào / ra

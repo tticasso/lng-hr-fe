@@ -165,7 +165,7 @@ const Recruitment = () => {
       {/* --- HEADER --- */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Recruitment</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Quản lý tuyển dụng (Not yet active)</h1>
           <p className="text-sm text-gray-500">
             Quản lý tin tuyển dụng & theo dõi ứng viên
           </p>

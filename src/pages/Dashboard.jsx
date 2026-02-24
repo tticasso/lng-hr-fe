@@ -199,21 +199,21 @@ const Dashboard = () => {
   const summaryStats = [
     {
       label: "Ngày công thực tế",
-      value: mySheetData?.work?.totalDays?.toFixed(1) || "0.0",
+      value: mySheetData?.work?.totalDays?.toFixed(2) || "0.00",
       unit: "công",
       icon: <Briefcase size={18} className="text-blue-600" />,
       bg: "bg-blue-100",
     },
     {
       label: "Giờ tăng ca (OT)",
-      value: mySheetData?.overtime?.totalHours?.toFixed(1) || "0.0",
+      value: mySheetData?.overtime?.totalHours?.toFixed(2) || "0.00",
       unit: "giờ",
       icon: <Clock size={18} className="text-orange-600" />,
       bg: "bg-orange-100",
     },
     {
       label: "Phép năm còn lại",
-      value: mySheetData?.leave?.remaining?.toFixed(1) || "0.0",
+      value: mySheetData?.leave?.remaining?.toFixed(2) || "0.00",
       unit: "ngày",
       icon: <Coffee size={18} className="text-green-600" />,
       bg: "bg-green-100",
