@@ -24,12 +24,12 @@ const dateToISO = (date) => {
   return `${y}-${m}-${d}`;
 };
 
-const LeaveRequestModal = ({ onClose, onConfirm, defaultFromDate = "" }) => {
+const LeaveRequestModal = ({ onClose, onConfirm, defaultFromDate = "", defaultLeaveType = "ANNUAL" }) => {
   const [isShortLeave, setIsShortLeave] = useState(false);
 
   // ✅ formData lưu ISO để payload luôn chuẩn
   const [formData, setFormData] = useState({
-    leaveType: "ANNUAL",
+    leaveType: defaultLeaveType,
     fromDate: defaultFromDate, // ISO
     toDate: "", // ISO
     reason: "",
@@ -38,15 +38,15 @@ const LeaveRequestModal = ({ onClose, onConfirm, defaultFromDate = "" }) => {
 
   const [errors, setErrors] = useState({});
 
-  // ✅ Sync ngày từ Timesheet mỗi lần mở modal với ngày khác
+  // ✅ Sync ngày và loại nghỉ từ Timesheet mỗi lần mở modal
   useEffect(() => {
-    if (!defaultFromDate) return;
     setFormData((p) => ({
       ...p,
-      fromDate: defaultFromDate,
-      toDate: p.toDate || defaultFromDate,
+      leaveType: defaultLeaveType,
+      fromDate: defaultFromDate || p.fromDate,
+      toDate: defaultFromDate ? (p.toDate || defaultFromDate) : p.toDate,
     }));
-  }, [defaultFromDate]);
+  }, [defaultFromDate, defaultLeaveType]);
 
   const validate = () => {
     const e = {};
