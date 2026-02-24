@@ -148,6 +148,12 @@ const MyTimesheet = () => {
     setIsLeaveModalOpen(true);
   };
 
+  // ✅ Xác định loại nghỉ mặc định dựa trên số phép còn lại
+  const defaultLeaveType = useMemo(() => {
+    const remaining = timesheetData?.leave?.remaining || 0;
+    return remaining > 0 ? "ANNUAL" : "UNPAID";
+  }, [timesheetData?.leave?.remaining]);
+
 
 
   const CURRENT_YEAR = selectedYear;
@@ -364,6 +370,7 @@ const MyTimesheet = () => {
       {isLeaveModalOpen && (
         <LeaveRequestModal
           defaultFromDate={defaultFromDate}
+          defaultLeaveType={defaultLeaveType}
           onClose={() => setIsLeaveModalOpen(false)}
           onConfirm={(payload) => {
             CallleaveAPI(payload)
