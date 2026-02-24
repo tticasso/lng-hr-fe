@@ -182,20 +182,20 @@ const UserManagement = () => {
       {/* Header */}
       <div className="flex justify-between items-center shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">User Management</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Quản lý người dùng</h1>
           <p className="text-sm text-gray-500">
             Quản lý tài khoản ({pagination.total})
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" className="flex gap-2 items-center">
-            <Download size={18} /> Export
+            <Download size={18} /> Xuất dữ liệu
           </Button>
           <Button
             className="bg-blue-600 text-white flex gap-2 items-center"
             onClick={() => setIsCreateOpen(true)}
           >
-            <Plus size={18} /> Create Account
+            <Plus size={18} /> Tạo tài khoản
           </Button>
         </div>
       </div>
@@ -210,7 +210,7 @@ const UserManagement = () => {
             />
             <input
               className="pl-9 pr-4 py-2 w-full border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Search user..."
+              placeholder="Tìm kiếm người dùng..."
               onChange={(e) =>
                 setFilters({ ...filters, search: e.target.value })
               }
@@ -220,7 +220,7 @@ const UserManagement = () => {
             className="border rounded-lg px-3 text-sm outline-none"
             onChange={(e) => setFilters({ ...filters, role: e.target.value })}
           >
-            <option value="">All Roles</option>
+            <option value="">Tất cả vai trò</option>
             {rolesList.map((r) => (
               <option key={r._id} value={r._id}>
                 {r.name}
@@ -231,9 +231,9 @@ const UserManagement = () => {
             className="border rounded-lg px-3 text-sm outline-none"
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
           >
-            <option value="">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Locked">Locked</option>
+            <option value="">Tất cả trạng thái</option>
+            <option value="Active">Hoạt động</option>
+            <option value="Locked">Đã khóa</option>
           </select>
           <Button variant="secondary" className="px-3" onClick={fetchUsers}>
             {loading ? (
@@ -248,13 +248,13 @@ const UserManagement = () => {
           <table className="w-full text-left text-sm border-collapse">
             <thead className="bg-white border-b text-xs uppercase text-gray-500 font-semibold sticky top-0 z-10">
               <tr>
-                <th className="p-4">User Info</th>
-                <th className="p-4">Username</th>
+                <th className="p-4">Thông tin người dùng</th>
+                <th className="p-4">Tên đăng nhập</th>
                 <th className="p-4">Email</th>
-                <th className="p-4">Role</th>
-                <th className="p-4">Status</th>
-                <th className="p-4">Last Login</th>
-                <th className="p-4 text-center">Actions</th>
+                <th className="p-4">Vai trò</th>
+                <th className="p-4">Trạng thái</th>
+                <th className="p-4">Đăng nhập lần cuối</th>
+                <th className="p-4 text-center">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y bg-white">
@@ -271,14 +271,14 @@ const UserManagement = () => {
                           {user.employee?.accountId?._id ===
                           userInfo?.accountId?._id ? (
                             <span className="text-[10px] pl-1 text-gray-500 italic font-extralight">
-                              (you)
+                              (bạn)
                             </span>
                           ) : (
                             ""
                           )}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {user.employee?.employeeCode || "No Code"}
+                          {user.employee?.employeeCode || "Chưa có mã"}
                         </p>
                       </div>
                     </div>
@@ -317,14 +317,14 @@ const UserManagement = () => {
                       <button
                         onClick={() => setSelectedUser(user)}
                         className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
-                        title="Detail"
+                        title="Chi tiết"
                       >
                         <Eye size={16} />
                       </button>
                       <button
                         onClick={() => setActionData({ type: "reset", user })}
                         className="p-1.5 text-orange-500 hover:bg-orange-50 rounded"
-                        title="Reset Pass"
+                        title="Đặt lại mật khẩu"
                       >
                         <RefreshCcw size={16} />
                       </button>
@@ -333,6 +333,7 @@ const UserManagement = () => {
                           setActionData({ type: "toggle_status", user })
                         }
                         className={`p-1.5 rounded ${!user.isActive ? "text-green-600 hover:bg-green-50" : "text-red-500 hover:bg-red-50"}`}
+                        title={!user.isActive ? "Mở khóa" : "Khóa tài khoản"}
                       >
                         {!user.isActive ? (
                           <Unlock size={16} />
@@ -346,6 +347,7 @@ const UserManagement = () => {
                             setActionData({ type: "delete", user })
                           }
                           className="p-1.5 text-gray-400 hover:text-red-600 rounded"
+                          title="Xóa"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -353,6 +355,7 @@ const UserManagement = () => {
                         <button
                           disabled={true}
                           className="p-1.5 text-gray-400 cursor-not-allowed"
+                          title="Không thể xóa chính mình"
                         >
                           <Trash2 size={16} disabled />
                         </button>
