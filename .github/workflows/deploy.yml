@@ -10,16 +10,37 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      # 1️⃣ Checkout source
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - uses: actions/setup-node@v3
+      # 2️⃣ Setup Node
+      - name: Setup Node
+        uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      - run: npm install
-      - run: npm run build
+      # 3️⃣ Install dependencies
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Deploy build
+      # 4️⃣ Build project
+      - name: Build project
+        run: npm run build
+
+      # 5️⃣ Ensure target folder exists + clear old build
+      - name: Prepare VPS folder
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            mkdir -p /var/www/lng-hr-fe
+            rm -rf /var/www/lng-hr-fe/*
+
+      # 6️⃣ Upload new build
+      - name: Upload new build
         uses: appleboy/scp-action@v0.1.4
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -28,7 +49,8 @@ jobs:
           source: "dist/*"
           target: "/var/www/lng-hr-fe"
 
-      - name: Reload nginx
+      # 7️⃣ Reload Nginx
+      - name: Reload Nginx
         uses: appleboy/ssh-action@v0.1.6
         with:
           host: ${{ secrets.VPS_HOST }}
