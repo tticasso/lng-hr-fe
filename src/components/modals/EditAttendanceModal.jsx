@@ -115,7 +115,8 @@ const EditAttendanceModal = ({ isOpen, onClose, attendanceLog, employee, onSave 
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Đính kèm minh chứng(chưa sử dụng)
+              Đính kèm minh chứng
+              <span className="text-red-500"> (chưa sử dụng)</span>
             </label>
             <label
               htmlFor="attachment-upload"

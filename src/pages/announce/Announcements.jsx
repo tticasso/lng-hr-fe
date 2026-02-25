@@ -125,9 +125,8 @@ const Announcements = () => {
     };
     return (
       <span
-        className={`px-2.5 py-0.5 rounded text-[11px] font-bold border uppercase tracking-wide ${
-          styles[tag] || styles["Others"]
-        }`}
+        className={`px-2.5 py-0.5 rounded text-[11px] font-bold border uppercase tracking-wide ${styles[tag] || styles["Others"]
+          }`}
       >
         {tag}
       </span>
@@ -165,7 +164,8 @@ const Announcements = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">
-            Quản lý thông báo (Not yet active)
+            Quản lý thông báo
+            <span className="text-red-500"> (Not yet active)</span>
           </h1>
           <p className="text-sm text-gray-500">
             Quản lý thông báo nội bộ gửi đến toàn công ty.
@@ -261,7 +261,7 @@ const Announcements = () => {
                   </td>
                   <td className="p-4">
                     {item.status === "Published" ||
-                    item.status === "Archived" ? (
+                      item.status === "Archived" ? (
                       <div className="w-full max-w-[120px]">
                         <div className="flex justify-between text-xs mb-1">
                           <span className="font-bold text-gray-700">

@@ -170,26 +170,24 @@ const MyPayslip = () => {
       // Thu nhập
       incomes: [
         { 
-          label: "Lương cơ bản (Base Salary)", 
-          value: calculatedBaseSalary,
+          label: "Lương cơ bản ", 
+          value: selectedPayroll.baseSalary || 0,
         },
         { 
-          label: `Lương theo ngày công (${selectedPayroll.actualWorkDays?.toFixed(2) || 0}/${selectedPayroll.standardWorkDays} ngày × ${formatCurrency(selectedPayroll.dailyRate || 0)})`, 
-          value: (selectedPayroll.dailyRate || 0) * (selectedPayroll.actualWorkDays || 0),
+          label: `Lương theo công (${(selectedPayroll.actualWorkDays || 0).toFixed(2)}/${selectedPayroll.standardWorkDays || 0} ngày)`, 
+          value: selectedPayroll.salaryFromWork || 0,
         },
         { 
           label: "Phụ cấp (Tổng)", 
           value: selectedPayroll.totalAllowance || 0,
-          note: "⚠️ Chỉ có tổng, cần breakdown: lunch, fuel, etc."
         },
         { 
-          label: `Làm thêm giờ (OT) - ${(selectedPayroll.otHours?.weekday || 0) + (selectedPayroll.otHours?.weekend || 0) + (selectedPayroll.otHours?.holiday || 0)}h`, 
+          label: `Làm thêm giờ (OT) - ${
+            typeof selectedPayroll.otHours === 'object' 
+              ? ((selectedPayroll.otHours?.weekday || 0) + (selectedPayroll.otHours?.weekend || 0) + (selectedPayroll.otHours?.holiday || 0))
+              : (selectedPayroll.otHours || 0)
+          }h`, 
           value: selectedPayroll.otPay || 0 
-        },
-        { 
-          label: "Thưởng hiệu suất (KPI)", 
-          value: 0,
-          note: "⚠️ THIẾU: bonus/kpi trong API"
         },
       ],
       
@@ -197,36 +195,20 @@ const MyPayslip = () => {
       deductions: [
         { 
           label: "BHXH (8%)", 
-          value: 0,
-          note: "⚠️ THIẾU: socialInsurance breakdown"
+          value: selectedPayroll.insurance?.bhxh || 0,
         },
         { 
           label: "BHYT (1.5%)", 
-          value: 0,
-          note: "⚠️ THIẾU: healthInsurance breakdown"
+          value: selectedPayroll.insurance?.bhyt || 0,
         },
         { 
           label: "BHTN (1%)", 
-          value: 0,
-          note: "⚠️ THIẾU: unemploymentInsurance breakdown"
-        },
-        { 
-          label: "Thuế TNCN tạm tính", 
-          value: 0,
-          note: "⚠️ THIẾU: personalIncomeTax breakdown"
-        },
-        { 
-          label: "Phạt đi muộn", 
-          value: selectedPayroll.latePenaltyAmount || 0 
-        },
-        { 
-          label: "Khấu trừ khác", 
-          value: selectedPayroll.totalDeductedBlocks || 0 
+          value: selectedPayroll.insurance?.bhtn || 0,
         },
       ],
       
-      totalIncome: calculatedBaseSalary + (selectedPayroll.totalAllowance || 0) + (selectedPayroll.otPay || 0),
-      totalDeduction: selectedPayroll.totalDeduction || 0,
+      totalIncome: selectedPayroll.grossIncome || 0,
+      totalDeduction: selectedPayroll.insurance?.total || 0,
       netSalary: selectedPayroll.netIncome || 0,
     };
   };
