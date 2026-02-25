@@ -6,6 +6,7 @@ import logoLNG from "../../assets/LNG.png";
 import { authApi } from "../../apis/authApi";
 import { employeeApi } from "../../apis/employeeApi"; // Import employeeApi
 import { setAuthToken } from "../../apis/apiClient"; // Import hàm set header
+import { toast } from "react-toastify";
 
 const Login = () => {
   const { loginUser } = useAuth();
@@ -72,18 +73,21 @@ const Login = () => {
       if (employeeData.isProfileUpdated == false) {
         // Nếu chưa cập nhật -> Chuyển sang trang Profile
         // console.log("this is false");
+        toast.success("ĐĂNG NHẬP THÀNH CÔNG")
         navigate("/profile");
       } else {
+        toast.success("ĐĂNG NHẬP THÀNH CÔNG")
         // Nếu đã cập nhật -> Chuyển về Dashboard (hoặc trang trước đó)
         navigate(from, { replace: true });
       }
     } catch (err) {
+      toast.error("ĐĂNG NHẬP THẤT BẠI, VUI LÒNG KIỂM TRA LẠI")
       console.error("Login Flow Error:", err);
-      setError(
-        err.response?.data?.message ||
-        err.message ||
-        "Đăng nhập thất bại. Vui lòng kiểm tra lại.",
-      );
+      // setError(
+      //   err.response?.data?.message ||
+      //   err.message ||
+      //   "Đăng nhập thất bại. Vui lòng kiểm tra lại.",
+      // );
     } finally {
       setLoading(false);
     }

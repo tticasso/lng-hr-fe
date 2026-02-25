@@ -223,6 +223,25 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
+  // Format number with dots (1.000.000)
+  const formatNumberWithDots = (value) => {
+    if (!value && value !== 0) return "";
+    const numValue = value.toString().replace(/\./g, "");
+    return numValue.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
+
+  // Handle money input change
+  const handleMoneyChange = (e) => {
+    const { name, value } = e.target;
+    // Remove all dots and parse to number
+    const numericValue = value.replace(/\./g, "");
+    setFormData((prev) => ({
+      ...prev,
+      [name]: numericValue ? Number(numericValue) : 0,
+    }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -753,11 +772,12 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                   <div>
                     <label className={labelClass}>Lương cơ bản (VND)</label>
                     <input
-                      type="number"
+                      type="text"
                       name="baseSalary"
-                      value={formData.baseSalary}
-                      onChange={handleChange}
+                      value={formatNumberWithDots(formData.baseSalary)}
+                      onChange={handleMoneyChange}
                       className={`${inputClass("baseSalary")} font-bold text-blue-600`}
+                      placeholder="0"
                     />
                     <ErrorMsg field="baseSalary" />
                   </div>
@@ -765,21 +785,23 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                     <div>
                       <label className={labelClass}>Phụ cấp ăn trưa</label>
                       <input
-                        type="number"
+                        type="text"
                         name="lunchAllowance"
-                        value={formData.lunchAllowance}
-                        onChange={handleChange}
+                        value={formatNumberWithDots(formData.lunchAllowance)}
+                        onChange={handleMoneyChange}
                         className={inputClass("lunchAllowance")}
+                        placeholder="0"
                       />
                     </div>
                     <div>
                       <label className={labelClass}>Phụ cấp xăng xe</label>
                       <input
-                        type="number"
+                        type="text"
                         name="fuelAllowance"
-                        value={formData.fuelAllowance}
-                        onChange={handleChange}
+                        value={formatNumberWithDots(formData.fuelAllowance)}
+                        onChange={handleMoneyChange}
                         className={inputClass("fuelAllowance")}
+                        placeholder="0"
                       />
                     </div>
                   </div>

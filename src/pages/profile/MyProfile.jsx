@@ -30,7 +30,6 @@ import { authApi } from "../../apis/authApi";
 
 // --- CÁC REGEX CHUẨN VIỆT NAM ---
 const VIETNAM_PHONE_REGEX = /^(\+84|0)(3|5|7|8|9)[0-9]{8}$/;
-const IDENTITY_CARD_REGEX = /^(\d{9}|\d{12})$/;
 
 const MyProfile = () => {
   const { user, refreshProfile } = useAuth();
@@ -70,7 +69,6 @@ const MyProfile = () => {
       // Bổ sung các field thiếu với giá trị mặc định
       const enrichedUser = {
         ...user,
-        identityCard: user.identityCard || "",
         baseSalary: user.baseSalary || 0,
         contractStartDate: user.contractStartDate || user.startDate,
         contractEndDate: user.contractEndDate || null,
@@ -90,7 +88,6 @@ const MyProfile = () => {
             : "",
           phoneNumber: user.phoneNumber || "",
           address: user.address || "",
-          identityCard: user.identityCard || "",
           personalEmail: user.personalEmail || "",
           emergencyName: user.emergencyContact?.name || "",
           emergencyPhone: user.emergencyContact?.phone || "",
@@ -121,14 +118,6 @@ const MyProfile = () => {
       isValid = false;
     } else if (!VIETNAM_PHONE_REGEX.test(formData.phoneNumber)) {
       newErrors.phoneNumber = "SĐT không đúng định dạng VN.";
-      isValid = false;
-    }
-
-    if (!formData.identityCard) {
-      newErrors.identityCard = "Vui lòng nhập số CCCD/CMND.";
-      isValid = false;
-    } else if (!IDENTITY_CARD_REGEX.test(formData.identityCard)) {
-      newErrors.identityCard = "CCCD phải bao gồm đúng 9 hoặc 12 chữ số.";
       isValid = false;
     }
 
@@ -353,23 +342,6 @@ const MyProfile = () => {
                     <option value="Female">Nữ</option>
                     <option value="Other">Khác</option>
                   </select>
-                </InputGroup>
-
-                <InputGroup
-                  label="CCCD/CMND"
-                  required
-                  error={errors.identityCard}
-                >
-                  <input
-                    type="text"
-                    name="identityCard"
-                    value={formData.identityCard}
-                    onChange={handleInputChange}
-                    className={
-                      errors.identityCard ? errorInputClassName : inputClassName
-                    }
-                    placeholder="9 hoặc 12 chữ số"
-                  />
                 </InputGroup>
               </div>
             </div>
@@ -623,10 +595,6 @@ const MyProfile = () => {
                           ? "Nữ"
                           : "Khác"
                     }
-                  />
-                  <ProfileField
-                    label="CCCD/CMND"
-                    value={profile.identityCard}
                   />
                   <ProfileField
                     label="Mã số thuế"

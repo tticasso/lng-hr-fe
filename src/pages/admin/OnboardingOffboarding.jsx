@@ -176,8 +176,12 @@ const OnboardingOffboarding = () => {
       <div className="flex justify-between items-center shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">
-            Onboarding & Offboarding(Not yet active)
+             Onboarding & Offboarding
+            <span className="text-red-500"> (Not yet active)</span>
           </h1>
+          {/* <h1 className="text-2xl font-bold text-gray-800">
+            Onboarding & Offboarding(Not yet active)
+          </h1> */}
           <p className="text-sm text-gray-500">
             Quản lý quy trình nhân sự vào / ra
           </p>
@@ -201,10 +205,9 @@ const OnboardingOffboarding = () => {
             setSelectedId(onboardingList[0].id);
           }}
           className={`flex items-center gap-2 px-6 py-2 rounded-md text-sm font-bold transition-all
-            ${
-              activeTab === "onboarding"
-                ? "bg-white text-blue-600 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
+            ${activeTab === "onboarding"
+              ? "bg-white text-blue-600 shadow-sm"
+              : "text-gray-500 hover:text-gray-700"
             }
           `}
         >
@@ -216,10 +219,9 @@ const OnboardingOffboarding = () => {
             setSelectedId(offboardingList[0].id);
           }}
           className={`flex items-center gap-2 px-6 py-2 rounded-md text-sm font-bold transition-all
-            ${
-              activeTab === "offboarding"
-                ? "bg-white text-orange-600 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
+            ${activeTab === "offboarding"
+              ? "bg-white text-orange-600 shadow-sm"
+              : "text-gray-500 hover:text-gray-700"
             }
           `}
         >
@@ -246,22 +248,20 @@ const OnboardingOffboarding = () => {
                 onClick={() => setSelectedId(item.id)}
                 className={`
                        p-4 rounded-lg cursor-pointer border transition-all hover:shadow-md
-                       ${
-                         selectedId === item.id
-                           ? "bg-blue-50 border-blue-200 ring-1 ring-blue-100"
-                           : "bg-white border-gray-100 hover:bg-gray-50"
-                       }
+                       ${selectedId === item.id
+                    ? "bg-blue-50 border-blue-200 ring-1 ring-blue-100"
+                    : "bg-white border-gray-100 hover:bg-gray-50"
+                  }
                     `}
               >
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-3">
                     <div
                       className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm
-                             ${
-                               activeTab === "onboarding"
-                                 ? "bg-blue-100 text-blue-600"
-                                 : "bg-orange-100 text-orange-600"
-                             }
+                             ${activeTab === "onboarding"
+                          ? "bg-blue-100 text-blue-600"
+                          : "bg-orange-100 text-orange-600"
+                        }
                           `}
                     >
                       {item.avatar}
@@ -307,11 +307,10 @@ const OnboardingOffboarding = () => {
                     </span>
                     <div className="w-16 h-1.5 bg-gray-200 rounded-full mt-1">
                       <div
-                        className={`h-1.5 rounded-full ${
-                          activeTab === "onboarding"
+                        className={`h-1.5 rounded-full ${activeTab === "onboarding"
                             ? "bg-blue-500"
                             : "bg-orange-500"
-                        }`}
+                          }`}
                         style={{ width: `${item.progress}%` }}
                       ></div>
                     </div>
@@ -331,11 +330,10 @@ const OnboardingOffboarding = () => {
                 <div className="flex gap-4">
                   <div
                     className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl font-bold shadow-sm
-                          ${
-                            activeTab === "onboarding"
-                              ? "bg-white text-blue-600 border border-blue-100"
-                              : "bg-white text-orange-600 border border-orange-100"
-                          }
+                          ${activeTab === "onboarding"
+                        ? "bg-white text-blue-600 border border-blue-100"
+                        : "bg-white text-orange-600 border border-orange-100"
+                      }
                        `}
                   >
                     {currentDetail.avatar}
@@ -366,11 +364,10 @@ const OnboardingOffboarding = () => {
                   <div className="flex items-center gap-2">
                     <div className="w-32 h-2 bg-gray-200 rounded-full">
                       <div
-                        className={`h-2 rounded-full transition-all duration-500 ${
-                          activeTab === "onboarding"
+                        className={`h-2 rounded-full transition-all duration-500 ${activeTab === "onboarding"
                             ? "bg-green-500"
                             : "bg-orange-500"
-                        }`}
+                          }`}
                         style={{ width: `${currentDetail.progress}%` }}
                       ></div>
                     </div>
@@ -402,11 +399,10 @@ const OnboardingOffboarding = () => {
                         <div
                           className={`
                                    w-8 h-8 rounded-full border-2 flex items-center justify-center shrink-0 bg-white transition-colors z-10
-                                   ${
-                                     task.status === "Done"
-                                       ? "border-green-500 text-green-500 bg-green-50"
-                                       : "border-gray-300 text-transparent hover:border-blue-400"
-                                   }
+                                   ${task.status === "Done"
+                              ? "border-green-500 text-green-500 bg-green-50"
+                              : "border-gray-300 text-transparent hover:border-blue-400"
+                            }
                                 `}
                         >
                           <CheckSquare
@@ -420,20 +416,18 @@ const OnboardingOffboarding = () => {
                         {/* Task Card */}
                         <div
                           className={`flex-1 p-4 rounded-lg border transition-all
-                                   ${
-                                     task.status === "Done"
-                                       ? "bg-gray-50 border-gray-200 opacity-70"
-                                       : "bg-white border-gray-200 shadow-sm hover:border-blue-300"
-                                   }
+                                   ${task.status === "Done"
+                              ? "bg-gray-50 border-gray-200 opacity-70"
+                              : "bg-white border-gray-200 shadow-sm hover:border-blue-300"
+                            }
                                 `}
                         >
                           <div className="flex justify-between items-start mb-2">
                             <h4
-                              className={`font-semibold text-sm ${
-                                task.status === "Done"
+                              className={`font-semibold text-sm ${task.status === "Done"
                                   ? "text-gray-500 line-through"
                                   : "text-gray-800"
-                              }`}
+                                }`}
                             >
                               {task.title}
                             </h4>
@@ -447,9 +441,8 @@ const OnboardingOffboarding = () => {
                               </span>
                             </div>
                             <div
-                              className={`flex items-center gap-1 font-medium ${
-                                task.status === "Pending" ? "text-red-500" : ""
-                              }`}
+                              className={`flex items-center gap-1 font-medium ${task.status === "Pending" ? "text-red-500" : ""
+                                }`}
                             >
                               <Clock size={12} /> Deadline: {task.deadline}
                             </div>

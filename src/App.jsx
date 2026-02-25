@@ -29,6 +29,7 @@ import RequireAuth from "./components/RequireAuth";
 import Register from "./pages/auth/Register";
 import PublicRoute from "./components/PublicRoute";
 import MyLeave from "./pages/announce/Myleave";
+import AllPayRoll from "./pages/payroll/AllPayRoll";
 function App() {
   return (
     <>
@@ -40,7 +41,7 @@ function App() {
               <PublicRoute>
                 <Login />
               </PublicRoute>
-            }/>
+            } />
 
           {/* Route gốc dùng MainLayout */}
           <Route
@@ -55,11 +56,13 @@ function App() {
 
             <Route index element={<Dashboard />} />
 
+            <Route path="allpayroll" element={<AllPayRoll />} />
+            
             <Route path="profile" element={<MyProfile />} />
             <Route path="timesheet" element={<MyTimesheet />} />
             <Route path="payroll" element={<MyPayslip />} />
             <Route path="requests" element={<MyRequests />} />
-             <Route path="leave" element={<MyLeave />} />
+            <Route path="leave" element={<MyLeave />} />
 
             <Route
               path="admin"

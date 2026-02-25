@@ -15,6 +15,7 @@ import {
   Landmark,
   SquareStar,
   LogOut,
+  FileSpreadsheet,
 } from "lucide-react";
 import logoLNG from "../assets/LNG.png";
 import { useAuth } from "../context/AuthContext";
@@ -23,7 +24,7 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const role = localStorage.getItem("role");
   console.log("ROLE :", role);
-  
+
   const isAdmin = role === "ADMIN";
   const isHR = role === "HR";
   const isManager = role === "MANAGER";
@@ -42,60 +43,60 @@ const Sidebar = () => {
         // Hiển thị "Yêu cầu của tôi" cho EMPLOYEE (không phải ADMIN, HR, MANAGER)
         ...(isEmployee
           ? [
-              {
-                path: "/leave",
-                label: "Yêu cầu của tôi",
-                icon: <Plane size={20} />,
-              },
-            ]
+            {
+              path: "/leave",
+              label: "Yêu cầu của tôi",
+              icon: <Plane size={20} />,
+            },
+          ]
           : []),
       ],
     },
     // Hiển thị nhóm QUẢN LÝ NHÂN SỰ cho ADMIN, HR, MANAGER
     ...(isAdmin || isHR || isManager
       ? [
-          {
-            title: "QUẢN LÝ NHÂN SỰ",
-            items: [
-              // ADMIN và HR có đầy đủ menu
-              ...(isAdmin || isHR
-                ? [
-                    {
-                      path: "/hr/employees",
-                      label: "Nhân viên",
-                      icon: <Users size={20} />,
-                    },
-                    {
-                      path: "/hr/attendance-admin",
-                      label: "Quản lý chấm công",
-                      icon: <Coins size={20} />,
-                    },
-                    {
-                      path: "/hr/announcements",
-                      label: "Thông báo",
-                      icon: <SquareStar size={20} />,
-                    },
-                    {
-                      path: "/hr/recruitment",
-                      label: "Tuyển dụng",
-                      icon: <BriefcaseBusiness size={20} />,
-                    },
-                    {
-                      path: "/hr/boarding",
-                      label: "On/Off Boarding",
-                      icon: <Presentation size={20} />,
-                    },
-                  ]
-                : []),
-              // ADMIN, HR, MANAGER đều có "Quản lý yêu cầu"
-              {
-                path: "/leave",
-                label: "Quản lý yêu cầu",
-                icon: <Plane size={20} />,
-              },
-            ],
-          },
-        ]
+        {
+          title: "QUẢN LÝ NHÂN SỰ",
+          items: [
+            // ADMIN và HR có đầy đủ menu
+            ...(isAdmin || isHR
+              ? [
+                {
+                  path: "/hr/employees",
+                  label: "Nhân viên",
+                  icon: <Users size={20} />,
+                },
+                {
+                  path: "/hr/attendance-admin",
+                  label: "Quản lý chấm công",
+                  icon: <Coins size={20} />,
+                },
+                {
+                  path: "/hr/announcements",
+                  label: "Thông báo",
+                  icon: <SquareStar size={20} />,
+                },
+                {
+                  path: "/hr/recruitment",
+                  label: "Tuyển dụng",
+                  icon: <BriefcaseBusiness size={20} />,
+                },
+                {
+                  path: "/hr/boarding",
+                  label: "On/Off Boarding",
+                  icon: <Presentation size={20} />,
+                },
+              ]
+              : []),
+            // ADMIN, HR, MANAGER đều có "Quản lý yêu cầu"
+            {
+              path: "/leave",
+              label: "Quản lý yêu cầu",
+              icon: <Plane size={20} />,
+            },
+          ],
+        },
+      ]
       : []),
     {
       title: "TIỀN LƯƠNG & PHÚC LỢI",
@@ -104,35 +105,40 @@ const Sidebar = () => {
         // Chỉ hiển thị 2 menu này cho ADMIN và HR
         ...(isAdmin || isHR
           ? [
-              { path: "/hr/reports", label: "Báo cáo", icon: <FileText size={20} /> },
-              {
-                path: "/hr/payroll-engine",
-                label: "Công cụ tính lương",
-                icon: <Landmark size={20} />,
-              },
-            ]
+            { path: "/hr/reports", label: "Báo cáo", icon: <FileText size={20} /> },
+            {
+              path: "/hr/payroll-engine",
+              label: "Công cụ tính lương",
+              icon: <Landmark size={20} />,
+            },
+            {
+              path: "allpayroll",
+              label: "Bảng Lương theo tháng",
+              icon: <FileSpreadsheet size={20} />,
+            },
+          ]
           : []),
       ],
     },
     // Chỉ hiển thị nhóm QUẢN TRỊ HỆ THỐNG cho ADMIN (không có HR)
     ...(isAdmin
       ? [
-          {
-            title: "QUẢN TRỊ HỆ THỐNG",
-            items: [
-              {
-                path: "/admin/user-management",
-                label: "Quản lý người dùng",
-                icon: <UserCog size={20} />,
-              },
-              {
-                path: "/admin/system-admin",
-                label: "Cài đặt hệ thống",
-                icon: <Settings size={20} />,
-              },
-            ],
-          },
-        ]
+        {
+          title: "QUẢN TRỊ HỆ THỐNG",
+          items: [
+            {
+              path: "/admin/user-management",
+              label: "Quản lý người dùng",
+              icon: <UserCog size={20} />,
+            },
+            {
+              path: "/admin/system-admin",
+              label: "Cài đặt hệ thống",
+              icon: <Settings size={20} />,
+            },
+          ],
+        },
+      ]
       : []),
   ];
 
@@ -167,10 +173,9 @@ const Sidebar = () => {
                   to={item.path}
                   className={({ isActive }) => `
                     relative flex items-center px-4 py-2.5 rounded-lg transition-all duration-200 font-medium text-sm
-                    ${
-                      isActive
-                        ? "bg-blue-50 text-primary"
-                        : "text-gray-500 hover:text-primary hover:bg-gray-50"
+                    ${isActive
+                      ? "bg-blue-50 text-primary"
+                      : "text-gray-500 hover:text-primary hover:bg-gray-50"
                     }
                   `}
                 >

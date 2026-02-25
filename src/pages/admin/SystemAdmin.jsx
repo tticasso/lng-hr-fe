@@ -21,6 +21,24 @@ import Button from "../../components/common/Button"; // Đảm bảo component n
 
 const SystemAdmin = () => {
   // --- MAPPING TIẾNG VIỆT ---
+  const moduleNameMap = {
+    "ADMIN": "Quản trị",
+    "ATTENDANCE": "Chấm công",
+    "AUTH": "Xác thực",
+    "DEPARTMENT": "Phòng ban",
+    "EMPLOYEE": "Nhân viên",
+    "PAYROLL": "Bảng lương",
+    "REQUEST": "Yêu cầu",
+    "SYSTEM": "Hệ thống",
+    "LEAVE": "Nghỉ phép",
+    "OT": "Làm thêm giờ",
+    "USER": "Người dùng",
+  };
+
+  const getVietnameseModule = (moduleName) => {
+    return moduleNameMap[moduleName] || moduleName;
+  };
+
   const permissionNameMap = {
     // AUTH Module
     "LOGIN_SUCCESS": "Đăng nhập thành công",
@@ -498,7 +516,7 @@ const SystemAdmin = () => {
                       >
                         <div className="px-4 py-3 bg-white border-b border-gray-200 flex justify-between items-center">
                           <h3 className="font-bold text-gray-700 text-sm uppercase tracking-wide">
-                            Module: {moduleName}
+                            {getVietnameseModule(moduleName)}
                           </h3>
                           <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
                             {perms.length}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import * as XLSX from "xlsx";
 import {
   Search,
   Eye,
@@ -16,6 +17,7 @@ import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import StatusBadge from "../../components/common/StatusBadge";
 import { employeeApi } from "../../apis/employeeApi";
+import { departmentApi } from "../../apis/departmentApi";
 import { toast } from "react-toastify";
 
 // Import Modal vừa tạo
@@ -25,20 +27,18 @@ const EmployeeList = () => {
   const navigate = useNavigate();
 
   // --- STATE ---
-  const [employees, setEmployees] = useState([]);
+  const [allEmployees, setAllEmployees] = useState([]); // Toàn bộ data từ API
+  const [filteredEmployees, setFilteredEmployees] = useState([]); // Data sau khi filter
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // State cho Modal Edit
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
 
-  // Pagination State
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 10,
-    total: 0,
-    totalPages: 1,
-  });
+  // Pagination State (áp dụng trên filteredEmployees)
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Filter State
   const [filters, setFilters] = useState({
@@ -47,40 +47,37 @@ const EmployeeList = () => {
     status: "",
   });
 
-  // --- FETCH DATA ---
+  // Status options
+  const statusOptions = [
+    { value: "Active", label: "Đang làm việc" },
+    { value: "Probation", label: "Thử việc" },
+    { value: "Resigned", label: "Đã nghỉ việc" },
+    { value: "Terminated", label: "Đã sa thải" },
+  ];
+
+  // --- FETCH DEPARTMENTS ---
+  const fetchDepartments = async () => {
+    try {
+      const res = await departmentApi.getAll();
+      const deptData = res.data?.data || res.data || [];
+      setDepartments(Array.isArray(deptData) ? deptData : []);
+    } catch (error) {
+      console.error("Lỗi tải phòng ban:", error);
+    }
+  };
+
+  // --- FETCH ALL EMPLOYEES (1 lần) ---
   const fetchEmployees = async () => {
     try {
       setLoading(true);
-
-      const cleanParams = {
-        page: pagination.page,
-        limit: pagination.limit,
-      };
-
-      if (filters.search.trim()) cleanParams.search = filters.search.trim();
-      if (filters.department) cleanParams.department = filters.department;
-      if (filters.status) cleanParams.status = filters.status;
-
-      const res = await employeeApi.getAll(cleanParams);
+      const res = await employeeApi.getAll({ limit: 1000 }); // Lấy tất cả
 
       const responseBody = res.data || {};
-      console.log("DỮ LIỆU LƯƠNG :", responseBody)
       const listData = Array.isArray(responseBody)
         ? responseBody
         : responseBody.data || [];
 
-      if (Array.isArray(listData)) {
-        setEmployees(listData);
-      } else {
-        setEmployees([]);
-      }
-
-      setPagination((prev) => ({
-        ...prev,
-        page: responseBody.currentPage || prev.page,
-        total: responseBody.total || listData.length || 0,
-        totalPages: responseBody.totalPages || 1,
-      }));
+      setAllEmployees(Array.isArray(listData) ? listData : []);
     } catch (error) {
       console.error("Lỗi tải danh sách:", error);
       if (error.response?.status !== 500) {
@@ -91,29 +88,65 @@ const EmployeeList = () => {
     }
   };
 
+  // --- FILTER LOGIC (Local) ---
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchEmployees();
-    }, 500);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line
-  }, [pagination.page, pagination.limit, filters]);
+    let result = [...allEmployees];
+
+    // Filter by search
+    if (filters.search.trim()) {
+      const searchLower = filters.search.toLowerCase();
+      result = result.filter(
+        (emp) =>
+          emp.fullName?.toLowerCase().includes(searchLower) ||
+          emp.name?.toLowerCase().includes(searchLower) ||
+          emp.employeeCode?.toLowerCase().includes(searchLower) ||
+          emp.accountId?.username?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Filter by department
+    if (filters.department) {
+      result = result.filter((emp) => {
+        const deptId = emp.departmentId?._id || emp.departmentId;
+        return deptId === filters.department;
+      });
+    }
+
+    // Filter by status
+    if (filters.status) {
+      result = result.filter((emp) => emp.status === filters.status);
+    }
+
+    setFilteredEmployees(result);
+    setCurrentPage(1); // Reset về trang 1 khi filter
+  }, [allEmployees, filters]);
+
+  // --- INIT DATA ---
+  useEffect(() => {
+    fetchDepartments();
+    fetchEmployees();
+  }, []);
 
   // --- HANDLERS ---
-  const handlePageChange = (newPage) => {
-    if (newPage >= 1 && newPage <= pagination.totalPages) {
-      setPagination((prev) => ({ ...prev, page: newPage }));
-    }
-  };
-
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters((prev) => ({ ...prev, [name]: value }));
-    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
+  // --- PAGINATION LOGIC (Local) ---
+  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentEmployees = filteredEmployees.slice(startIndex, endIndex);
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
   };
 
   const handleOpenEdit = (employee) => {
-    console.log("click edit:", employee)
+    console.log("click edit:", employee);
     setSelectedEmployee(employee);
     setIsEditModalOpen(true);
   };
@@ -121,16 +154,15 @@ const EmployeeList = () => {
   const handleUpdateSuccess = () => {
     setIsEditModalOpen(false);
     setSelectedEmployee(null);
-    fetchEmployees();
+    fetchEmployees(); // Reload data
   };
 
   // Helper Render Pagination
   const renderPaginationNumbers = () => {
     const pages = [];
-    const { page, totalPages } = pagination;
 
-    let startPage = Math.max(1, page - 2);
-    let endPage = Math.min(totalPages, page + 2);
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, currentPage + 2);
 
     if (startPage > 1) pages.push(1);
     if (startPage > 2) pages.push("...");
@@ -148,12 +180,13 @@ const EmployeeList = () => {
         onClick={() => typeof p === "number" && handlePageChange(p)}
         disabled={p === "..."}
         className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-medium transition-colors
-                ${p === page
-            ? "bg-blue-600 text-white"
-            : p === "..."
-              ? "bg-transparent text-gray-500 cursor-default"
-              : "border border-gray-300 hover:bg-gray-50 text-gray-700"
-          }`}
+                ${
+                  p === currentPage
+                    ? "bg-blue-600 text-white"
+                    : p === "..."
+                      ? "bg-transparent text-gray-500 cursor-default"
+                      : "border border-gray-300 hover:bg-gray-50 text-gray-700"
+                }`}
       >
         {p}
       </button>
@@ -163,6 +196,153 @@ const EmployeeList = () => {
   const formatDate = (dateString) => {
     if (!dateString) return "--";
     return new Date(dateString).toLocaleDateString("vi-VN");
+  };
+
+  // --- EXPORT TO EXCEL ---
+  const handleExportExcel = () => {
+    try {
+      // Chuẩn bị dữ liệu xuất
+      const exportData = filteredEmployees.map((emp, index) => ({
+        STT: index + 1,
+        "Mã nhân viên": emp.employeeCode || "",
+        "Họ và tên": emp.fullName || emp.name || "",
+        "Tên đăng nhập": emp.accountId?.username || "",
+        "Email": emp.email || "",
+        "Số điện thoại": emp.phoneNumber || "",
+        "Chức vụ": emp.jobTitle || "",
+        "Phòng ban": emp.departmentId?.name || "",
+        "Loại hợp đồng": emp.employmentType || "",
+        "Hình thức làm việc": emp.workMode || "",
+        "Ngày vào làm": formatDate(emp.startDate),
+        "Trạng thái": emp.status || "",
+        "Địa chỉ": emp.address || "",
+        "Ngày sinh": formatDate(emp.dateOfBirth),
+        "Giới tính": emp.gender || "",
+      }));
+
+      // Tạo worksheet từ dữ liệu
+      const ws = XLSX.utils.json_to_sheet(exportData, { origin: "A4" });
+
+      // Thêm header (3 dòng đầu)
+      const currentDate = new Date().toLocaleDateString("vi-VN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+
+      XLSX.utils.sheet_add_aoa(
+        ws,
+        [
+          ["LNG Group"],
+          ["Bảng quản lý nhân viên"],
+          [currentDate],
+        ],
+        { origin: "A1" }
+      );
+
+      // Merge cells cho header
+      ws["!merges"] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 14 } }, // Merge dòng 1
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 14 } }, // Merge dòng 2
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 14 } }, // Merge dòng 3
+      ];
+
+      // Style cho header (3 dòng đầu) - Căn giữa, chữ to, in đậm
+      const headerStyle = {
+        font: { bold: true, sz: 16, color: { rgb: "1F4E78" } },
+        alignment: { horizontal: "center", vertical: "center" },
+      };
+
+      ["A1", "A2", "A3"].forEach((cell) => {
+        if (ws[cell]) {
+          ws[cell].s = headerStyle;
+        }
+      });
+
+      // Style cho tiêu đề cột (dòng 4)
+      const columnHeaderStyle = {
+        font: { bold: true, sz: 11, color: { rgb: "FFFFFF" } },
+        alignment: { horizontal: "center", vertical: "center", wrapText: true },
+        fill: { fgColor: { rgb: "4472C4" } },
+        border: {
+          top: { style: "thin", color: { rgb: "000000" } },
+          bottom: { style: "thin", color: { rgb: "000000" } },
+          left: { style: "thin", color: { rgb: "000000" } },
+          right: { style: "thin", color: { rgb: "000000" } },
+        },
+      };
+
+      // Áp dụng style cho tiêu đề cột (row 4, từ A4 đến O4)
+      const columnHeaders = ["A4", "B4", "C4", "D4", "E4", "F4", "G4", "H4", "I4", "J4", "K4", "L4", "M4", "N4", "O4"];
+      columnHeaders.forEach((cell) => {
+        if (ws[cell]) {
+          ws[cell].s = columnHeaderStyle;
+        }
+      });
+
+      // Style cho data cells (border nhẹ)
+      const dataCellStyle = {
+        alignment: { vertical: "center", wrapText: false },
+        border: {
+          top: { style: "thin", color: { rgb: "D3D3D3" } },
+          bottom: { style: "thin", color: { rgb: "D3D3D3" } },
+          left: { style: "thin", color: { rgb: "D3D3D3" } },
+          right: { style: "thin", color: { rgb: "D3D3D3" } },
+        },
+      };
+
+      // Áp dụng style cho data (từ row 5 trở đi)
+      const range = XLSX.utils.decode_range(ws["!ref"]);
+      for (let R = 4; R <= range.e.r; R++) {
+        for (let C = 0; C <= 14; C++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+          if (ws[cellAddress]) {
+            ws[cellAddress].s = dataCellStyle;
+          }
+        }
+      }
+
+      // Tự động điều chỉnh độ rộng cột
+      const colWidths = [
+        { wch: 5 },  // STT
+        { wch: 15 }, // Mã NV
+        { wch: 25 }, // Họ tên
+        { wch: 15 }, // Username
+        { wch: 25 }, // Email
+        { wch: 15 }, // SĐT
+        { wch: 20 }, // Chức vụ
+        { wch: 20 }, // Phòng ban
+        { wch: 15 }, // Loại HĐ
+        { wch: 15 }, // Hình thức
+        { wch: 12 }, // Ngày vào
+        { wch: 12 }, // Trạng thái
+        { wch: 30 }, // Địa chỉ
+        { wch: 12 }, // Ngày sinh
+        { wch: 10 }, // Giới tính
+      ];
+      ws["!cols"] = colWidths;
+
+      // Set row heights
+      ws["!rows"] = [
+        { hpt: 25 }, // Row 1
+        { hpt: 25 }, // Row 2
+        { hpt: 25 }, // Row 3
+        { hpt: 30 }, // Row 4 (header)
+      ];
+
+      // Tạo workbook
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Danh sách nhân viên");
+
+      // Xuất file
+      const fileName = `Bang_quan_ly_nhan_vien_${new Date().toISOString().split("T")[0]}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+
+      toast.success(`Đã xuất ${exportData.length} nhân viên ra file Excel`);
+    } catch (error) {
+      console.error("Lỗi xuất Excel:", error);
+      toast.error("Không thể xuất file Excel");
+    }
   };
 
   return (
@@ -183,11 +363,16 @@ const EmployeeList = () => {
             Quản lý nhân viên
           </h1>
           <p className="text-sm text-gray-500">
-            Quản lý hồ sơ nhân sự ({pagination.total} bản ghi)
+            Quản lý hồ sơ nhân sự ({filteredEmployees.length} bản ghi)
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="secondary" className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            className="flex items-center gap-2"
+            onClick={handleExportExcel}
+            disabled={filteredEmployees.length === 0}
+          >
             <Download size={18} /> Xuất Excel
           </Button>
         </div>
@@ -212,7 +397,7 @@ const EmployeeList = () => {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            {/* Department Filter (Có thể áp dụng API tương tự modal nếu cần) */}
+            {/* Department Filter - Dynamic từ API */}
             <div className="relative">
               <Filter
                 size={16}
@@ -225,12 +410,15 @@ const EmployeeList = () => {
                 className="pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-blue-500 cursor-pointer min-w-[160px]"
               >
                 <option value="">Phòng ban (Tất cả)</option>
-                <option value="IT">IT</option>
-                <option value="HR">HR</option>
-                <option value="Sales">Sales</option>
+                {departments.map((dept) => (
+                  <option key={dept._id} value={dept._id}>
+                    {dept.name}
+                  </option>
+                ))}
               </select>
             </div>
 
+            {/* Status Filter - Dynamic từ statusOptions */}
             <select
               name="status"
               value={filters.status}
@@ -238,9 +426,11 @@ const EmployeeList = () => {
               className="px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-blue-500 cursor-pointer min-w-[140px]"
             >
               <option value="">Trạng thái (Tất cả)</option>
-              <option value="Active">Active</option>
-              <option value="Probation">Probation</option>
-              <option value="Resigned">Resigned</option>
+              {statusOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
 
             <Button
@@ -263,7 +453,7 @@ const EmployeeList = () => {
               <Loader2 size={40} className="animate-spin text-blue-500 mb-2" />
               <p>Đang tải dữ liệu...</p>
             </div>
-          ) : employees.length === 0 ? (
+          ) : currentEmployees.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
               <p>Không tìm thấy nhân viên nào phù hợp.</p>
             </div>
@@ -282,13 +472,13 @@ const EmployeeList = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
-                {employees.map((emp, index) => (
+                {currentEmployees.map((emp, index) => (
                   <tr
                     key={emp._id || emp.id}
                     className="group transition-colors hover:bg-blue-50/50"
                   >
                     <td className="p-4 text-sm text-gray-500">
-                      {(pagination.page - 1) * pagination.limit + index + 1}
+                      {startIndex + index + 1}
                     </td>
 
                     {/* Info */}
@@ -386,18 +576,16 @@ const EmployeeList = () => {
           <div>
             Hiển thị{" "}
             <strong>
-              {employees.length > 0
-                ? (pagination.page - 1) * pagination.limit + 1
-                : 0}
-              -{Math.min(pagination.page * pagination.limit, pagination.total)}
+              {currentEmployees.length > 0 ? startIndex + 1 : 0}-
+              {Math.min(endIndex, filteredEmployees.length)}
             </strong>{" "}
-            trong tổng số <strong>{pagination.total}</strong> nhân viên
+            trong tổng số <strong>{filteredEmployees.length}</strong> nhân viên
           </div>
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => handlePageChange(pagination.page - 1)}
-              disabled={pagination.page === 1}
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
               className="p-2 border border-gray-300 rounded-md hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               <ChevronLeft size={16} />
@@ -406,8 +594,8 @@ const EmployeeList = () => {
             {renderPaginationNumbers()}
 
             <button
-              onClick={() => handlePageChange(pagination.page + 1)}
-              disabled={pagination.page === pagination.totalPages}
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
               className="p-2 border border-gray-300 rounded-md hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               <ChevronRight size={16} />

@@ -165,7 +165,10 @@ const Recruitment = () => {
       {/* --- HEADER --- */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Quản lý tuyển dụng (Not yet active)</h1>
+          <h1 className="text-2xl font-bold text-gray-800">
+            Quản lý tuyển dụng
+            <span className="text-red-500"> (Not yet active)</span>
+          </h1>
           <p className="text-sm text-gray-500">
             Quản lý tin tuyển dụng & theo dõi ứng viên
           </p>
@@ -188,10 +191,9 @@ const Recruitment = () => {
           <button
             onClick={() => setActiveTab("jobs")}
             className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 
-              ${
-                activeTab === "jobs"
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
+              ${activeTab === "jobs"
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
               }
             `}
           >
@@ -200,10 +202,9 @@ const Recruitment = () => {
           <button
             onClick={() => setActiveTab("candidates")}
             className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 
-              ${
-                activeTab === "candidates"
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
+              ${activeTab === "candidates"
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
               }
             `}
           >
@@ -244,13 +245,12 @@ const Recruitment = () => {
                   <div className="flex justify-between items-start mb-3">
                     <div
                       className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase
-                         ${
-                           job.status === "Open"
-                             ? "bg-green-50 text-green-700"
-                             : job.status === "Closed"
-                             ? "bg-gray-100 text-gray-500"
-                             : "bg-orange-50 text-orange-600"
-                         }
+                         ${job.status === "Open"
+                          ? "bg-green-50 text-green-700"
+                          : job.status === "Closed"
+                            ? "bg-gray-100 text-gray-500"
+                            : "bg-orange-50 text-orange-600"
+                        }
                       `}
                     >
                       {job.status}

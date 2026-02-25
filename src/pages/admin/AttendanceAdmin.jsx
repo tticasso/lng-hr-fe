@@ -15,6 +15,7 @@ import {
   Paperclip,
   Lock,
   Unlock,
+  RefreshCcw,
 } from "lucide-react";
 
 import * as XLSX from "xlsx";
@@ -25,6 +26,7 @@ import StatusBadge from "../../components/common/StatusBadge";
 import EditAttendanceModal from "../../components/modals/EditAttendanceModal";
 import { toast } from "react-toastify";
 import { attendancesAPI } from "../../apis/attendancesAPI";
+import { payrollAPI } from "../../apis/payrollAPI";
 
 const AttendanceAdmin = () => {
   const [selectedPeriod, setSelectedPeriod] = useState("2026-02"); // Mặc định tháng hiện tại
@@ -74,20 +76,20 @@ const AttendanceAdmin = () => {
       const res = await attendancesAPI.updateAtendances(id, payload)
       toast.success("SỬA DỮ LIỆU CHẤM CÔNG THÀNH CÔNG")
       console.log("DỮ LIỆU API :", res)
-      
+
       // Refresh attendance list
       const { month, year } = getMonthYear(selectedPeriod);
       console.log("🔄 Refreshing attendance data...");
       const listRes = await attendancesAPI.getall(month, year);
       setAttendanceData(listRes.data?.data || listRes.data || []);
-      
+
       // Refresh employee detail if panel is open
       if (selectedEmployee) {
         console.log("🔄 Refreshing employee detail...");
         const detailRes = await attendancesAPI.getbyid(month, year, selectedEmployee.employeeId);
         setEmployeeDetail(detailRes.data.data || []);
       }
-      
+
       console.log("✅ Data refreshed successfully");
     } catch (error) {
       toast.error("SỬA DỮ LIỆU CHẤM CÔNG THẤT BẠI")
@@ -738,59 +740,25 @@ const AttendanceAdmin = () => {
     return { value: "", flag: `RAW:${s}` };
   };
 
-  // =========================
-  // DỮ LIỆU UI DEMO (GIỮ NGUYÊN)
-  // =========================
-  const attendanceSummary = [
-    {
-      id: "EMP089",
-      name: "Nguyễn Văn An",
-      dept: "Product",
-      workDays: 22,
-      otHours: 3.5,
-      leaveDays: 0,
-      lateCount: 0,
-      hasError: false,
-      status: "Valid",
-      avatar: "NA",
-    },
-    {
-      id: "EMP090",
-      name: "Lê Thị Hoa",
-      dept: "Design",
-      workDays: 21,
-      otHours: 0,
-      leaveDays: 1,
-      lateCount: 3,
-      hasError: false,
-      status: "Warning",
-      avatar: "LH",
-    },
-    {
-      id: "EMP091",
-      name: "Phạm Văn Dũng",
-      dept: "Sales",
-      workDays: 18,
-      otHours: 10,
-      leaveDays: 0,
-      lateCount: 1,
-      hasError: true,
-      status: "Error",
-      avatar: "PD",
-    },
-    {
-      id: "EMP102",
-      name: "Hoàng Thị G",
-      dept: "Marketing",
-      workDays: 20,
-      otHours: 0,
-      leaveDays: 2,
-      lateCount: 0,
-      hasError: false,
-      status: "Valid",
-      avatar: "HG",
-    },
-  ];
+  const handclickSynhronized = async () => {
+    try {
+      const { month, year } = getMonthYear(selectedPeriod);
+
+      const payload = {
+        month: month,
+        year: year
+      };
+
+      console.log("📤 Đồng bộ dữ liệu với payload:", payload);
+
+      const res = await payrollAPI.syncdata(payload);
+      toast.success("ĐỒNG BỘ THÀNH CÔNG");
+      console.log("✅ DỮ LIỆU API:", res);
+    } catch (error) {
+      toast.error("ĐỒNG BỘ THẤT BẠI");
+      console.log("❌ LỖI API:", error);
+    }
+  };
 
   // =========================
   // RENDER
@@ -874,7 +842,11 @@ const AttendanceAdmin = () => {
           <Button variant="secondary" className="flex items-center gap-2">
             <Download size={16} /> Xuất Excel
           </Button>
-
+          <Button
+            onClick={handclickSynhronized}
+            variant="secondary" className="flex items-center gap-2">
+            <RefreshCcw size={16} /> Đồng bộ dữ liệu
+          </Button>
           <Button
             className={`w-48 flex items-center gap-2 text-white shadow-md ${isPeriodLocked
               ? "bg-gray-500 hover:bg-gray-600"
