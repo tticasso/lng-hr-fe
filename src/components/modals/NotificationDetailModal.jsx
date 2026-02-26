@@ -1,5 +1,6 @@
 import React from "react";
 import { X, Clock, CheckCircle } from "lucide-react";
+import logoImage from "../../assets/logo.png";
 
 const formatDetailTime = (dateInput) => {
   if (!dateInput) return "--";
@@ -19,9 +20,6 @@ const formatDetailTime = (dateInput) => {
 const NotificationDetailModal = ({ notification, onClose }) => {
   if (!notification) return null;
 
-  const FIXED_NOTIFY_AVATAR =
-    "https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&w=120&q=80";
-
   return (
     <>
       {/* Overlay */}
@@ -40,9 +38,9 @@ const NotificationDetailModal = ({ notification, onClose }) => {
           <div className="px-6 py-4 border-b bg-gradient-to-r from-blue-50 to-white flex justify-between items-start">
             <div className="flex gap-4 items-start flex-1">
               <img
-                src={FIXED_NOTIFY_AVATAR}
+                src={logoImage}
                 alt="notify"
-                className="h-14 w-14 rounded-full object-cover ring-2 ring-blue-200 shadow-sm"
+                className="h-14 w-14 rounded-full object-cover ring-2 ring-blue-200 shadow-sm bg-white p-1"
               />
               <div className="flex-1">
                 <h2 className="text-xl font-bold text-gray-900 mb-1">
