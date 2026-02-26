@@ -29,6 +29,10 @@ import { leaveAPI } from "../../src/apis/leaveAPI";
 import { toast } from "react-toastify";
 import { OTApi } from "../apis/OTAPI";
 import { attendancesAPI } from "../apis/attendancesAPI";
+import { notification } from "antd";
+import NotificationListener from "./notification/NotificationListener";
+import SocketDebugger from "../components/SocketDebugger";
+import useSocket from "./notification/useSocket";
 const Dashboard = () => {
 
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
@@ -41,11 +45,22 @@ const Dashboard = () => {
 
 
 
+  useSocket((data) => {
+    console.log("=".repeat(50));
+    console.log("🔥 [DASHBOARD] SOCKET DATA RECEIVED!");
+    console.log("=".repeat(50));
+    console.log("[useSocket]📩 Data:", data);
+    console.table(data); // Hiển thị dạng bảng
+    console.log("[useSocket]Title:", data?.title);
+    console.log("[useSocket]Message:", data?.message);
+    console.log("[useSocket]Type:", data?.type);
+    console.log("=".repeat(50));
+  });
 
 
   useEffect(() => {
     let isMounted = true;
-    
+
     const callAPICompany = async () => {
       try {
         const now = new Date();
@@ -54,7 +69,7 @@ const Dashboard = () => {
 
         const resMySheet = await attendancesAPI.getdatamoth(month, year);
         console.log("[TEST_2] DỮ LIỆU My sheet:", resMySheet.data.data);
-        
+
         if (isMounted) {
           setMySheetData(resMySheet.data.data);
         }
@@ -67,7 +82,7 @@ const Dashboard = () => {
     };
 
     callAPICompany();
-    
+
     return () => {
       isMounted = false;
     };
@@ -79,7 +94,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     let isMounted = true;
-    
+
     const callAPIrequest = async () => {
       try {
         const resLeave = await leaveAPI.getbyUSER();
@@ -95,9 +110,9 @@ const Dashboard = () => {
         console.log("[TEST_1]API ERROR :", error);
       }
     };
-    
+
     callAPIrequest();
-    
+
     return () => {
       isMounted = false;
     };
@@ -284,6 +299,9 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
+      {/* Socket Debugger - Xem trạng thái kết nối */}
+      {/* <SocketDebugger /> */}
+      
       {/* --- OT MODAL (Imported Component) --- */}
       {isOTModalOpen && (
         <>

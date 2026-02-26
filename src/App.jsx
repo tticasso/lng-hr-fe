@@ -30,6 +30,7 @@ import Register from "./pages/auth/Register";
 import PublicRoute from "./components/PublicRoute";
 import MyLeave from "./pages/announce/Myleave";
 import AllPayRoll from "./pages/payroll/AllPayRoll";
+import NotificationViewer from "./pages/notification/NotificationViewer";
 function App() {
   return (
     <>
@@ -63,6 +64,9 @@ function App() {
             <Route path="payroll" element={<MyPayslip />} />
             <Route path="requests" element={<MyRequests />} />
             <Route path="leave" element={<MyLeave />} />
+            
+            {/* Route xem data WebSocket */}
+            <Route path="notifications/viewer" element={<NotificationViewer />} />
 
             <Route
               path="admin"
