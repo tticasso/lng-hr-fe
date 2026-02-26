@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { setAuthToken } from "../apis/apiClient";
 import { employeeApi } from "../apis/employeeApi";
+import { disconnectSocket, reconnectSocket } from "../pages/notification/useSocket";
 
 const AuthContext = createContext(null);
 const STORAGE_KEY = "auth";
@@ -79,6 +80,11 @@ export function AuthProvider({ children }) {
         token: authData.accessToken,
       }),
     );
+
+    // Reconnect socket với token mới
+    setTimeout(() => {
+      reconnectSocket();
+    }, 100);
   };
 
   // 3. Refresh Profile (Gọi sau khi update form thành công)
@@ -105,6 +111,9 @@ export function AuthProvider({ children }) {
     setToken(null);
     localStorage.removeItem(STORAGE_KEY);
     setAuthToken(null);
+    
+    // Disconnect socket khi logout
+    disconnectSocket();
   };
 
   return (

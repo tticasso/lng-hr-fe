@@ -1,8 +1,12 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Bell, Search, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { employeeApi } from "../apis/employeeApi";
 import NotificationDetailModal from "../components/modals/NotificationDetailModal";
+import useSocket from "../pages/notification/useSocket";
+import { notificationApi } from "../apis/notificationAPI";
+import logoImage from "../assets/logo.png";
+import { toast } from "react-toastify";
 
 // ✅ Format thời gian thông báo: rõ ràng + chuyên nghiệp
 const formatNotifyTime = (dateInput) => {
@@ -72,34 +76,118 @@ const Header = () => {
     return (parts[0][0] + (parts.at(-1)?.[0] || "")).toUpperCase();
   }, [fullName]);
 
-  // ✅ Ảnh fix cứng cho tất cả thông báo
-  const FIXED_NOTIFY_AVATAR =
-    "https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&w=120&q=80";
+  // ✅ Ảnh logo cho tất cả thông báo
+  const NOTIFICATION_AVATAR = logoImage;
 
   // ✅ notifications state để thao tác read/unread local
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: "Đơn nghỉ phép được duyệt",
-      content: "Yêu cầu nghỉ phép của bạn đã được quản lý xác nhận.",
-      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load notifications từ API khi mount
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        setLoading(true);
+        const res = await notificationApi.getAll();
+        console.log("NOTIFICATION API:", res);
+
+        // Parse data từ API response
+        const apiNotifications = res.data?.data || [];
+        
+        // Transform data từ API sang format của UI
+        const transformedNotifications = apiNotifications.map((item) => ({
+          id: item._id,
+          title: item.title,
+          content: item.message,
+          createdAt: item.createdAt,
+          unread: !item.isRead, // isRead = false → unread = true
+          type: item.type,
+          relatedId: item.relatedId,
+          relatedModel: item.relatedModel,
+        }));
+
+        setNotifications(transformedNotifications);
+      } catch (error) {
+        console.error("Error loading notifications:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadNotifications();
+  }, []);
+
+  // ✅ State để track toast đã hiển thị (tránh duplicate)
+  const [shownToasts, setShownToasts] = useState(new Set());
+
+  // ✅ Lắng nghe socket để nhận thông báo real-time
+  const handleSocketNotification = useCallback((data) => {
+    console.log("📩 [HEADER] Nhận thông báo từ socket:", data);
+
+    // Tạo notification object từ data socket
+    const newNotification = {
+      id: data._id || data.id || Date.now(),
+      title: data.title || "Thông báo mới",
+      content: data.message || data.content || "",
+      createdAt: data.createdAt || new Date().toISOString(),
       unread: true,
-    },
-    {
-      id: 2,
-      title: "Cập nhật chính sách nhân sự",
-      content: "HR vừa cập nhật lịch nghỉ lễ và quy định chấm công.",
-      createdAt: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString(),
-      unread: true,
-    },
-    {
-      id: 3,
-      title: "Thông báo nội bộ",
-      content: "Bạn có một tin nhắn mới từ quản lý trực tiếp.",
-      createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      unread: false,
-    },
-  ]);
+      type: data.type,
+      relatedId: data.relatedId,
+      relatedModel: data.relatedModel,
+    };
+
+    // Kiểm tra xem notification đã tồn tại chưa (tránh duplicate)
+    setNotifications((prev) => {
+      const exists = prev.some((n) => n.id === newNotification.id);
+      if (exists) {
+        console.log("⚠️ Notification already exists, skipping...");
+        return prev;
+      }
+      
+      // Kiểm tra xem toast đã hiển thị chưa
+      setShownToasts((prevShown) => {
+        if (prevShown.has(newNotification.id)) {
+          console.log("⚠️ Toast already shown, skipping...");
+          return prevShown;
+        }
+
+        // Hiển thị toast notification
+        toast.info(
+          <div className="flex items-start gap-3">
+            <img 
+              src={logoImage} 
+              alt="logo" 
+              className="w-10 h-10 rounded-full object-cover bg-white p-1"
+            />
+            <div className="flex-1">
+              <p className="font-semibold text-sm">{newNotification.title}</p>
+              <p className="text-xs text-gray-600 mt-1">{newNotification.content}</p>
+            </div>
+          </div>,
+          {
+            position: "top-right",
+            autoClose: 5000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            toastId: newNotification.id, // Prevent duplicate toasts
+          }
+        );
+
+        // Thêm vào set đã hiển thị
+        const newSet = new Set(prevShown);
+        newSet.add(newNotification.id);
+        return newSet;
+      });
+      
+      // Thêm vào đầu danh sách
+      return [newNotification, ...prev];
+    });
+  }, []);
+
+  // Kết nối socket
+  useSocket(handleSocketNotification);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => n.unread).length,
@@ -112,19 +200,41 @@ const Header = () => {
     return notifications;
   }, [notifications, notifyTab]);
 
-  const handleMarkAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+  const handleMarkAllRead = async () => {
+    try {
+      // Call API để mark all as read
+      await notificationApi.markAllAsRead();
+      
+      // Update local state
+      setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+    } catch (error) {
+      console.error("Error marking all as read:", error);
+      // Vẫn update local state nếu API fail
+      setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+    }
   };
 
-  const handleClickNotification = (notification) => {
+  const handleClickNotification = async (notification) => {
     // ✅ Mở modal chi tiết
     setSelectedNotification(notification);
-    
+
     // ✅ Đánh dấu đã đọc nếu là thông báo chưa đọc
     if (notification.unread) {
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notification.id ? { ...n, unread: false } : n))
-      );
+      try {
+        // Call API để mark as read
+        await notificationApi.markAsRead(notification.id);
+        
+        // Update local state
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === notification.id ? { ...n, unread: false } : n))
+        );
+      } catch (error) {
+        console.error("Error marking as read:", error);
+        // Vẫn update local state nếu API fail
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === notification.id ? { ...n, unread: false } : n))
+        );
+      }
     }
   };
 
@@ -185,7 +295,7 @@ const Header = () => {
     if (!searchQuery.trim()) return [];
 
     const query = searchQuery.toLowerCase().trim();
-    
+
     return allPages.filter((page) => {
       const labelMatch = page.label.toLowerCase().includes(query);
       const keywordMatch = page.keywords.some((keyword) => keyword.includes(query));
@@ -384,77 +494,84 @@ const Header = () => {
 
         {/* Content */}
         <div className="p-4 overflow-y-auto h-[calc(100%-104px)]">
-          <div className="space-y-2">
-            {filteredNotifications.map((n) => {
-              return (
-                <div
-                  key={n.id}
-                  onClick={() => handleClickNotification(n)}
-                  className={`group flex gap-3 p-3 rounded-xl border transition
-                    hover:bg-gray-50 hover:border-gray-200 cursor-pointer
-                    ${n.unread
-                      ? "bg-blue-50/30 border-blue-100"
-                      : "bg-white border-gray-100"
-                    }
-                  `}
-                >
-                  {/* Avatar */}
-                  <div className="relative shrink-0">
-                    <img
-                      src={FIXED_NOTIFY_AVATAR}
-                      alt="notify"
-                      className="h-11 w-11 rounded-full object-cover ring-1 ring-gray-200"
-                    />
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
+              <p className="text-sm text-gray-500">Đang tải thông báo...</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filteredNotifications.map((n) => {
+                return (
+                  <div
+                    key={n.id}
+                    onClick={() => handleClickNotification(n)}
+                    className={`group flex gap-3 p-3 rounded-xl border transition
+                      hover:bg-gray-50 hover:border-gray-200 cursor-pointer
+                      ${n.unread
+                        ? "bg-blue-50/30 border-blue-100"
+                        : "bg-white border-gray-100"
+                      }
+                    `}
+                  >
+                    {/* Avatar */}
+                    <div className="relative shrink-0">
+                      <img
+                        src={NOTIFICATION_AVATAR}
+                        alt="notification"
+                        className="h-11 w-11 rounded-full object-cover ring-1 ring-gray-200 bg-white p-1"
+                      />
 
-                    {/* ✅ Chấm đỏ cho thông báo chưa đọc */}
-                    {n.unread && (
-                      <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-red-500 ring-2 ring-white" />
-                    )}
-                  </div>
-
-                  {/* Text */}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-sm font-semibold text-gray-900 line-clamp-1">
-                        {n.title}
-                      </p>
-
-                      {/* ✅ thời gian format rõ ràng */}
-                      <span className="text-[11px] text-gray-500 shrink-0">
-                        {formatNotifyTime(n.createdAt)}
-                      </span>
-                    </div>
-
-                    {/* ✅ Preview nội dung */}
-                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                      {n.content}
-                    </p>
-
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="text-[11px] text-blue-600 group-hover:text-blue-700 font-medium">
-                        Nhấn để xem chi tiết
-                      </span>
-
-                      {/* ✅ Badge "Mới" màu đỏ cho unread */}
+                      {/* ✅ Chấm đỏ cho thông báo chưa đọc */}
                       {n.unread && (
-                        <span className="text-[11px] font-semibold text-red-600">
-                          • Mới
-                        </span>
+                        <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-red-500 ring-2 ring-white" />
                       )}
                     </div>
-                  </div>
-                </div>
-              );
-            })}
 
-            {filteredNotifications.length === 0 && (
-              <div className="text-center text-sm text-gray-500 py-10">
-                {notifyTab === "unread"
-                  ? "Không có thông báo chưa đọc."
-                  : "Chưa có thông báo nào."}
-              </div>
-            )}
-          </div>
+                    {/* Text */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-sm font-semibold text-gray-900 line-clamp-1">
+                          {n.title}
+                        </p>
+
+                        {/* ✅ thời gian format rõ ràng */}
+                        <span className="text-[11px] text-gray-500 shrink-0">
+                          {formatNotifyTime(n.createdAt)}
+                        </span>
+                      </div>
+
+                      {/* ✅ Preview nội dung */}
+                      <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                        {n.content}
+                      </p>
+
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-[11px] text-blue-600 group-hover:text-blue-700 font-medium">
+                          Nhấn để xem chi tiết
+                        </span>
+
+                        {/* ✅ Badge "Mới" màu đỏ cho unread */}
+                        {n.unread && (
+                          <span className="text-[11px] font-semibold text-red-600">
+                            • Mới
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {filteredNotifications.length === 0 && (
+                <div className="text-center text-sm text-gray-500 py-10">
+                  {notifyTab === "unread"
+                    ? "Không có thông báo chưa đọc."
+                    : "Chưa có thông báo nào."}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
