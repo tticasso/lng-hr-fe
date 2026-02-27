@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Search,
   Filter,
@@ -11,7 +11,9 @@ import {
   RefreshCcw,
   Loader2,
   RefreshCw,
+  Upload,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
@@ -55,6 +57,10 @@ const UserManagement = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [newPasswordResult, setNewPasswordResult] = useState(null); // Lưu pass sau reset
 
+  // Import Excel
+  const fileInputRef = useRef(null);
+  const [isImporting, setIsImporting] = useState(false);
+
   const formatDate = (isoString) => {
     if (!isoString) return "--";
     return new Date(isoString).toLocaleString("vi-VN", {
@@ -97,9 +103,9 @@ const UserManagement = () => {
         // Tìm employee có account._id trùng với acc._id
         const emp = employees.find((e) => e.accountId?._id === acc._id);
         return { ...acc, employee: emp };
-      
+
       });
-        console.log('ID USER :',merged)
+      console.log('ID USER :', merged)
       console.log("user management, merged: ", merged);
       setAllUsers(merged); // Lưu data gốc
       setUsers(merged); // Hiển thị ban đầu
@@ -128,7 +134,7 @@ const UserManagement = () => {
         const fullName = user.employee?.fullName?.toLowerCase() || "";
         const email = (user.email || user.employee?.workEmail || user.employee?.personalEmail || "").toLowerCase();
         const empCode = user.employee?.employeeCode?.toLowerCase() || "";
-        
+
         return (
           username.includes(searchLower) ||
           fullName.includes(searchLower) ||
@@ -217,6 +223,75 @@ const UserManagement = () => {
     return name.charAt(0).toUpperCase();
   };
 
+  // Handler Import Excel
+  const handleImportExcel = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    console.log("📤 Uploading:", file);
+    console.log("📤 Uploading file:", file.name);
+    setIsImporting(true);
+
+    try {
+      const response = await employeeApi.import_profile(file);
+      console.log("✅ Response:", response);
+
+      const message = response.data?.message || "Import thành công!";
+      toast.success(message);
+      await fetchUsers();
+    } catch (error) {
+      console.error("❌ Error:", error);
+      const errorMessage = error.response?.data?.message || "Lỗi khi import file!";
+      toast.error(errorMessage);
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  // Handler Download Template
+  const handleDownloadTemplate = () => {
+    console.log("📥 Download Template button clicked");
+    console.log("Available roles for template:", rolesList);
+
+    const template = [
+      {
+        username: "user001",
+        password: "Password123",
+        email: "user001@example.com",
+        role: rolesList[0]?.name || "Employee",
+        isActive: true,
+      },
+      {
+        username: "user002",
+        password: "Password456",
+        email: "user002@example.com",
+        role: rolesList[0]?.name || "Employee",
+        isActive: true,
+      },
+    ];
+
+    console.log("Template data:", template);
+
+    const worksheet = XLSX.utils.json_to_sheet(template);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Users");
+
+    // Set column widths
+    worksheet["!cols"] = [
+      { wch: 15 }, // username
+      { wch: 15 }, // password
+      { wch: 25 }, // email
+      { wch: 15 }, // role
+      { wch: 10 }, // isActive
+    ];
+
+    XLSX.writeFile(workbook, "user_import_template.xlsx");
+    console.log("✅ Template file downloaded: user_import_template.xlsx");
+    toast.success("Đã tải xuống file mẫu!");
+  };
+
   return (
     <div className="h-[calc(100vh-100px)] flex flex-col gap-6 relative">
       {/* Header */}
@@ -228,9 +303,40 @@ const UserManagement = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" className="flex gap-2 items-center">
-            <Download size={18} /> Xuất dữ liệu
+          <Button
+            variant="secondary"
+            className="flex gap-2 items-center"
+            onClick={handleDownloadTemplate}
+          >
+            <Download size={18} /> Tải mẫu Excel
           </Button>
+          <Button
+            variant="secondary"
+            className="flex gap-2 items-center"
+            onClick={() => {
+              console.log("🔘 Import Excel button clicked");
+              console.log("Available roles:", rolesList);
+              fileInputRef.current?.click();
+            }}
+            disabled={isImporting}
+          >
+            {isImporting ? (
+              <>
+                <Loader2 size={18} className="animate-spin" /> Đang import...
+              </>
+            ) : (
+              <>
+                <Upload size={18} /> Import Excel
+              </>
+            )}
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleImportExcel}
+            className="hidden"
+          />
           <Button
             className="bg-blue-600 text-white flex gap-2 items-center"
             onClick={() => setIsCreateOpen(true)}
@@ -309,7 +415,7 @@ const UserManagement = () => {
                         <p className="font-bold text-gray-800">
                           {user.employee?.fullName}
                           {user.employee?.accountId?._id ===
-                          userInfo?.accountId?._id ? (
+                            userInfo?.accountId?._id ? (
                             <span className="text-[10px] pl-1 text-gray-500 italic font-extralight">
                               (bạn)
                             </span>
@@ -446,11 +552,10 @@ const UserManagement = () => {
                         onClick={() =>
                           setPagination((prev) => ({ ...prev, page: p }))
                         }
-                        className={`px-3 py-1 text-sm rounded ${
-                          pagination.page === p
+                        className={`px-3 py-1 text-sm rounded ${pagination.page === p
                             ? "bg-blue-600 text-white"
                             : "bg-white border hover:bg-gray-100"
-                        }`}
+                          }`}
                       >
                         {p}
                       </button>
