@@ -312,41 +312,49 @@ const MyTimesheet = () => {
     // Ô trống tháng trước
     if (!day.inMonth) return "bg-gray-50/50";
 
-    // cơ bản
+    // Kiểm tra xem ô này có đang được chọn không
+    const isSelected = selectedDate?.isoDate === day.isoDate;
+
+    // cơ bản (bỏ hover:bg-blue-50)
     let baseClass =
-      "relative border-b border-r border-gray-200 p-1.5 h-28 transition-all hover:bg-blue-50 cursor-pointer flex flex-col justify-between group ";
+      "relative border-b border-r border-gray-200 p-1.5 h-28 transition-all cursor-pointer flex flex-col justify-between group ";
+
+    // Nếu đang được chọn, thêm background đậm hơn
+    if (isSelected) {
+      baseClass += "z-10 ";
+    }
 
     // Ngày Lễ
     if (day.type === "holiday")
-      return `${baseClass} bg-red-50 hover:bg-red-100`;
+      return `${baseClass} ${isSelected ? "bg-red-200" : "bg-red-50"}`;
 
-    // Cuối tuần (T7, CN) - giữ nguyên
+    // Cuối tuần (T7, CN)
     if (day.type === "weekend")
-      return `${baseClass} bg-orange-100 text-gray-400 hover:bg-orange-200`;
+      return `${baseClass} ${isSelected ? "bg-orange-300" : "bg-orange-100"} text-gray-400`;
 
     // Nghỉ phép
     if (day.type === "leave")
-      return `${baseClass} bg-purple-50 hover:bg-purple-100`;
+      return `${baseClass} ${isSelected ? "bg-purple-200" : "bg-purple-50"}`;
 
     // Ngày hôm nay - viền xanh nước biển
     if (day.isToday)
-      return `${baseClass} bg-blue-100 ring-2 ring-inset ring-blue-400 z-10`;
+      return `${baseClass} ${isSelected ? "bg-blue-200" : "bg-blue-100"} ring-2 ring-inset ring-blue-400`;
 
     // Kiểm tra xem đang xem tháng hiện tại hay không
     const isCurrentMonth = CURRENT_YEAR === todayInfo.year && CURRENT_MONTH === todayInfo.month;
 
     // Ngày đã qua (trước ngày hiện tại) - màu xanh
     if (isCurrentMonth && day.day < TODAY) {
-      return `${baseClass} bg-green-100 hover:bg-green-200`;
+      return `${baseClass} ${isSelected ? "bg-green-200" : "bg-green-100"}`;
     }
 
     // Ngày trong quá khứ (tháng trước tháng hiện tại)
     if (CURRENT_YEAR < todayInfo.year || (CURRENT_YEAR === todayInfo.year && CURRENT_MONTH < todayInfo.month)) {
-      return `${baseClass} bg-green-100 hover:bg-green-200`;
+      return `${baseClass} ${isSelected ? "bg-green-200" : "bg-green-100"}`;
     }
 
     // Ngày trong tương lai - màu trắng
-    return `${baseClass} bg-white`;
+    return `${baseClass} ${isSelected ? "bg-blue-100" : "bg-white"}`;
   };
 
   return (

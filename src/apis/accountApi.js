@@ -37,4 +37,15 @@ export const accountApi = {
     return apiClient.put(`/accounts/${id}`, {roleName:roleName});
   },
 
+  // POST /api/accounts/bulk-import - Import file Excel
+  bulkImport: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post("/accounts/bulk-import", formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+
 };

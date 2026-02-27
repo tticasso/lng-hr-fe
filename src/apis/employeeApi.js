@@ -31,4 +31,19 @@ export const employeeApi = {
   delete: (id) => {
     return apiClient.delete(`/user/${id}`);
   },
+
+  // import_profile: (data) => {
+  //   return apiClient.post("/employees/import-profile", data);
+  // },
+
+
+  import_profile: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post("/employees/import-profile", formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
 };
