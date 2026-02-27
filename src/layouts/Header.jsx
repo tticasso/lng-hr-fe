@@ -7,6 +7,7 @@ import useSocket from "../pages/notification/useSocket";
 import { notificationApi } from "../apis/notificationAPI";
 import logoImage from "../assets/logo.png";
 import { toast } from "react-toastify";
+import { useNotification } from "../context/NotificationContext";
 
 // ✅ Format thời gian thông báo: rõ ràng + chuyên nghiệp
 const formatNotifyTime = (dateInput) => {
@@ -42,7 +43,7 @@ const formatNotifyTime = (dateInput) => {
 const Header = () => {
   const [jobTitle, setJobTitle] = useState("");
   const [fullName, setFullName] = useState("");
-  const [openNotify, setOpenNotify] = useState(false);
+  const { openNotify, setOpenNotify } = useNotification();
 
   // ✅ tab filter: all (thông báo) | unread (chưa đọc)
   const [notifyTab, setNotifyTab] = useState("all");

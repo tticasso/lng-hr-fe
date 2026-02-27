@@ -33,6 +33,10 @@ import { notification } from "antd";
 import NotificationListener from "./notification/NotificationListener";
 import SocketDebugger from "../components/SocketDebugger";
 import useSocket from "./notification/useSocket";
+import { announcementAPI } from "../apis/announcements";
+import AnnouncementDetailModal from "../components/modals/AnnouncementDetailModal";
+import { useNotification } from "../context/NotificationContext";
+
 const Dashboard = () => {
 
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
@@ -42,6 +46,9 @@ const Dashboard = () => {
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [otRequests, setOTRequests] = useState([]);
   const [mySheetData, setMySheetData] = useState(null); // Thêm state cho My Sheet data
+  const [selectedAnnouncementId, setSelectedAnnouncementId] = useState(null);
+  const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
+  const { openNotificationPanel } = useNotification();
 
 
 
@@ -128,6 +135,11 @@ const Dashboard = () => {
   const handleClickOT = () => {
     console.log("[OT] CLICK button - before set:", isOTModalOpen);
     setIsOTModalOpen(true);
+  };
+
+  const handleAnnouncementClick = (announcementId) => {
+    setSelectedAnnouncementId(announcementId);
+    setIsAnnouncementModalOpen(true);
   };
 
   const callOTAPI = async (payload) => {
@@ -235,29 +247,59 @@ const Dashboard = () => {
     },
   ];
 
-  const announcements = [
-    {
-      id: 1,
-      title: "Thông báo lịch nghỉ lễ Quốc Khánh 2/9",
-      date: "28/08/2025",
-      tag: "Important",
-      type: "error",
-    },
-    {
-      id: 2,
-      title: "Chính sách thưởng dự án Quý 3/2025",
-      date: "25/08/2025",
-      tag: "Policy",
-      type: "primary",
-    },
-    {
-      id: 3,
-      title: "Chào đón nhân viên mới tháng 8",
-      date: "20/08/2025",
-      tag: "News",
-      type: "success",
-    },
-  ];
+  const [announcements, setAnnouncements] = useState([]);
+
+  useEffect(() => {
+    const callAPIAnnouncement = async () => {
+      try {
+        const res = await announcementAPI.get();
+        console.log("announcementAPI RES : ", res);
+
+        // Lấy 3 thông báo mới nhất
+        const latestAnnouncements = (res.data.data || [])
+          .slice(0, 3)
+          .map((item) => {
+            // Map category sang tag và type
+            let tag = "News";
+            let type = "success";
+
+            if (item.category === "SCHEDULED") {
+              tag = "Scheduled";
+              type = "primary";
+            } else if (item.category === "EVENT") {
+              tag = "Event";
+              type = "primary";
+            } else if (item.category === "NEWS") {
+              tag = "News";
+              type = "success";
+            }
+
+            // Map priority sang type nếu là URGENT hoặc HIGH
+            if (item.priority === "URGENT") {
+              type = "error";
+              tag = "Important";
+            } else if (item.priority === "HIGH") {
+              type = "error";
+            }
+
+            return {
+              id: item._id,
+              title: item.title,
+              date: new Date(item.createdAt).toLocaleDateString("vi-VN"),
+              tag: tag,
+              type: type,
+              rawData: item, // Lưu data gốc để dùng sau
+            };
+          });
+
+        setAnnouncements(latestAnnouncements);
+      } catch (error) {
+        console.log("announcementAPI ERROR : ", error);
+        setAnnouncements([]);
+      }
+    };
+    callAPIAnnouncement();
+  }, []);
 
   // Map leaveType và otType sang tên tiếng Việt
   const leaveTypeMap = {
@@ -301,7 +343,7 @@ const Dashboard = () => {
     <div className="space-y-6">
       {/* Socket Debugger - Xem trạng thái kết nối */}
       {/* <SocketDebugger /> */}
-      
+
       {/* --- OT MODAL (Imported Component) --- */}
       {isOTModalOpen && (
         <>
@@ -333,6 +375,16 @@ const Dashboard = () => {
           }}
         />
       )}
+
+      {/* --- ANNOUNCEMENT DETAIL MODAL --- */}
+      <AnnouncementDetailModal
+        isOpen={isAnnouncementModalOpen}
+        onClose={() => {
+          setIsAnnouncementModalOpen(false);
+          setSelectedAnnouncementId(null);
+        }}
+        announcementId={selectedAnnouncementId}
+      />
       {/* --- HÀNG TRÊN: WELCOME & STATS --- */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* 1. Welcome Card (Chiếm 6/12 cột) */}
@@ -442,6 +494,7 @@ const Dashboard = () => {
                 </h3>
               </div>
               <Button
+                onClick={openNotificationPanel}
                 variant="ghost"
                 className="text-sm text-blue-600 hover:text-blue-700"
               >
@@ -450,42 +503,50 @@ const Dashboard = () => {
             </div>
 
             <div className="divide-y divide-gray-100">
-              {announcements.map((news) => (
-                <div
-                  key={news.id}
-                  className="py-4 first:pt-0 last:pb-0 flex items-start gap-4 group cursor-pointer"
-                >
-                  {/* Icon tin tức */}
-                  <div className="mt-1 p-2 bg-gray-50 rounded-full group-hover:bg-blue-50 transition-colors">
-                    <FileText
-                      size={18}
-                      className="text-gray-400 group-hover:text-blue-500"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider 
-                                        ${news.tag === "Important"
-                            ? "bg-red-100 text-red-600"
-                            : news.tag === "Policy"
-                              ? "bg-blue-100 text-blue-600"
-                              : "bg-green-100 text-green-600"
-                          }`}
-                      >
-                        {news.tag}
-                      </span>
-                      <span className="text-xs text-gray-400">
-                        • {news.date}
-                      </span>
+              {announcements.length > 0 ? (
+                announcements.map((news) => (
+                  <div
+                    key={news.id}
+                    className="py-4 first:pt-0 last:pb-0 flex items-start gap-4 group cursor-pointer"
+                    onClick={() => handleAnnouncementClick(news.id)}
+                  >
+                    {/* Icon tin tức */}
+                    <div className="mt-1 p-2 bg-gray-50 rounded-full group-hover:bg-blue-50 transition-colors">
+                      <FileText
+                        size={18}
+                        className="text-gray-400 group-hover:text-blue-500"
+                      />
                     </div>
-                    <h4 className="text-sm font-semibold text-gray-800 group-hover:text-blue-600 transition-colors line-clamp-1">
-                      {news.title}
-                    </h4>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider 
+                                          ${news.tag === "Important"
+                              ? "bg-red-100 text-red-600"
+                              : news.tag === "Policy"
+                                ? "bg-blue-100 text-blue-600"
+                                : "bg-green-100 text-green-600"
+                            }`}
+                        >
+                          {news.tag}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          • {news.date}
+                        </span>
+                      </div>
+                      <h4 className="text-sm font-semibold text-gray-800 group-hover:text-blue-600 transition-colors line-clamp-1">
+                        {news.title}
+                      </h4>
+                    </div>
+                    <ChevronRight size={16} className="text-gray-300 mt-3" />
                   </div>
-                  <ChevronRight size={16} className="text-gray-300 mt-3" />
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-400">
+                  <FileText size={32} className="mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Chưa có thông báo nào</p>
                 </div>
-              ))}
+              )}
             </div>
           </Card>
 
