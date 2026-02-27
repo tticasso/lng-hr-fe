@@ -6,6 +6,7 @@ import { leaveAPI } from "../../apis/leaveAPI";
 import { OTApi } from "../../apis/OTAPI";
 import ApproveOTModal from "../../components/modals/ApproveOTModal";
 import { toast } from "react-toastify";
+import { useLocation } from "react-router-dom";
 
 const leaveTypeLabel = {
     ANNUAL: "Nghỉ phép năm",
@@ -86,7 +87,15 @@ const StatusBadge = ({ statusKey, statusText }) => {
 };
 
 const MyLeave = () => {
+    const location = useLocation();
     const [activeTab, setActiveTab] = useState("LEAVE"); // "LEAVE" | "OT"
+
+    // ✅ Nhận activeTab từ navigation state
+    useEffect(() => {
+        if (location.state?.activeTab) {
+            setActiveTab(location.state.activeTab);
+        }
+    }, [location.state]);
 
     // LEAVE
     const [loading, setLoading] = useState(true);

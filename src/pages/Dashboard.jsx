@@ -36,10 +36,12 @@ import useSocket from "./notification/useSocket";
 import { announcementAPI } from "../apis/announcements";
 import AnnouncementDetailModal from "../components/modals/AnnouncementDetailModal";
 import { useNotification } from "../context/NotificationContext";
+import HRSupportModal from "../components/modals/HRSupportModal";
 
 const Dashboard = () => {
 
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+  const [isHRSupportModalOpen, setIsHRSupportModalOpen] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isOTModalOpen, setIsOTModalOpen] = useState(false);
@@ -385,6 +387,12 @@ const Dashboard = () => {
         }}
         announcementId={selectedAnnouncementId}
       />
+
+      {/* --- HR SUPPORT MODAL --- */}
+      <HRSupportModal
+        isOpen={isHRSupportModalOpen}
+        onClose={() => setIsHRSupportModalOpen(false)}
+      />
       {/* --- HÀNG TRÊN: WELCOME & STATS --- */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* 1. Welcome Card (Chiếm 6/12 cột) */}
@@ -663,12 +671,15 @@ const Dashboard = () => {
               </button>
 
               {/* Action 4: Gửi Ticket HR */}
-              <button className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-purple-50 hover:border-purple-200 hover:shadow-sm transition-all group">
+              <button 
+                className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-purple-50 hover:border-purple-200 hover:shadow-sm transition-all group"
+                onClick={() => setIsHRSupportModalOpen(true)}
+              >
                 <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center shadow-sm text-purple-500 group-hover:text-purple-600 mb-3">
                   <PlusCircle size={20} />
                 </div>
                 <span className="text-sm font-semibold text-gray-700 group-hover:text-purple-700">
-                  Hỗ trợ HR
+                  Hỗ trợ
                 </span>
               </button>
             </div>

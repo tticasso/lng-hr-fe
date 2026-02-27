@@ -11,10 +11,9 @@ const OT_TYPE_OPTIONS = [
   { value: "HOLIDAY", label: "Ngày lễ" },
 ];
 
-const makePayload = ({ date, otType, startTime, endTime, reason }) => ({
+const makePayload = ({ date, startTime, endTime, reason }) => ({
   // backend cần "YYYY-MM-DD"
   date: date ? dayjs(date).format("YYYY-MM-DD") : "",
-  otType: otType || "WEEKDAY",
   // backend cần "HH:mm"
   startTime: startTime ? dayjs(startTime).format("HH:mm") : "",
   endTime: endTime ? dayjs(endTime).format("HH:mm") : "",
@@ -56,7 +55,7 @@ useEffect(() => {
     if (!open) return;
 
     setDate(initialValues?.date ? dayjs(initialValues.date) : null);
-    setOtType(initialValues?.otType || "WEEKDAY");
+    // setOtType(initialValues?.otType || "WEEKDAY");
 
     // cho phép initialValues dạng "20:00" hoặc full datetime
     setStartTime(
@@ -75,18 +74,18 @@ useEffect(() => {
 
   const canSubmit = useMemo(() => {
     if (!date) return false;
-    if (!otType) return false;
+    // if (!otType) return false;
     if (!startTime || !endTime) return false;
 
     // endTime phải sau startTime
     if (dayjs(endTime).isSameOrBefore(dayjs(startTime))) return false;
     return true;
-  }, [date, otType, startTime, endTime]);
+  }, [date, startTime, endTime]);
 
   const handleOk = async () => {
     if (!canSubmit) return;
 
-    const payload = makePayload({ date, otType, startTime, endTime, reason });
+    const payload = makePayload({ date, startTime, endTime, reason });
 
     try {
       setConfirmLoading(true);
@@ -126,7 +125,7 @@ useEffect(() => {
         </div>
 
         {/* otType */}
-        <div>
+        {/* <div>
           <p className="text-sm font-medium mb-1">Loại ngày OT</p>
           <Select
             value={otType}
@@ -135,7 +134,7 @@ useEffect(() => {
             className="w-full"
             placeholder="Chọn loại OT"
           />
-        </div>
+        </div> */}
 
         {/* time */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
