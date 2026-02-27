@@ -8,6 +8,8 @@ import { notificationApi } from "../apis/notificationAPI";
 import logoImage from "../assets/logo.png";
 import { toast } from "react-toastify";
 import { useNotification } from "../context/NotificationContext";
+import AnnouncementDetailModal from "../components/modals/AnnouncementDetailModal";
+import { announcementAPI } from "../apis/announcements";
 
 // ✅ Format thời gian thông báo: rõ ràng + chuyên nghiệp
 const formatNotifyTime = (dateInput) => {
@@ -50,6 +52,10 @@ const Header = () => {
 
   // ✅ State cho modal chi tiết
   const [selectedNotification, setSelectedNotification] = useState(null);
+  
+  // ✅ State cho Announcement Detail Modal
+  const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
+  const [selectedAnnouncementId, setSelectedAnnouncementId] = useState(null);
 
   // ✅ State cho search
   const [searchQuery, setSearchQuery] = useState("");
@@ -78,7 +84,7 @@ const Header = () => {
   }, [fullName]);
 
   // ✅ Ảnh logo cho tất cả thông báo
-  const NOTIFICATION_AVATAR = logoImage;
+  const NOTIFICATION_AVATAR = "https://res.cloudinary.com/dplhdyxgl/image/upload/v1772177306/logo_j0iody.jpg";
 
   // ✅ notifications state để thao tác read/unread local
   const [notifications, setNotifications] = useState([]);
@@ -156,7 +162,7 @@ const Header = () => {
         toast.info(
           <div className="flex items-start gap-3">
             <img 
-              src={logoImage} 
+              src="https://res.cloudinary.com/dplhdyxgl/image/upload/v1772177306/logo_j0iody.jpg" 
               alt="logo" 
               className="w-10 h-10 rounded-full object-cover bg-white p-1"
             />
@@ -216,26 +222,39 @@ const Header = () => {
   };
 
   const handleClickNotification = async (notification) => {
-    // ✅ Mở modal chi tiết
-    setSelectedNotification(notification);
+    const { relatedModel, relatedId } = notification;
 
     // ✅ Đánh dấu đã đọc nếu là thông báo chưa đọc
     if (notification.unread) {
       try {
-        // Call API để mark as read
         await notificationApi.markAsRead(notification.id);
-        
-        // Update local state
         setNotifications((prev) =>
           prev.map((n) => (n.id === notification.id ? { ...n, unread: false } : n))
         );
       } catch (error) {
         console.error("Error marking as read:", error);
-        // Vẫn update local state nếu API fail
         setNotifications((prev) =>
           prev.map((n) => (n.id === notification.id ? { ...n, unread: false } : n))
         );
       }
+    }
+
+    // ✅ Xử lý điều hướng theo relatedModel
+    if (relatedModel === "Overtime") {
+      // Điều hướng đến trang Myleave với tab OT
+      setOpenNotify(false);
+      navigate("/leave", { state: { activeTab: "OT" } });
+    } else if (relatedModel === "Leave") {
+      // Điều hướng đến trang Myleave với tab LEAVE
+      setOpenNotify(false);
+      navigate("/leave", { state: { activeTab: "LEAVE" } });
+    } else if (relatedModel === "Announcement") {
+      // Hiển thị modal chi tiết thông báo
+      setSelectedAnnouncementId(relatedId);
+      setIsAnnouncementModalOpen(true);
+    } else {
+      // Fallback: mở modal chi tiết thông báo cũ
+      setSelectedNotification(notification);
     }
   };
 
@@ -583,6 +602,16 @@ const Header = () => {
           onClose={handleCloseModal}
         />
       )}
+
+      {/* Announcement Detail Modal */}
+      <AnnouncementDetailModal
+        isOpen={isAnnouncementModalOpen}
+        onClose={() => {
+          setIsAnnouncementModalOpen(false);
+          setSelectedAnnouncementId(null);
+        }}
+        announcementId={selectedAnnouncementId}
+      />
     </>
   );
 };

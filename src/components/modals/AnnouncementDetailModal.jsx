@@ -230,7 +230,7 @@ const AnnouncementDetailModal = ({ isOpen, onClose, announcementId }) => {
               )}
 
               {/* Read Stats */}
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              {/* <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-blue-800">
                     Đã xem: {announcement.readBy?.length || 0} người
@@ -239,7 +239,7 @@ const AnnouncementDetailModal = ({ isOpen, onClose, announcementId }) => {
                     Trạng thái: {announcement.status}
                   </span>
                 </div>
-              </div>
+              </div> */}
             </div>
           ) : null}
         </div>
