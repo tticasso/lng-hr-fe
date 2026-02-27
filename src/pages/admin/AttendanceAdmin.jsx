@@ -22,22 +22,31 @@ import * as XLSX from "xlsx";
 
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
-import StatusBadge from "../../components/common/StatusBadge";
 import EditAttendanceModal from "../../components/modals/EditAttendanceModal";
 import { toast } from "react-toastify";
 import { attendancesAPI } from "../../apis/attendancesAPI";
 import { payrollAPI } from "../../apis/payrollAPI";
+import { departmentApi } from "../../apis/departmentApi";
 
 const AttendanceAdmin = () => {
   const [selectedPeriod, setSelectedPeriod] = useState("2026-02"); // Mặc định tháng hiện tại
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPeriodLocked, setIsPeriodLocked] = useState(false);
-  const [attendanceData, setAttendanceData] = useState([]);
+  const [allAttendanceData, setAllAttendanceData] = useState([]); // Toàn bộ data từ API
+  const [filteredAttendanceData, setFilteredAttendanceData] = useState([]); // Data sau khi filter
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [employeeDetail, setEmployeeDetail] = useState(null); // Chi tiết chấm công theo ngày
   const [selectedAttendanceLog, setSelectedAttendanceLog] = useState(null); // Dòng chấm công đang chỉnh sửa
+
+  // Filter State
+  const [filters, setFilters] = useState({
+    search: "",
+    department: "",
+    status: "",
+  });
 
   // =========================
   // IMPORT EXCEL: UI HOOKS
@@ -81,7 +90,7 @@ const AttendanceAdmin = () => {
       const { month, year } = getMonthYear(selectedPeriod);
       console.log("🔄 Refreshing attendance data...");
       const listRes = await attendancesAPI.getall(month, year);
-      setAttendanceData(listRes.data?.data || listRes.data || []);
+      setAllAttendanceData(listRes.data?.data || listRes.data || []);
 
       // Refresh employee detail if panel is open
       if (selectedEmployee) {
@@ -142,20 +151,74 @@ const AttendanceAdmin = () => {
         const res = await attendancesAPI.getall(month, year);
 
         console.log("✅ DỮ LIỆU CHẤM CÔNG:", res.data);
-        setAttendanceData(res.data?.data || res.data || []);
+        setAllAttendanceData(res.data?.data || res.data || []);
 
         //  toast.success(`Đã tải dữ liệu chấm công tháng 123 ${month}/${year}`);
       } catch (error) {
         console.error("❌ DỮ LIỆU CHẤM CÔNG có lỗi:", error);
         toast.error("Không thể tải dữ liệu chấm công");
-        setAttendanceData([]);
+        setAllAttendanceData([]);
       } finally {
         setLoading(false);
       }
     };
 
     callAPIattendances();
-  }, [selectedPeriod])
+  }, [selectedPeriod]);
+
+  // --- FETCH DEPARTMENTS ---
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const res = await departmentApi.getAll();
+        const deptData = res.data?.data || res.data || [];
+        setDepartments(Array.isArray(deptData) ? deptData : []);
+      } catch (error) {
+        console.error("Lỗi tải phòng ban:", error);
+      }
+    };
+    fetchDepartments();
+  }, []);
+
+  // --- FILTER LOGIC (Local) ---
+  useEffect(() => {
+    let result = [...allAttendanceData];
+
+    // Filter by search
+    if (filters.search.trim()) {
+      const searchLower = filters.search.toLowerCase();
+      result = result.filter(
+        (emp) =>
+          emp.fullName?.toLowerCase().includes(searchLower) ||
+          emp.employeeCode?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Filter by department (so sánh theo tên phòng ban)
+    if (filters.department) {
+      result = result.filter((emp) => {
+        const deptName = emp.department || "";
+        return deptName === filters.department;
+      });
+    }
+
+    // Filter by status (Valid hoặc Error)
+    if (filters.status) {
+      if (filters.status === "Error") {
+        result = result.filter((emp) => emp.hasError || emp.totalWorkDays === 0);
+      } else if (filters.status === "Valid") {
+        result = result.filter((emp) => !emp.hasError && emp.totalWorkDays > 0);
+      }
+    }
+
+    setFilteredAttendanceData(result);
+  }, [allAttendanceData, filters]);
+
+  // --- HANDLERS ---
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleImportClick = () => {
     // Không thay UI: chỉ trigger input file ẩn
@@ -250,7 +313,7 @@ const AttendanceAdmin = () => {
       console.log("[IMPORT] Step 8: Reloading attendance data...");
       const { month, year } = getMonthYear(selectedPeriod);
       const res = await attendancesAPI.getall(month, year);
-      setAttendanceData(res.data?.data || res.data || []);
+      setAllAttendanceData(res.data?.data || res.data || []);
       console.log("[IMPORT] ✅ Data reloaded successfully");
 
     } catch (err) {
@@ -761,6 +824,145 @@ const AttendanceAdmin = () => {
   };
 
   // =========================
+  // EXPORT TO EXCEL
+  // =========================
+  const handleExportExcel = () => {
+    try {
+      const { month, year } = getMonthYear(selectedPeriod);
+
+      // Chuẩn bị dữ liệu xuất (sử dụng filteredAttendanceData)
+      const exportData = filteredAttendanceData.map((emp, index) => ({
+        STT: index + 1,
+        "Mã nhân viên": emp.employeeCode || "",
+        "Họ và tên": emp.fullName || "",
+        "Phòng ban": emp.department || "",
+        "Ngày công": emp.totalWorkDays?.toFixed(2) || "0.00",
+        "Giờ OT": emp.totalOTHours?.toFixed(2) || "0.00",
+        "Nghỉ phép": emp.paidLeaveDays || 0,
+        "Đi muộn": emp.lateCount || 0,
+        "Trạng thái": (emp.hasError || emp.totalWorkDays === 0) ? "Error" : "Valid",
+      }));
+
+      // Tạo worksheet từ dữ liệu
+      const ws = XLSX.utils.json_to_sheet(exportData, { origin: "A4" });
+
+      // Thêm header (3 dòng đầu)
+      const currentDate = new Date().toLocaleDateString("vi-VN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+
+      XLSX.utils.sheet_add_aoa(
+        ws,
+        [
+          ["LNG Group"],
+          [`Bảng chấm công tháng ${month}/${year}`],
+          [currentDate],
+        ],
+        { origin: "A1" }
+      );
+
+      // Merge cells cho header
+      ws["!merges"] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }, // Merge dòng 1
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } }, // Merge dòng 2
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 8 } }, // Merge dòng 3
+      ];
+
+      // Style cho header (3 dòng đầu)
+      const headerStyle = {
+        font: { bold: true, sz: 16, color: { rgb: "1F4E78" } },
+        alignment: { horizontal: "center", vertical: "center" },
+      };
+
+      ["A1", "A2", "A3"].forEach((cell) => {
+        if (ws[cell]) {
+          ws[cell].s = headerStyle;
+        }
+      });
+
+      // Style cho tiêu đề cột (dòng 4)
+      const columnHeaderStyle = {
+        font: { bold: true, sz: 11, color: { rgb: "FFFFFF" } },
+        alignment: { horizontal: "center", vertical: "center", wrapText: true },
+        fill: { fgColor: { rgb: "4472C4" } },
+        border: {
+          top: { style: "thin", color: { rgb: "000000" } },
+          bottom: { style: "thin", color: { rgb: "000000" } },
+          left: { style: "thin", color: { rgb: "000000" } },
+          right: { style: "thin", color: { rgb: "000000" } },
+        },
+      };
+
+      // Áp dụng style cho tiêu đề cột (row 4, từ A4 đến I4)
+      const columnHeaders = ["A4", "B4", "C4", "D4", "E4", "F4", "G4", "H4", "I4"];
+      columnHeaders.forEach((cell) => {
+        if (ws[cell]) {
+          ws[cell].s = columnHeaderStyle;
+        }
+      });
+
+      // Style cho data cells
+      const dataCellStyle = {
+        alignment: { vertical: "center", wrapText: false },
+        border: {
+          top: { style: "thin", color: { rgb: "D3D3D3" } },
+          bottom: { style: "thin", color: { rgb: "D3D3D3" } },
+          left: { style: "thin", color: { rgb: "D3D3D3" } },
+          right: { style: "thin", color: { rgb: "D3D3D3" } },
+        },
+      };
+
+      // Áp dụng style cho data (từ row 5 trở đi)
+      const range = XLSX.utils.decode_range(ws["!ref"]);
+      for (let R = 4; R <= range.e.r; R++) {
+        for (let C = 0; C <= 8; C++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+          if (ws[cellAddress]) {
+            ws[cellAddress].s = dataCellStyle;
+          }
+        }
+      }
+
+      // Tự động điều chỉnh độ rộng cột
+      const colWidths = [
+        { wch: 5 },  // STT
+        { wch: 15 }, // Mã NV
+        { wch: 25 }, // Họ tên
+        { wch: 20 }, // Phòng ban
+        { wch: 12 }, // Ngày công
+        { wch: 10 }, // Giờ OT
+        { wch: 12 }, // Nghỉ phép
+        { wch: 10 }, // Đi muộn
+        { wch: 12 }, // Trạng thái
+      ];
+      ws["!cols"] = colWidths;
+
+      // Set row heights
+      ws["!rows"] = [
+        { hpt: 25 }, // Row 1
+        { hpt: 25 }, // Row 2
+        { hpt: 25 }, // Row 3
+        { hpt: 30 }, // Row 4 (header)
+      ];
+
+      // Tạo workbook
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `Chấm công ${month}-${year}`);
+
+      // Xuất file
+      const fileName = `Bang_cham_cong_${month}_${year}_${new Date().toISOString().split("T")[0]}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+
+      toast.success(`Đã xuất ${exportData.length} bản ghi chấm công ra file Excel`);
+    } catch (error) {
+      console.error("Lỗi xuất Excel:", error);
+      toast.error("Không thể xuất file Excel");
+    }
+  };
+
+  // =========================
   // RENDER
   // =========================
   return (
@@ -839,7 +1041,7 @@ const AttendanceAdmin = () => {
             <Upload size={16} /> Import dữ liệu
           </Button>
 
-          <Button variant="secondary" className="flex items-center gap-2">
+          <Button variant="secondary" className="flex items-center gap-2" onClick={handleExportExcel} disabled={filteredAttendanceData.length === 0}>
             <Download size={16} /> Xuất Excel
           </Button>
           <Button
@@ -872,25 +1074,41 @@ const AttendanceAdmin = () => {
               />
               <input
                 type="text"
+                name="search"
+                value={filters.search}
+                onChange={handleFilterChange}
                 placeholder="Tìm tên hoặc mã nhân viên..."
                 className="pl-9 pr-4 py-2 w-full bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <select className="bg-white border border-gray-300 text-gray-700 text-sm rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500">
-              <option>Tất cả phòng ban</option>
-              <option>Product</option>
-              <option>Sales</option>
+            <select
+              name="department"
+              value={filters.department}
+              onChange={handleFilterChange}
+              className="bg-white border border-gray-300 text-gray-700 text-sm rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Tất cả phòng ban</option>
+              {departments.map((dept) => (
+                <option key={dept._id} value={dept.name}>
+                  {dept.name}
+                </option>
+              ))}
             </select>
-            <select className="bg-white border border-gray-300 text-gray-700 text-sm rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500">
-              <option>Tất cả trạng thái</option>
-              <option>Có lỗi (Missing)</option>
-              <option>Đi muộn</option>
+            <select
+              name="status"
+              value={filters.status}
+              onChange={handleFilterChange}
+              className="bg-white border border-gray-300 text-gray-700 text-sm rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Tất cả trạng thái</option>
+              <option value="Valid">Valid</option>
+              <option value="Error">Error</option>
             </select>
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <AlertCircle size={16} className="text-red-500" />
             <span>
-              Tìm thấy <strong>1</strong> nhân viên có lỗi chấm công
+              Tìm thấy <strong>{filteredAttendanceData.filter(emp => emp.hasError || emp.totalWorkDays === 0).length}</strong> nhân viên có lỗi chấm công
             </span>
           </div>
         </div>
@@ -904,12 +1122,12 @@ const AttendanceAdmin = () => {
                 <p className="text-sm text-gray-500">Đang tải dữ liệu chấm công...</p>
               </div>
             </div>
-          ) : attendanceData.length === 0 ? (
+          ) : filteredAttendanceData.length === 0 ? (
             <div className="flex items-center justify-center h-64">
               <div className="text-center text-gray-400">
                 <AlertCircle size={48} className="mx-auto mb-3 opacity-50" />
-                <p className="text-sm font-medium">Không có dữ liệu chấm công</p>
-                <p className="text-xs mt-1">Vui lòng import dữ liệu hoặc chọn kỳ khác</p>
+                <p className="text-sm font-medium">Không tìm thấy nhân viên phù hợp</p>
+                <p className="text-xs mt-1">Thử thay đổi bộ lọc hoặc tìm kiếm</p>
               </div>
             </div>
           ) : (
@@ -928,7 +1146,7 @@ const AttendanceAdmin = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
-                {attendanceData.map((emp, index) => {
+                {filteredAttendanceData.map((emp, index) => {
                   // Generate avatar từ fullName
                   const avatar = emp.fullName?.substring(0, 2).toUpperCase() || "??";
 

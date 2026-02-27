@@ -31,10 +31,13 @@ import PublicRoute from "./components/PublicRoute";
 import MyLeave from "./pages/announce/Myleave";
 import AllPayRoll from "./pages/payroll/AllPayRoll";
 import NotificationViewer from "./pages/notification/NotificationViewer";
+import { NotificationProvider } from "./context/NotificationContext";
+
 function App() {
   return (
     <>
-      <BrowserRouter>
+      <NotificationProvider>
+        <BrowserRouter>
         <Routes>
           <Route
             path="/login"
@@ -114,8 +117,9 @@ function App() {
           {/* Route Login sẽ nằm ngoài Layout này (làm sau) */}
           {/* <Route path="/login" element={<Login />} /> */}
         </Routes>
-      </BrowserRouter>
-      <ToastContainer position="top-right" autoClose={3000} />
+        </BrowserRouter>
+        <ToastContainer position="top-right" autoClose={3000} />
+      </NotificationProvider>
     </>
   );
 }
