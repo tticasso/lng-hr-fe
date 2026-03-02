@@ -39,7 +39,7 @@ const AllPayRoll = () => {
 
     // Status options
     const statusOptions = [
-        { value: "FINALIZED", label: "Đã hoàn tất" },
+        { value: "FINALIZED", label: "Chưa thanh toán" },
         { value: "PAID", label: "Đã thanh toán" },
     ];
 
@@ -418,7 +418,7 @@ const AllPayRoll = () => {
                             className="px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-blue-500 cursor-pointer min-w-[140px]"
                         >
                             <option value="">Trạng thái (Tất cả)</option>
-                            <option value="FINALIZED">Đã hoàn tất</option>
+                            <option value="FINALIZED">Chưa thanh toán</option>
                             <option value="PAID">Đã thanh toán</option>
                         </select>
 
@@ -528,11 +528,11 @@ const AllPayRoll = () => {
                                             </td>
                                             <td className="p-4 text-center">
                                                 {row.status === "FINALIZED" ? (
-                                                    <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">
-                                                        Đã hoàn tất
+                                                    <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-bold">
+                                                        Chưa thanh toán
                                                     </span>
                                                 ) : row.status === "PAID" ? (
-                                                    <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-bold">
+                                                    <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">
                                                         Đã thanh toán
                                                     </span>
                                                 ) : (

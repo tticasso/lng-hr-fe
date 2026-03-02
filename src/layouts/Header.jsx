@@ -52,7 +52,7 @@ const Header = () => {
 
   // ✅ State cho modal chi tiết
   const [selectedNotification, setSelectedNotification] = useState(null);
-  
+
   // ✅ State cho Announcement Detail Modal
   const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
   const [selectedAnnouncementId, setSelectedAnnouncementId] = useState(null);
@@ -100,7 +100,7 @@ const Header = () => {
 
         // Parse data từ API response
         const apiNotifications = res.data?.data || [];
-        
+
         // Transform data từ API sang format của UI
         const transformedNotifications = apiNotifications.map((item) => ({
           id: item._id,
@@ -150,7 +150,7 @@ const Header = () => {
         console.log("⚠️ Notification already exists, skipping...");
         return prev;
       }
-      
+
       // Kiểm tra xem toast đã hiển thị chưa
       setShownToasts((prevShown) => {
         if (prevShown.has(newNotification.id)) {
@@ -161,9 +161,9 @@ const Header = () => {
         // Hiển thị toast notification
         toast.info(
           <div className="flex items-start gap-3">
-            <img 
-              src="https://res.cloudinary.com/dplhdyxgl/image/upload/v1772177306/logo_j0iody.jpg" 
-              alt="logo" 
+            <img
+              src="https://res.cloudinary.com/dplhdyxgl/image/upload/v1772177306/logo_j0iody.jpg"
+              alt="logo"
               className="w-10 h-10 rounded-full object-cover bg-white p-1"
             />
             <div className="flex-1">
@@ -187,7 +187,7 @@ const Header = () => {
         newSet.add(newNotification.id);
         return newSet;
       });
-      
+
       // Thêm vào đầu danh sách
       return [newNotification, ...prev];
     });
@@ -211,7 +211,7 @@ const Header = () => {
     try {
       // Call API để mark all as read
       await notificationApi.markAllAsRead();
-      
+
       // Update local state
       setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
     } catch (error) {
@@ -244,14 +244,21 @@ const Header = () => {
       // Điều hướng đến trang Myleave với tab OT
       setOpenNotify(false);
       navigate("/leave", { state: { activeTab: "OT" } });
+    }
+    else if (relatedModel === "Payroll") {
+      // Điều hướng đến trang Myleave với tab LEAVE
+      setOpenNotify(false);
+      navigate("/payroll");
     } else if (relatedModel === "Leave") {
       // Điều hướng đến trang Myleave với tab LEAVE
       setOpenNotify(false);
       navigate("/leave", { state: { activeTab: "LEAVE" } });
     } else if (relatedModel === "Announcement") {
-      // Hiển thị modal chi tiết thông báo
-      setSelectedAnnouncementId(relatedId);
-      setIsAnnouncementModalOpen(true);
+      // // Hiển thị modal chi tiết thông báo
+      // setSelectedAnnouncementId(relatedId);
+      // setIsAnnouncementModalOpen(true);
+       // Fallback: mở modal chi tiết thông báo cũ
+      setSelectedNotification(notification);
     } else {
       // Fallback: mở modal chi tiết thông báo cũ
       setSelectedNotification(notification);

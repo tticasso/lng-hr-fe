@@ -3,7 +3,7 @@ import apiClient from "./apiClient";
 export const attendancesAPI = {
 
     getall: (month, year) => {
-        return apiClient.get(`/attendances/report?month=${month}&year=${year}`);
+        return apiClient.get(`/attendances/report?month=${month}&year=${year}&limit=100`);
     },
     getbyid: (month, year, id) => {
         return apiClient.get(`/attendances/employee/${id}?month=${month}&year=${year}`);

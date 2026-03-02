@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { X, Clock, CheckCircle } from "lucide-react";
 import logoImage from "../../assets/logo.png";
+import { announcementAPI } from "../../apis/announcements";
 
 const formatDetailTime = (dateInput) => {
   if (!dateInput) return "--";
@@ -18,7 +19,28 @@ const formatDetailTime = (dateInput) => {
 };
 
 const NotificationDetailModal = ({ notification, onClose }) => {
+  const [content,setContent]=useState("");
+  
   if (!notification) return null;
+
+
+  useEffect(() => {
+    const fetchData = async () => {
+      console.log("notification :", notification.relatedId);
+      try {
+        const res = await announcementAPI.getById(notification.relatedId);
+        console.log("notification API :", res.data.data.content);
+        setContent(res.data.data.content)
+      } catch (error) {
+        console.log("notification error :", error);
+      }
+    };
+
+    if (notification?.relatedId) {
+      fetchData();
+    }
+  }, [notification]);
+
 
   return (
     <>
@@ -73,7 +95,7 @@ const NotificationDetailModal = ({ notification, onClose }) => {
           <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
             <div className="prose prose-sm max-w-none">
               <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                {notification.content}
+                {content}
               </p>
 
               {/* Thêm thông tin chi tiết nếu có */}

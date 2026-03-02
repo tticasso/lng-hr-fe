@@ -5,8 +5,8 @@ export const employeeApi = {
     return apiClient.get("/employees/me");
   },
   // GET /api/employees (Thay vì /user)
-  getAll: (params) => {
-    return apiClient.get("/employees", { params });
+  getAll: () => {
+    return apiClient.get("/employees?limit=100",);
   },
 
   // GET /api/employees/:id
