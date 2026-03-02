@@ -935,7 +935,7 @@ const Announcements = () => {
                 >
                   <option value="NEWS">Tin tức</option>
                   <option value="EVENT">Sự kiện</option>
-                  <option value="SCHEDULED">Lên lịch</option>
+                  {/* <option value="SCHEDULED">Lên lịch</option> */}
                 </select>
               </div>
 

@@ -409,7 +409,7 @@ const Dashboard = () => {
                 Xin chào, {user?.fullName || "Unknown"}! 👋
               </h2>
               <p className="text-blue-100 opacity-90 mt-1">
-                {user.workMode || "--"} | {user.department || "--"}
+                {user.jobLevel || "--"} | {user.jobTitle || "--"}
               </p>
               <div className="mt-4 flex gap-3">
                 <button

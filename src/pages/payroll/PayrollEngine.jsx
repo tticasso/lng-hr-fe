@@ -43,8 +43,8 @@ const PayrollEngine = () => {
     const fech = async () => {
       try {
         const res = await employeeApi.getAll();
-        console.log("API RES :", res.data.total)
-        setTotalUser(res.data.total)
+        console.log("API RES :", res.data.pagination.totalRecords)
+        setTotalUser(res.data.pagination.totalRecords)  
       } catch (error) {
         console.log("API ERROR :", error)
       }
@@ -393,8 +393,8 @@ const PayrollEngine = () => {
                 </div>
               </div>
 
-              {/* Data Table */}
-              <div className="flex-1 overflow-auto">
+              {/* Data Table - Giới hạn chiều cao */}
+              <div className="flex-1 overflow-auto max-h-[500px]">
                 {loadingData ? (
                   <div className="flex items-center justify-center h-64">
                     <div className="flex flex-col items-center gap-3">
@@ -419,17 +419,17 @@ const PayrollEngine = () => {
                     </div>
                   </div>
                 ) : (
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-white border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold sticky top-0 z-10 shadow-sm">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-white border-b border-gray-200 text-[10px] uppercase text-gray-500 font-semibold sticky top-0 z-10 shadow-sm">
                       <tr>
-                        <th className="p-4">Nhân viên</th>
-                        <th className="p-4">Phòng ban</th>
-                        <th className="p-4 text-right">Lương cơ bản</th>
-                        <th className="p-4 text-right text-orange-600">Lương OT</th>
-                        <th className="p-4 text-right text-green-600">Phụ cấp</th>
-                        <th className="p-4 text-right text-red-600">Khấu trừ</th>
-                        <th className="p-4 text-right bg-blue-50/50">Thực nhận</th>
-                        <th className="p-4 text-center">Trạng thái</th>
+                        <th className="p-2">Nhân viên</th>
+                        <th className="p-2">Phòng ban</th>
+                        <th className="p-2 text-right">Lương cơ bản</th>
+                        <th className="p-2 text-right text-orange-600">Lương OT</th>
+                        <th className="p-2 text-right text-green-600">Phụ cấp</th>
+                        <th className="p-2 text-right text-red-600">Khấu trừ</th>
+                        <th className="p-2 text-right bg-blue-50/50">Thực nhận</th>
+                        <th className="p-2 text-center">Trạng thái</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -439,42 +439,42 @@ const PayrollEngine = () => {
                             key={row._id}
                             className="hover:bg-gray-50 group transition-colors"
                           >
-                            <td className="p-4 font-medium text-gray-800">
+                            <td className="p-2 font-medium text-gray-800">
                               {row.employeeId?.fullName || "--"} <br />
-                              <span className="text-xs text-gray-400 font-normal">
+                              <span className="text-[10px] text-gray-400 font-normal">
                                 {row.employeeId?.employeeCode || "--"}
                               </span>
                             </td>
-                            <td className="p-4 text-gray-600">
+                            <td className="p-2 text-gray-600">
                               {row.departmentId?.name || "--"}
                             </td>
-                            <td className="p-4 text-right font-mono text-gray-600">
+                            <td className="p-2 text-right font-mono text-gray-600">
                               {formatMoney(row.baseSalary || 0)}
                             </td>
-                            <td className="p-4 text-right font-mono text-gray-600">
+                            <td className="p-2 text-right font-mono text-gray-600">
                               {formatMoney(row.otPay || 0)}
                             </td>
-                            <td className="p-4 text-right font-mono text-gray-600">
+                            <td className="p-2 text-right font-mono text-gray-600">
                               {formatMoney(row.totalAllowance || 0)}
                             </td>
-                            <td className="p-4 text-right font-mono text-gray-600">
+                            <td className="p-2 text-right font-mono text-gray-600">
                               -{formatMoney(row.totalDeduction || 0)}
                             </td>
-                            <td className="p-4 text-right font-mono font-bold text-blue-700 bg-blue-50/30 group-hover:bg-blue-100/30 text-base">
+                            <td className="p-2 text-right font-mono font-bold text-blue-700 bg-blue-50/30 group-hover:bg-blue-100/30 text-sm">
                               {formatMoney(row.netIncome || 0)}
                             </td>
-                            <td className="p-4 text-center">
+                            <td className="p-2 text-center">
                               {row.status === "DRAFT" ? (
-                                <span className="inline-flex items-center gap-1 bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold">
-                                  <AlertCircle size={12} /> Draft
+                                <span className="inline-flex items-center gap-1 bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                                  <AlertCircle size={10} /> Xem trước
                                 </span>
-                              ) : row.status === "APPROVED" ? (
-                                <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">
-                                  <CheckCircle2 size={12} /> Approved
+                              ) : row.status === "FINALIZED" ? (
+                                <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                                  <CheckCircle2 size={10} /> Hoàn thành
                                 </span>
                               ) : (
                                 <CheckCircle2
-                                  size={18}
+                                  size={14}
                                   className="text-green-500 mx-auto"
                                 />
                               )}

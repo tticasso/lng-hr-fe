@@ -245,9 +245,9 @@ const LeaveRequestModal = ({ onClose, onConfirm, defaultFromDate = "", defaultLe
                 className={inputClass("leaveScope")}
               >
                 <option value="">-- Chọn ca --</option>
-                <option value="MORNING">MORNING (08:00 - 12:00)</option>
-                <option value="AFTERNOON">AFTERNOON (13:30 - 17:30)</option>
-                <option value="FULL_DAY">FULL DAY (NGHỈ CẢ NGÀY)</option>
+                <option value="MORNING">Nghỉ ca sáng (08:00 - 12:00)</option>
+                <option value="AFTERNOON">Nghỉ ca chiều (13:30 - 17:30)</option>
+                <option value="FULL_DAY">Nghỉ cả ngày (08:00 - 17:30)</option>
               </select>
               <ErrorMsg field="leaveScope" />
             </div>

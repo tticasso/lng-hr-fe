@@ -3,7 +3,7 @@ import apiClient from "./apiClient";
 export const payrollAPI = {
 
     getall: (month, year) => {
-        return apiClient.get(`/payrolls?month=${month}&year=${year}`);
+        return apiClient.get(`/payrolls?month=${month}&year=${year}&limit=50`);
     },
 
     getbyme: () => {

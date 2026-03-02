@@ -33,6 +33,8 @@ const SystemAdmin = () => {
     "LEAVE": "Nghỉ phép",
     "OT": "Làm thêm giờ",
     "USER": "Người dùng",
+    "ANNOUNCEMENT": "Thông báo",
+    "HOLIDAY":"Ngày lễ"
   };
 
   const getVietnameseModule = (moduleName) => {
@@ -43,12 +45,12 @@ const SystemAdmin = () => {
     // AUTH Module
     "LOGIN_SUCCESS": "Đăng nhập thành công",
     "LOGIN_FAILED": "Đăng nhập thất bại",
-    
+
     // ADMIN Module
     "UPDATE_ACCOUNT": "Cập nhật tài khoản",
     "UPDATE_EMPLOYEE": "Cập nhật nhân viên",
     "UPDATE_EMPLOYEE_BY_HR": "Cập nhật nhân viên (HR)",
-    
+
     // EMPLOYEE Module
     "READ_MY_PROFILE": "Xem hồ sơ của tôi",
     "UPDATE_MY_PROFILE": "Cập nhật hồ sơ của tôi",
@@ -57,14 +59,14 @@ const SystemAdmin = () => {
     "WRITE_EMPLOYEES": "Chỉnh sửa nhân viên",
     "CREATE_EMPLOYEE": "Tạo nhân viên",
     "DELETE_EMPLOYEE": "Xóa nhân viên",
-    
+
     // DEPARTMENT Module
     "READ_DEPARTMENTS": "Xem phòng ban",
     "WRITE_DEPARTMENTS": "Chỉnh sửa phòng ban",
     "CREATE_DEPARTMENT": "Tạo phòng ban",
     "UPDATE_DEPARTMENT": "Cập nhật phòng ban",
     "DELETE_DEPARTMENT": "Xóa phòng ban",
-    
+
     // ATTENDANCE Module
     "READ_MY_ATTENDANCE": "Xem chấm công của tôi",
     "READ_ATTENDANCE": "Xem chấm công",
@@ -73,7 +75,7 @@ const SystemAdmin = () => {
     "UPDATE_ATTENDANCE": "Cập nhật chấm công",
     "DELETE_ATTENDANCE": "Xóa chấm công",
     "APPROVE_ATTENDANCE": "Duyệt chấm công",
-    
+
     // REQUEST Module
     "CREATE_REQUEST": "Tạo yêu cầu",
     "READ_MY_REQUEST": "Xem yêu cầu của tôi",
@@ -81,7 +83,7 @@ const SystemAdmin = () => {
     "APPROVE_REQUEST": "Duyệt yêu cầu",
     "DELETE_REQUEST": "Xóa yêu cầu",
     "UPDATE_REQUEST": "Cập nhật yêu cầu",
-    
+
     // PAYROLL Module
     "RUN_PAYROLL": "Chạy bảng lương",
     "READ_PAYROLLS": "Xem bảng lương",
@@ -89,31 +91,39 @@ const SystemAdmin = () => {
     "CREATE_PAYROLL": "Tạo bảng lương",
     "UPDATE_PAYROLL": "Cập nhật bảng lương",
     "DELETE_PAYROLL": "Xóa bảng lương",
-    
+
     // SYSTEM Module
     "MANAGE_SYSTEM": "Quản lý hệ thống",
     "MANAGE_ROLES": "Quản lý vai trò",
     "MANAGE_PERMISSIONS": "Quản lý quyền hạn",
-    
+
     // LEAVE Module
     "CREATE_LEAVE": "Tạo đơn nghỉ",
     "READ_LEAVE": "Xem đơn nghỉ",
     "UPDATE_LEAVE": "Cập nhật đơn nghỉ",
     "DELETE_LEAVE": "Xóa đơn nghỉ",
     "APPROVE_LEAVE": "Duyệt đơn nghỉ",
-    
+
     // OT Module
     "CREATE_OT": "Tạo đơn OT",
     "READ_OT": "Xem đơn OT",
     "UPDATE_OT": "Cập nhật đơn OT",
     "DELETE_OT": "Xóa đơn OT",
     "APPROVE_OT": "Duyệt đơn OT",
-    
+
     // USER Module
     "CREATE_USER": "Tạo người dùng",
     "READ_USER": "Xem người dùng",
     "UPDATE_USER": "Cập nhật người dùng",
     "DELETE_USER": "Xóa người dùng",
+    //ANNOUNCEMENT 
+    "READ_ANNOUNCEMENTS":"Đọc thông báo",
+    "WRITE_ANNOUNCEMENTS":"Viết thông báo",
+    //HOLIDAY
+    "CREATE_HOLIDAYS":"Tạo lịch nghỉ",
+    "DELETE_HOLIDAYS":"Xóa lịch nghỉ",
+    "READ_HOLIDAYS":"Xem lịch nghỉ",
+    "UPDATE_HOLIDAYS":"Cập nhật lịch nghỉ"
   };
 
   const getVietnameseName = (permName) => {
@@ -204,7 +214,7 @@ const SystemAdmin = () => {
     if (!newRoleName.trim()) return;
     try {
       const res = await roleApi.create({ name: newRoleName });
-      console.log('API: ',res)
+      console.log('API: ', res)
       toast.success("Create Role Success");
 
       // Xử lý response linh hoạt
@@ -291,7 +301,7 @@ const SystemAdmin = () => {
       } else {
         await roleApi.addPermissions(selectedRole._id, [permId]);
       }
-    // eslint-disable-next-line no-unused-vars
+      // eslint-disable-next-line no-unused-vars
     } catch (error) {
       setSelectedRole(originalRole);
       setRoles(
@@ -428,10 +438,9 @@ const SystemAdmin = () => {
                 onClick={() => setSelectedRole(role)}
                 className={`
                   group flex items-center justify-between p-3 rounded-lg cursor-pointer border transition-all
-                  ${
-                    selectedRole?._id === role._id
-                      ? "bg-blue-50 border-blue-200 shadow-sm"
-                      : "bg-white border-transparent hover:bg-gray-50 border-gray-100"
+                  ${selectedRole?._id === role._id
+                    ? "bg-blue-50 border-blue-200 shadow-sm"
+                    : "bg-white border-transparent hover:bg-gray-50 border-gray-100"
                   }
                 `}
               >

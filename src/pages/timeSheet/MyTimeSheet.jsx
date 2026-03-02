@@ -60,7 +60,7 @@ const MyTimesheet = () => {
 
         const res = await attendancesAPI.getme(month, year);
         console.log("[DEBUG1] API returned records:", res.data.data?.length);
-        console.log("[DEBUG1] Sample record:", res.data.data?.[0]);
+        console.log("[DEBUG1] Sample record:", res.data);
 
         setAttendanceData(res.data.data || []);
       } catch (error) {
@@ -235,6 +235,7 @@ const MyTimesheet = () => {
       let checkIn = null;
       let checkOut = null;
       let otHours = 0;
+      let otTimeRanges = []; // Mảng chứa các khoảng thời gian OT
       let holidayName = "";
       let lateMinutes = 0;
 
@@ -269,7 +270,17 @@ const MyTimesheet = () => {
         const totalOT = (apiData.finalOtHours?.weekday || 0) +
           (apiData.finalOtHours?.weekend || 0) +
           (apiData.finalOtHours?.holiday || 0);
-        if (totalOT > 0) {
+        
+        // Lấy thông tin thời gian OT từ overtimeId array
+        if (apiData.overtimeId && Array.isArray(apiData.overtimeId) && apiData.overtimeId.length > 0) {
+          otTimeRanges = apiData.overtimeId.map(ot => ({
+            startTime: ot.startTime,
+            endTime: ot.endTime,
+            otType: ot.otType
+          }));
+          status.push("ot");
+          otHours = totalOT;
+        } else if (totalOT > 0) {
           status.push("ot");
           otHours = totalOT;
         }
@@ -287,6 +298,7 @@ const MyTimesheet = () => {
         checkIn,
         checkOut,
         otHours,
+        otTimeRanges, // Thêm mảng thời gian OT
         holidayName,
         lateMinutes,
         fullDate: `${pad2(i)}/${pad2(CURRENT_MONTH + 1)}/${CURRENT_YEAR}`,
@@ -570,9 +582,9 @@ const MyTimesheet = () => {
                           </div>
                         )}
                         {/* Hiển thị OT nếu có */}
-                        {day.status.includes("ot") && day.otHours > 0 && (
+                        {day.status.includes("ot") && day.otTimeRanges && day.otTimeRanges.length > 0 && (
                           <div className="text-[10px] text-center font-bold text-orange-600 bg-orange-50 px-1 rounded mt-0.5">
-                            OT: {day.otHours}h
+                            OT: {day.otTimeRanges.map(ot => `${ot.startTime}-${ot.endTime}`).join(", ")}
                           </div>
                         )}
                       </div>
@@ -614,9 +626,9 @@ const MyTimesheet = () => {
                           )}
 
                           {/* Nếu có OT thì hiện thêm dòng OT */}
-                          {day.status.includes("ot") && day.otHours > 0 && (
+                          {day.status.includes("ot") && day.otTimeRanges && day.otTimeRanges.length > 0 && (
                             <div className="text-[10px] text-center font-bold text-orange-600 bg-orange-50 px-1 rounded mt-0.5">
-                              OT: {day.otHours}h
+                              OT: {day.otTimeRanges.map(ot => `${ot.startTime}-${ot.endTime}`).join(", ")}
                             </div>
                           )}
                         </>
@@ -720,18 +732,29 @@ const MyTimesheet = () => {
                       </div>
                     )}
 
-                    {selectedDate.status.includes("ot") && selectedDate.otHours > 0 && (
+                    {selectedDate.status.includes("ot") && selectedDate.otTimeRanges && selectedDate.otTimeRanges.length > 0 && (
                       <div className="p-3 bg-orange-50 border border-orange-100 rounded-lg">
-                        <div className="flex justify-between items-center mb-1">
+                        <div className="flex justify-between items-center mb-2">
                           <span className="text-sm font-bold text-orange-700 flex items-center gap-1">
                             <Zap size={14} /> Overtime
                           </span>
-                          <span className="text-lg font-bold text-orange-700">
+                          <span className="text-sm font-bold text-orange-700">
                             {selectedDate.otHours} giờ
                           </span>
                         </div>
+                        {/* Hiển thị từng khoảng thời gian OT */}
+                        <div className="space-y-1">
+                          {selectedDate.otTimeRanges.map((ot, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-xs bg-white px-2 py-1.5 rounded">
+                              <span className="text-gray-600">{ot.otType}</span>
+                              <span className="font-mono font-bold text-orange-600">
+                                {ot.startTime} - {ot.endTime}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                         {selectedDate.apiData?.note && (
-                          <p className="text-xs text-orange-600/80">
+                          <p className="text-xs text-orange-600/80 mt-2">
                             {selectedDate.apiData.note}
                           </p>
                         )}
