@@ -1,8 +1,8 @@
 import apiClient from "./apiClient";
 
 export const holidayAPI = {
-    get: () => {
-        return apiClient.get("/holidays");
+    get: (startDate, endDate) => {
+        return apiClient.get(`/holidays/range?startDate=${startDate}&endDate=${endDate}`);
     },
     create: (data) => {
         return apiClient.post("/holidays", data);

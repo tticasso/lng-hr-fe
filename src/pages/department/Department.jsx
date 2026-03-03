@@ -4,6 +4,7 @@ import { departmentApi } from "../../apis/departmentApi";
 import { toast } from "react-toastify";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
+import { employeeApi } from "../../apis/employeeApi";
 
 const Department = () => {
     const [departments, setDepartments] = useState([]);
@@ -13,16 +14,30 @@ const Department = () => {
     const [selectedDepartment, setSelectedDepartment] = useState(null);
     const [loadingDetail, setLoadingDetail] = useState(false);
     const [editingDepartment, setEditingDepartment] = useState(null);
+    const [employees, setEmployees] = useState([]);
     const [formData, setFormData] = useState({
         name: "",
         deptCode: "",
         saturdayPolicy: "ALWAYS_WORK",
         saturdayOffWeeks: [],
+        manager: "",
     });
 
     useEffect(() => {
         fetchDepartments();
+        callAPIemplye();
     }, []);
+
+    const callAPIemplye = async () => {
+        try {
+            const res = await employeeApi.getAll();
+            console.log("EMPLOYEEEE RES :", res);
+            setEmployees(res.data?.data || []);
+        } catch (error) {
+            console.log("EMPLOYEEEE ERROR :", error);
+        }
+    };
+
 
     const fetchDepartments = async () => {
         try {
@@ -72,6 +87,7 @@ const Department = () => {
             deptCode: "",
             saturdayPolicy: "ALWAYS_WORK",
             saturdayOffWeeks: [],
+            manager: "",
         });
         setIsFormModalOpen(true);
     };
@@ -84,6 +100,7 @@ const Department = () => {
             deptCode: dept.deptCode,
             saturdayPolicy: dept.saturdayPolicy || "ALWAYS_WORK",
             saturdayOffWeeks: dept.saturdayOffWeeks || [],
+            manager: dept.manager?._id || "",
         });
         setIsFormModalOpen(true);
     };
@@ -109,6 +126,11 @@ const Department = () => {
             saturdayPolicy: formData.saturdayPolicy,
             saturdayOffWeeks: formData.saturdayPolicy === "ALTERNATING" ? formData.saturdayOffWeeks : [],
         };
+
+        // Chỉ thêm manager nếu có chọn
+        if (formData.manager) {
+            payload.manager = formData.manager;
+        }
 
         try {
             if (editingDepartment) {
@@ -323,6 +345,27 @@ const Department = () => {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Người quản lý
+                                </label>
+                                <select
+                                    value={formData.manager}
+                                    onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
+                                    className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                >
+                                    <option value="">-- Chọn người quản lý --</option>
+                                    {employees.map((emp) => (
+                                        <option key={emp._id} value={emp._id}>
+                                            {emp.fullName} ({emp.employeeCode})
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Không chọn = chưa có người quản lý
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Chính sách thứ 7
                                 </label>
                                 <select
@@ -353,11 +396,10 @@ const Department = () => {
                                                 key={week}
                                                 type="button"
                                                 onClick={() => toggleWeek(week)}
-                                                className={`w-12 h-12 rounded-lg font-bold text-sm transition-all ${
-                                                    formData.saturdayOffWeeks.includes(week)
+                                                className={`w-12 h-12 rounded-lg font-bold text-sm transition-all ${formData.saturdayOffWeeks.includes(week)
                                                         ? "bg-blue-600 text-white border-2 border-blue-600"
                                                         : "bg-white text-gray-600 border-2 border-gray-300 hover:border-blue-400"
-                                                }`}
+                                                    }`}
                                             >
                                                 {week}
                                             </button>
@@ -522,7 +564,13 @@ const Department = () => {
                                     >
                                         Đóng
                                     </Button>
-                                    <Button className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2">
+                                    <Button
+                                        onClick={() => {
+                                            setIsDetailModalOpen(false);
+                                            handleEdit(selectedDepartment);
+                                        }}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                                    >
                                         <Edit size={16} />
                                         Chỉnh sửa
                                     </Button>
