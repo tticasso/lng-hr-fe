@@ -33,6 +33,7 @@ import AllPayRoll from "./pages/payroll/AllPayRoll";
 import NotificationViewer from "./pages/notification/NotificationViewer";
 import { NotificationProvider } from "./context/NotificationContext";
 import Holiday from "./pages/holiday/Holiday";
+import Department from "./pages/department/Department";
 
 function App() {
   return (
@@ -66,6 +67,7 @@ function App() {
               <Route path="profile" element={<MyProfile />} />
               <Route path="timesheet" element={<MyTimesheet />} />
               <Route path="payroll" element={<MyPayslip />} />
+              <Route path="department" element={<Department />} />
               <Route path="requests" element={<MyRequests />} />
               <Route path="leave" element={<MyLeave />} />
               <Route path="holiday" element={<Holiday />} />
