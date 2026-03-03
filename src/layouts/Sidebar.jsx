@@ -74,6 +74,11 @@ const Sidebar = () => {
                   icon: <Coins size={20} />,
                 },
                 {
+                  path: "department",
+                  label: "Quản lý phòng ban",
+                  icon: <Users size={20} />,
+                },
+                {
                   path: "/hr/announcements",
                   label: "Thông báo",
                   icon: <SquareStar size={20} />,
