@@ -13,4 +13,8 @@ export const holidayAPI = {
     delete: (id) => {
         return apiClient.delete(`/holidays/${id}`);
     },
+
+    getbyid: (id) => {
+        return apiClient.get(`/holidays/${id}`);
+    },
 }

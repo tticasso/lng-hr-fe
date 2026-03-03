@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Calendar, Plus, Edit, Trash2, X, Clock } from "lucide-react";
+import { Calendar, Plus, Edit, Trash2, X, Clock, Eye, Info } from "lucide-react";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import { holidayAPI } from "../../apis/holidayAPI";
@@ -10,7 +10,10 @@ const Holiday = () => {
   const [holidays, setHolidays] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [editingHoliday, setEditingHoliday] = useState(null);
+  const [selectedHoliday, setSelectedHoliday] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     date: "",
@@ -139,6 +142,33 @@ const Holiday = () => {
     }
   };
 
+  // Xem chi tiết holiday
+  const handleViewDetail = async (holidayId) => {
+    try {
+      setLoadingDetail(true);
+      setIsDetailModalOpen(true);
+      const res = await holidayAPI.getbyid(holidayId);
+      setSelectedHoliday(res.data?.data || res.data);
+    } catch (error) {
+      console.error("Error fetching holiday detail:", error);
+      toast.error("Không thể tải chi tiết ngày nghỉ");
+      setIsDetailModalOpen(false);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
+  // Format ngày đầy đủ
+  const formatFullDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("vi-VN", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
   // Render nội dung Lịch nghỉ
   const renderHolidays = () => (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -222,6 +252,13 @@ const Holiday = () => {
 
                   {/* Actions */}
                   <div className="flex gap-2">
+                    <button
+                      onClick={() => handleViewDetail(holiday._id)}
+                      className="p-2 text-gray-400 hover:text-green-600 transition-colors"
+                      title="Xem chi tiết"
+                    >
+                      <Eye size={16} />
+                    </button>
                     <button
                       onClick={() => handleEdit(holiday)}
                       className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
@@ -397,6 +434,208 @@ const Holiday = () => {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Chi tiết */}
+      {isDetailModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-blue-50 to-purple-50">
+              <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                <Info size={20} className="text-blue-600" />
+                Chi tiết ngày nghỉ
+              </h3>
+              <button onClick={() => setIsDetailModalOpen(false)}>
+                <X size={20} className="text-gray-400 hover:text-red-500" />
+              </button>
+            </div>
+
+            {loadingDetail ? (
+              <div className="p-12 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-3"></div>
+                <p className="text-sm text-gray-500">Đang tải...</p>
+              </div>
+            ) : selectedHoliday ? (
+              <div className="p-6 space-y-6">
+                {/* Date Card Large */}
+                <div className="flex items-center gap-6 p-6 bg-gradient-to-br from-red-50 to-orange-50 rounded-xl border border-red-100">
+                  <div className="p-4 bg-red-500 text-white rounded-2xl font-bold flex flex-col items-center min-w-[100px] shadow-lg">
+                    <span className="text-sm uppercase opacity-90">
+                      {formatDateForCard(selectedHoliday.date).month}/
+                      {formatDateForCard(selectedHoliday.date).year}
+                    </span>
+                    <span className="text-4xl my-1">
+                      {formatDateForCard(selectedHoliday.date).day}
+                    </span>
+                    <span className="text-xs opacity-90">
+                      {new Date(selectedHoliday.date).toLocaleDateString("vi-VN", {
+                        weekday: "short",
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-2xl font-bold text-gray-800 mb-2">
+                      {selectedHoliday.name}
+                    </h4>
+                    <p className="text-sm text-gray-600">
+                      {formatFullDate(selectedHoliday.date)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Info Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Loại ngày nghỉ */}
+                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <p className="text-xs text-gray-500 mb-2 font-medium uppercase">
+                      Loại ngày nghỉ
+                    </p>
+                    {selectedHoliday.holidayType === "PUBLIC_HOLIDAY" ? (
+                      <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium">
+                        <Calendar size={14} />
+                        Ngày lễ quốc gia
+                      </span>
+                    ) : selectedHoliday.holidayType === "COMPANY_HOLIDAY" ? (
+                      <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium">
+                        <Calendar size={14} />
+                        Ngày nghỉ công ty
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-100 text-orange-700 rounded-lg text-sm font-medium">
+                        <Calendar size={14} />
+                        Ngày làm bù
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Trạng thái làm việc */}
+                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <p className="text-xs text-gray-500 mb-2 font-medium uppercase">
+                      Trạng thái
+                    </p>
+                    {selectedHoliday.isWorkDay ? (
+                      <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
+                        <Clock size={14} />
+                        Làm việc
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-sm font-medium">
+                        <Clock size={14} />
+                        Nghỉ làm
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Trạng thái hoạt động */}
+                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <p className="text-xs text-gray-500 mb-2 font-medium uppercase">
+                      Hoạt động
+                    </p>
+                    {selectedHoliday.isActive ? (
+                      <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
+                        ✓ Đang áp dụng
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">
+                        ✕ Không áp dụng
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Ngày tạo */}
+                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <p className="text-xs text-gray-500 mb-2 font-medium uppercase">
+                      Ngày tạo
+                    </p>
+                    <p className="text-sm text-gray-800 font-medium">
+                      {new Date(selectedHoliday.createdAt).toLocaleDateString("vi-VN")}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {new Date(selectedHoliday.createdAt).toLocaleTimeString("vi-VN")}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Ghi chú */}
+                <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                  <p className="text-xs text-amber-700 mb-2 font-medium uppercase flex items-center gap-1">
+                    <Info size={12} />
+                    Ghi chú
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    {selectedHoliday.note || "Không có ghi chú"}
+                  </p>
+                </div>
+
+                {/* Applied Departments & Roles */}
+                {(selectedHoliday.appliedDepartments?.length > 0 ||
+                  selectedHoliday.appliedRoles?.length > 0) && (
+                  <div className="space-y-3">
+                    {selectedHoliday.appliedDepartments?.length > 0 && (
+                      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <p className="text-xs text-blue-700 mb-2 font-medium uppercase">
+                          Áp dụng cho phòng ban
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedHoliday.appliedDepartments.map((dept, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium"
+                            >
+                              {dept}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedHoliday.appliedRoles?.length > 0 && (
+                      <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                        <p className="text-xs text-purple-700 mb-2 font-medium uppercase">
+                          Áp dụng cho vai trò
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedHoliday.appliedRoles.map((role, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium"
+                            >
+                              {role}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Footer Actions */}
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setIsDetailModalOpen(false)}
+                  >
+                    Đóng
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setIsDetailModalOpen(false);
+                      handleEdit(selectedHoliday);
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                  >
+                    <Edit size={16} />
+                    Chỉnh sửa
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-12 text-center text-gray-500">
+                Không có dữ liệu
+              </div>
+            )}
           </div>
         </div>
       )}
