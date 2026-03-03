@@ -16,6 +16,8 @@ import {
   SquareStar,
   LogOut,
   FileSpreadsheet,
+  CalendarCheck,
+  Timer,
 } from "lucide-react";
 import logoLNG from "../assets/LNG.png";
 import { useAuth } from "../context/AuthContext";
@@ -75,6 +77,12 @@ const Sidebar = () => {
                   path: "/hr/announcements",
                   label: "Thông báo",
                   icon: <SquareStar size={20} />,
+                },
+
+                {
+                  path: "/holiday",
+                  label: "Quản lý thời gian",
+                  icon: <Timer size={20} />,
                 },
                 {
                   path: "/hr/recruitment",
