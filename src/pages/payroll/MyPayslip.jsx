@@ -22,10 +22,11 @@ import logo from "../../assets/logo.png";
 import { payrollAPI } from "../../apis/payrollAPI";
 import { employeeApi } from "../../apis/employeeApi";
 import { toast } from "react-toastify";
+import { message } from "antd";
 
 const MyPayslip = () => {
   const contentRef = useRef(null);
-  
+
   // State
   const [loading, setLoading] = useState(true);
   const [payrollList, setPayrollList] = useState([]);
@@ -36,21 +37,21 @@ const MyPayslip = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
+
         // 1. Fetch payroll list
         const payrollRes = await payrollAPI.getbyme();
         const payrolls = payrollRes.data?.data || [];
-        
+
         if (payrolls.length > 0) {
           setPayrollList(payrolls);
           setSelectedPayroll(payrolls[0]); // Select first by default
-          
+
           // 2. Fetch employee detail để lấy thông tin thiếu
           const empRes = await employeeApi.getMe();
           const empData = empRes.data?.data?.employee || empRes.data?.employee;
           setEmployeeDetail(empData);
         }
-        
+
         console.log("Payroll data:", payrolls);
       } catch (error) {
         console.error("Error fetching payroll:", error);
@@ -59,13 +60,44 @@ const MyPayslip = () => {
         setLoading(false);
       }
     };
-    
+
     fetchData();
   }, []);
 
   const handleDownloadPdf = async () => {
+    // Custom loading toast với màu sắc đơn giản
+    const loadingToastId = toast.loading(
+      <div className="flex items-center gap-3">
+        <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent"></div>
+        <div>
+          <p className="font-medium text-gray-800">Đang tạo PDF...</p>
+          <p className="text-xs text-gray-600">Vui lòng chờ trong giây lát</p>
+        </div>
+      </div>,
+      {
+        position: "top-right",
+        autoClose: false,
+        hideProgressBar: true,
+        closeOnClick: false,
+        pauseOnHover: false,
+        draggable: false,
+        closeButton: false,
+        style: {
+          background: "#ffffff",
+          color: "#374151",
+          borderRadius: "8px",
+          padding: "16px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+          border: "1px solid #e5e7eb"
+        }
+      }
+    );
+
     const element = contentRef.current;
-    if (!element || !selectedPayroll) return;
+    if (!element || !selectedPayroll) {
+      toast.dismiss(loadingToastId);
+      return;
+    }
 
     const originalShadow = element.style.boxShadow;
     element.style.boxShadow = "none";
@@ -104,10 +136,68 @@ const MyPayslip = () => {
       }
 
       pdf.save(`PhieuLuong_${selectedPayroll.month}-${selectedPayroll.year}.pdf`);
-      toast.success("Tải PDF thành công!");
+      
+      // Dismiss loading toast và hiển thị success toast đơn giản
+      toast.dismiss(loadingToastId);
+      toast.success(
+        <div className="flex items-center gap-3">
+          <div className="flex-shrink-0 w-8 h-8 bg-green-50 rounded-full flex items-center justify-center">
+            <CheckCircle2 size={18} className="text-green-600" />
+          </div>
+          <div>
+            <p className="font-medium text-gray-800">Tải PDF thành công!</p>
+            <p className="text-xs text-gray-600">File đã được lưu vào máy tính</p>
+          </div>
+        </div>,
+        {
+          position: "top-right",
+          autoClose: 4000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          style: {
+            background: "#ffffff",
+            color: "#374151",
+            borderRadius: "8px",
+            padding: "16px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            border: "1px solid #d1fae5"
+          }
+        }
+      );
     } catch (error) {
       console.error("Lỗi xuất PDF:", error);
-      toast.error("Không thể xuất PDF");
+      
+      // Dismiss loading toast và hiển thị error toast đơn giản
+      toast.dismiss(loadingToastId);
+      toast.error(
+        <div className="flex items-center gap-3">
+          <div className="flex-shrink-0 w-8 h-8 bg-red-50 rounded-full flex items-center justify-center">
+            <FileText size={18} className="text-red-600" />
+          </div>
+          <div>
+            <p className="font-medium text-gray-800">Không thể xuất PDF</p>
+            <p className="text-xs text-gray-600">Vui lòng thử lại sau</p>
+          </div>
+        </div>,
+        {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          style: {
+            background: "#ffffff",
+            color: "#374151",
+            borderRadius: "8px",
+            padding: "16px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            border: "1px solid #fecaca"
+          }
+        }
+      );
     } finally {
       element.style.boxShadow = originalShadow;
       element.style.backgroundColor = "";
@@ -144,10 +234,10 @@ const MyPayslip = () => {
     if (!selectedPayroll) return null;
 
     // Tính lương cơ bản từ dailyRate * standardWorkDays (nếu có)
-    const calculatedBaseSalary = selectedPayroll.dailyRate 
-      ? selectedPayroll.dailyRate * selectedPayroll.standardWorkDays 
+    const calculatedBaseSalary = selectedPayroll.dailyRate
+      ? selectedPayroll.dailyRate * selectedPayroll.standardWorkDays
       : (employeeDetail?.baseSalary || 0);
-    
+
     return {
       employee: {
         name: selectedPayroll.employeeId?.fullName || "--",
@@ -155,7 +245,7 @@ const MyPayslip = () => {
         department: selectedPayroll.departmentId?.name || employeeDetail?.department || "--",
         position: selectedPayroll.employeeId?.jobTitle || employeeDetail?.jobTitle || "--",
         taxId: employeeDetail?.taxIdentification || "--",
-        bankAccount: employeeDetail?.bankAccount 
+        bankAccount: employeeDetail?.bankAccount
           ? `${employeeDetail.bankAccount.accountNumber} (${employeeDetail.bankAccount.bankName})`
           : "--",
       },
@@ -166,47 +256,46 @@ const MyPayslip = () => {
         dailyRate: selectedPayroll.dailyRate || 0,
       },
       otHours: selectedPayroll.otHours || { weekday: 0, weekend: 0, holiday: 0 },
-      
+
       // Thu nhập
       incomes: [
-        { 
-          label: "Lương cơ bản ", 
+        {
+          label: "Lương cơ bản ",
           value: selectedPayroll.baseSalary || 0,
         },
-        { 
-          label: `Lương theo công (${(selectedPayroll.actualWorkDays || 0).toFixed(2)}/${selectedPayroll.standardWorkDays || 0} ngày)`, 
+        {
+          label: `Lương theo công (${(selectedPayroll.actualWorkDays || 0).toFixed(2)}/${selectedPayroll.standardWorkDays || 0} ngày)`,
           value: selectedPayroll.salaryFromWork || 0,
         },
-        { 
-          label: "Phụ cấp (Tổng)", 
+        {
+          label: "Phụ cấp (Tổng)",
           value: selectedPayroll.totalAllowance || 0,
         },
-        { 
-          label: `Làm thêm giờ (OT) - ${
-            typeof selectedPayroll.otHours === 'object' 
+        {
+          label: `Làm thêm giờ (OT) - ${typeof selectedPayroll.otHours === 'object'
               ? ((selectedPayroll.otHours?.weekday || 0) + (selectedPayroll.otHours?.weekend || 0) + (selectedPayroll.otHours?.holiday || 0))
               : (selectedPayroll.otHours || 0)
-          }h`, 
-          value: selectedPayroll.otPay || 0 
+            }h`,
+          value: selectedPayroll.otPay || 0
         },
       ],
-      
+
       // Khấu trừ
       deductions: [
-        { 
-          label: "BHXH (8%)", 
+        {
+          label: "BHXH (8%)",
           value: selectedPayroll.insurance?.bhxh || 0,
         },
-        { 
-          label: "BHYT (1.5%)", 
+        {
+          label: "BHYT (1.5%)",
           value: selectedPayroll.insurance?.bhyt || 0,
         },
-        { 
-          label: "BHTN (1%)", 
+        {
+          label: "BHTN (1%)",
           value: selectedPayroll.insurance?.bhtn || 0,
         },
       ],
-      
+
       totalIncome: selectedPayroll.grossIncome || 0,
       totalDeduction: selectedPayroll.insurance?.total || 0,
       netSalary: selectedPayroll.netIncome || 0,
@@ -261,8 +350,8 @@ const MyPayslip = () => {
                 <div className="flex justify-between items-center mb-1">
                   <span
                     className={`font-bold text-sm ${selectedPayroll?._id === period.id
-                        ? "text-blue-700"
-                        : "text-gray-700"
+                      ? "text-blue-700"
+                      : "text-gray-700"
                       }`}
                   >
                     {period.label}
@@ -275,11 +364,10 @@ const MyPayslip = () => {
                 </div>
                 <div className="flex justify-between items-center text-xs text-gray-500">
                   <span>Cập nhật: {period.date}</span>
-                  <span className={`px-1.5 py-0.5 rounded font-medium text-[10px] ${
-                    period.status === "Paid" 
-                      ? "bg-green-100 text-green-700" 
+                  <span className={`px-1.5 py-0.5 rounded font-medium text-[10px] ${period.status === "Paid"
+                      ? "bg-green-100 text-green-700"
                       : "bg-orange-100 text-orange-700"
-                  }`}>
+                    }`}>
                     {period.status === "Paid" ? "ĐÃ TRẢ" : "CHƯA TRẢ"}
                   </span>
                 </div>
@@ -367,9 +455,9 @@ const MyPayslip = () => {
                 label="Tài khoản nhận"
                 value={payslipData?.employee.bankAccount}
               />
-              <InfoBlock 
-                label="Lương theo ngày" 
-                value={payslipData?.workDays.dailyRate ? formatCurrency(payslipData.workDays.dailyRate) : "--"} 
+              <InfoBlock
+                label="Lương theo ngày"
+                value={payslipData?.workDays.dailyRate ? formatCurrency(payslipData.workDays.dailyRate) : "--"}
               />
               <InfoBlock label="Ngày cập nhật" value={formatDate(selectedPayroll?.updatedAt)} />
               <InfoBlock label="Đơn vị tiền tệ" value="VND" />
