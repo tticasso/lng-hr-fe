@@ -32,76 +32,77 @@ import MyLeave from "./pages/announce/Myleave";
 import AllPayRoll from "./pages/payroll/AllPayRoll";
 import NotificationViewer from "./pages/notification/NotificationViewer";
 import { NotificationProvider } from "./context/NotificationContext";
+import Holiday from "./pages/holiday/Holiday";
 
 function App() {
   return (
     <>
       <NotificationProvider>
         <BrowserRouter>
-        <Routes>
-          <Route
-            path="/login"
-            element={
-              <PublicRoute>
-                <Login />
-              </PublicRoute>
-            } />
-
-          {/* Route gốc dùng MainLayout */}
-          <Route
-            path="/"
-            element={
-              <RequireAuth>
-                <MainLayout />
-              </RequireAuth>
-            }
-          >
-            {/* Các trang con sẽ hiện vào vị trí của <Outlet /> */}
-
-            <Route index element={<Dashboard />} />
-
-            <Route path="allpayroll" element={<AllPayRoll />} />
-            
-            <Route path="profile" element={<MyProfile />} />
-            <Route path="timesheet" element={<MyTimesheet />} />
-            <Route path="payroll" element={<MyPayslip />} />
-            <Route path="requests" element={<MyRequests />} />
-            <Route path="leave" element={<MyLeave />} />
-            
-            {/* Route xem data WebSocket */}
-            <Route path="notifications/viewer" element={<NotificationViewer />} />
-
+          <Routes>
             <Route
-              path="admin"
+              path="/login"
               element={
-                <RequireAuth roles={["ADMIN"]}>
-                  <Outlet />
+                <PublicRoute>
+                  <Login />
+                </PublicRoute>
+              } />
+
+            {/* Route gốc dùng MainLayout */}
+            <Route
+              path="/"
+              element={
+                <RequireAuth>
+                  <MainLayout />
                 </RequireAuth>
               }
             >
-              <Route path="register" element={<Register />} />
+              {/* Các trang con sẽ hiện vào vị trí của <Outlet /> */}
 
-              <Route path="system-admin" element={<SystemAdmin />} />
-              <Route path="user-management" element={<UserManagement />} />
-            </Route>
-            <Route
-              path="hr"
-              element={
-                <RequireAuth roles={["ADMIN", "HR"]}>
-                  <Outlet />
-                </RequireAuth>
-              }
-            >
-              <Route path="payroll-engine" element={<PayrollEngine />} />
-              <Route path="recruitment" element={<Recruitment />} />
-              <Route path="boarding" element={<OnboardingOffboarding />} />
-              <Route path="training" element={<TrainingPerformance />} />
-              <Route path="attendance-admin" element={<AttendanceAdmin />} />
-              <Route path="employees" element={<EmployeeList />} />
-              <Route path="employees/:id" element={<EmployeeDetail />} />
-              <Route path="announcements" element={<Announcements />} />
-            </Route>
-            {/* <Route
+              <Route index element={<Dashboard />} />
+
+              <Route path="allpayroll" element={<AllPayRoll />} />
+
+              <Route path="profile" element={<MyProfile />} />
+              <Route path="timesheet" element={<MyTimesheet />} />
+              <Route path="payroll" element={<MyPayslip />} />
+              <Route path="requests" element={<MyRequests />} />
+              <Route path="leave" element={<MyLeave />} />
+              <Route path="holiday" element={<Holiday />} />
+              {/* Route xem data WebSocket */}
+              <Route path="notifications/viewer" element={<NotificationViewer />} />
+
+              <Route
+                path="admin"
+                element={
+                  <RequireAuth roles={["ADMIN"]}>
+                    <Outlet />
+                  </RequireAuth>
+                }
+              >
+                <Route path="register" element={<Register />} />
+
+                <Route path="system-admin" element={<SystemAdmin />} />
+                <Route path="user-management" element={<UserManagement />} />
+              </Route>
+              <Route
+                path="hr"
+                element={
+                  <RequireAuth roles={["ADMIN", "HR"]}>
+                    <Outlet />
+                  </RequireAuth>
+                }
+              >
+                <Route path="payroll-engine" element={<PayrollEngine />} />
+                <Route path="recruitment" element={<Recruitment />} />
+                <Route path="boarding" element={<OnboardingOffboarding />} />
+                <Route path="training" element={<TrainingPerformance />} />
+                <Route path="attendance-admin" element={<AttendanceAdmin />} />
+                <Route path="employees" element={<EmployeeList />} />
+                <Route path="employees/:id" element={<EmployeeDetail />} />
+                <Route path="announcements" element={<Announcements />} />
+              </Route>
+              {/* <Route
               path="/register"
               element={
                 // <RequireAuth roles={["ADMIN"]}>
@@ -109,14 +110,14 @@ function App() {
                 // </RequireAuth>
               }
             /> */}
-            {/* <Route path="pdf" element={<DownloadPDF />} /> */}
+              {/* <Route path="pdf" element={<DownloadPDF />} /> */}
 
-            <Route path="*" element={<NotFound />} />
-          </Route>
+              <Route path="*" element={<NotFound />} />
+            </Route>
 
-          {/* Route Login sẽ nằm ngoài Layout này (làm sau) */}
-          {/* <Route path="/login" element={<Login />} /> */}
-        </Routes>
+            {/* Route Login sẽ nằm ngoài Layout này (làm sau) */}
+            {/* <Route path="/login" element={<Login />} /> */}
+          </Routes>
         </BrowserRouter>
         <ToastContainer position="top-right" autoClose={3000} />
       </NotificationProvider>
