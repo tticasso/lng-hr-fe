@@ -68,7 +68,7 @@ const MyPayslip = () => {
     // Custom loading toast với màu sắc đơn giản
     const loadingToastId = toast.loading(
       <div className="flex items-center gap-3">
-        <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent"></div>
+        {/* <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent"></div> */}
         <div>
           <p className="font-medium text-gray-800">Đang tạo PDF...</p>
           <p className="text-xs text-gray-600">Vui lòng chờ trong giây lát</p>
@@ -141,9 +141,9 @@ const MyPayslip = () => {
       toast.dismiss(loadingToastId);
       toast.success(
         <div className="flex items-center gap-3">
-          <div className="flex-shrink-0 w-8 h-8 bg-green-50 rounded-full flex items-center justify-center">
+          {/* <div className="flex-shrink-0 w-8 h-8 bg-green-50 rounded-full flex items-center justify-center">
             <CheckCircle2 size={18} className="text-green-600" />
-          </div>
+          </div> */}
           <div>
             <p className="font-medium text-gray-800">Tải PDF thành công!</p>
             <p className="text-xs text-gray-600">File đã được lưu vào máy tính</p>
