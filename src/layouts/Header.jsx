@@ -142,7 +142,7 @@ const Header = () => {
       relatedId: data.relatedId,
       relatedModel: data.relatedModel,
     };
-
+    console.log("data.type :",data.type)
     // Kiểm tra xem notification đã tồn tại chưa (tránh duplicate)
     setNotifications((prev) => {
       const exists = prev.some((n) => n.id === newNotification.id);
@@ -158,9 +158,21 @@ const Header = () => {
           return prevShown;
         }
 
-        // Hiển thị toast notification
+        // Xác định route và tab dựa trên type
+        const handleToastClick = () => {
+          if (data.type === "LEAVE_CREATED") {
+            navigate("/leave", { state: { activeTab: "LEAVE" } });
+          } else if (data.type === "OT_CREATED") {
+            navigate("/leave", { state: { activeTab: "OT" } });
+          }
+        };
+
+        // Hiển thị toast notification với onClick handler
         toast.info(
-          <div className="flex items-start gap-3">
+          <div 
+            className="flex items-start gap-3 cursor-pointer"
+            onClick={handleToastClick}
+          >
             <img
               src="https://res.cloudinary.com/dplhdyxgl/image/upload/v1772177306/logo_j0iody.jpg"
               alt="logo"
@@ -191,7 +203,7 @@ const Header = () => {
       // Thêm vào đầu danh sách
       return [newNotification, ...prev];
     });
-  }, []);
+  }, [navigate]);
 
   // Kết nối socket
   useSocket(handleSocketNotification);
@@ -257,7 +269,7 @@ const Header = () => {
       // // Hiển thị modal chi tiết thông báo
       // setSelectedAnnouncementId(relatedId);
       // setIsAnnouncementModalOpen(true);
-       // Fallback: mở modal chi tiết thông báo cũ
+      // Fallback: mở modal chi tiết thông báo cũ
       setSelectedNotification(notification);
     } else {
       // Fallback: mở modal chi tiết thông báo cũ

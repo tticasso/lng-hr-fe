@@ -5,6 +5,8 @@ import Placeholder from "@tiptap/extension-placeholder";
 import DOMPurify from "dompurify";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
+import { TimePicker } from "antd";
+import dayjs from "../../untils/dayjs";
 import {
   Plus,
   Search,
@@ -125,8 +127,12 @@ const Announcements = () => {
       if (data.status === "SCHEDULED" && data.scheduledAt) {
         setScheduleType("schedule");
         const scheduleDate = new Date(data.scheduledAt);
+        // Đảm bảo format YYYY-MM-DD cho date input
         setScheduledDate(scheduleDate.toISOString().split('T')[0]);
-        setScheduledTime(scheduleDate.toTimeString().slice(0, 5));
+        // Đảm bảo format HH:mm (24h) cho time input
+        const hours = String(scheduleDate.getHours()).padStart(2, '0');
+        const minutes = String(scheduleDate.getMinutes()).padStart(2, '0');
+        setScheduledTime(`${hours}:${minutes}`);
       } else {
         setScheduleType("now");
         setScheduledDate("");
@@ -273,7 +279,14 @@ const Announcements = () => {
     // Tạo ISO datetime từ date và time
     let scheduledDateTime = null;
     if (scheduleType === "schedule" && scheduledDate && scheduledTime) {
-      scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}:00Z`).toISOString();
+      // scheduledDate format: YYYY-MM-DD
+      // scheduledTime format: HH:mm (24h)
+      // Tạo datetime string theo local timezone (không convert sang UTC)
+      scheduledDateTime = `${scheduledDate}T${scheduledTime}:00`;
+      
+      console.log("[DEBUG] Scheduled Date:", scheduledDate);
+      console.log("[DEBUG] Scheduled Time:", scheduledTime);
+      console.log("[DEBUG] Scheduled DateTime (Local):", scheduledDateTime);
     }
 
     // Chuyển HTML content sang plain text
@@ -1029,25 +1042,27 @@ const Announcements = () => {
                     {/* Time Picker */}
                     <div>
                       <label className="block text-xs text-gray-600 mb-1">
-                        Chọn giờ
+                        Chọn giờ (24h)
                       </label>
-                      <input
-                        type="time"
-                        value={scheduledTime}
-                        onChange={(e) => {
-                          setScheduledTime(e.target.value);
+                      <TimePicker
+                        value={scheduledTime ? dayjs(scheduledTime, "HH:mm") : null}
+                        onChange={(time) => {
+                          const timeString = time ? time.format("HH:mm") : "";
+                          setScheduledTime(timeString);
                           if (validationErrors.scheduledTime) {
                             setValidationErrors({ ...validationErrors, scheduledTime: null });
                           }
                         }}
-                        className={`w-full border rounded-lg p-2 text-sm outline-none ${validationErrors.scheduledTime
-                          ? "border-red-500 focus:border-red-500"
-                          : "border-gray-300 focus:border-blue-500"
-                          }`}
+                        format="HH:mm"
+                        minuteStep={5}
+                        placeholder="Chọn giờ"
+                        className="w-full"
+                        status={validationErrors.scheduledTime ? "error" : ""}
                       />
                       {validationErrors.scheduledTime && (
                         <p className="text-red-500 text-xs mt-1">{validationErrors.scheduledTime}</p>
                       )}
+                      <p className="text-xs text-gray-500 mt-1">Định dạng 24 giờ (VD: 14:30)</p>
                     </div>
                   </div>
                 )}

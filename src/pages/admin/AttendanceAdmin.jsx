@@ -1251,7 +1251,7 @@ const AttendanceAdmin = () => {
           onClick={() => setSelectedEmployee(null)}
         >
           <div
-            className="bg-white w-full max-w-lg h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300"
+            className="bg-white w-full max-w-2xl h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Panel Header */}
@@ -1278,7 +1278,7 @@ const AttendanceAdmin = () => {
             </div>
 
             {/* Panel Stats */}
-            <div className="grid grid-cols-3 border-b border-gray-100">
+            <div className="grid grid-cols-4 border-b border-gray-100">
               <div className="p-4 text-center border-r border-gray-100">
                 <p className="text-xs text-gray-500 uppercase">Ngày công</p>
                 <p className="text-xl font-bold text-blue-600">
@@ -1289,6 +1289,12 @@ const AttendanceAdmin = () => {
                 <p className="text-xs text-gray-500 uppercase">Giờ OT</p>
                 <p className="text-xl font-bold text-orange-600">
                   {selectedEmployee.totalOTHours?.toFixed(2) || 0}
+                </p>
+              </div>
+              <div className="p-4 text-center border-r border-gray-100">
+                <p className="text-xs text-gray-500 uppercase">Nghỉ phép</p>
+                <p className="text-xl font-bold text-purple-600">
+                  {selectedEmployee.paidLeaveDays || 0}
                 </p>
               </div>
               <div className="p-4 text-center">
@@ -1319,6 +1325,9 @@ const AttendanceAdmin = () => {
                       <th className="p-4 text-gray-500 font-medium text-center">
                         Ra
                       </th>
+                      <th className="p-4 text-gray-500 font-medium text-center">
+                        OT (h)
+                      </th>
                       <th className="p-4 text-gray-500 font-medium">
                         Trạng thái
                       </th>
@@ -1331,6 +1340,11 @@ const AttendanceAdmin = () => {
                         // Format date
                         const dateObj = new Date(log.date);
                         const formattedDate = dateObj.toLocaleDateString('vi-VN');
+
+                        // Calculate total OT hours from overtimeId array
+                        const totalOTHours = log.overtimeId && Array.isArray(log.overtimeId)
+                          ? log.overtimeId.reduce((sum, ot) => sum + (ot.approvedHours || 0), 0)
+                          : 0;
 
                         // Determine status display
                         let statusBadge;
@@ -1380,6 +1394,9 @@ const AttendanceAdmin = () => {
                             >
                               {log.checkOut || "--:--"}
                             </td>
+                            <td className="p-4 text-center font-mono font-bold text-orange-600">
+                              {totalOTHours > 0 ? totalOTHours.toFixed(1) : "--"}
+                            </td>
                             <td className="p-4">
                               {statusBadge}
                               {log.deductedBlocks > 0 && (
@@ -1402,7 +1419,7 @@ const AttendanceAdmin = () => {
                       })
                     ) : (
                       <tr>
-                        <td colSpan="5" className="p-8 text-center text-gray-400">
+                        <td colSpan="6" className="p-8 text-center text-gray-400">
                           <Clock size={32} className="mx-auto mb-2 opacity-50" />
                           <p className="text-sm">Không có dữ liệu chấm công</p>
                         </td>
