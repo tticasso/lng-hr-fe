@@ -79,8 +79,12 @@ useEffect(() => {
 
     // endTime phải sau startTime
     if (dayjs(endTime).isSameOrBefore(dayjs(startTime))) return false;
+    
+    // Validate lý do phải có nội dung
+    if (!reason || reason.trim() === "") return false;
+    
     return true;
-  }, [date, startTime, endTime]);
+  }, [date, startTime, endTime, reason]);
 
   const handleOk = async () => {
     if (!canSubmit) return;
@@ -164,13 +168,19 @@ useEffect(() => {
 
         {/* reason */}
         <div>
-          <p className="text-sm font-medium mb-1">Lý do xin OT</p>
+          <p className="text-sm font-medium mb-1">
+            Lý do xin OT <span className="text-red-500">*</span>
+          </p>
           <TextArea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Nhập lý do..."
             autoSize={{ minRows: 3, maxRows: 6 }}
+            status={reason.trim() === "" ? "error" : ""}
           />
+          {reason.trim() === "" && (
+            <p className="text-xs text-red-500 mt-1">Vui lòng nhập lý do xin OT</p>
+          )}
         </div>
       </div>
     </Modal>

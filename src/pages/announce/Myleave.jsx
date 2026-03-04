@@ -58,7 +58,8 @@ const formatDateTime = (isoString) => {
 
 const formatHours = (n) => {
     if (n === null || n === undefined) return "--";
-    return `${Number(n)}h`;
+    // Làm tròn đến 2 chữ số thập phân
+    return Number(n).toFixed(2);
 };
 
 const normalizeStatus = (st) => {

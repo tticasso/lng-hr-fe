@@ -29,6 +29,7 @@ const MyTimesheet = () => {
   const [otPrefillDate, setOtPrefillDate] = useState(""); // YYYY-MM-DD
   const [timesheetData, setTimesheetData] = useState(null);
   const [attendanceData, setAttendanceData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // State cho việc chọn tháng
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -55,6 +56,7 @@ const MyTimesheet = () => {
   useEffect(() => {
     const callAPIAttendences = async () => {
       try {
+        setLoading(true);
         const month = selectedMonth + 1; // 0-11 → +1 thành 1-12
         const year = selectedYear;
 
@@ -65,6 +67,8 @@ const MyTimesheet = () => {
         setAttendanceData(res.data.data || []);
       } catch (error) {
         console.log("[DEBUG1] API ERROR:", error);
+      } finally {
+        setLoading(false);
       }
     }
     callAPIAttendences();
@@ -502,8 +506,16 @@ const MyTimesheet = () => {
           </div>
 
           {/* Calendar Body */}
-          <div className="grid grid-cols-7 bg-white">
-            {calendarDays.map((day, idx) => (
+          {loading ? (
+            <div className="flex items-center justify-center h-96 bg-white">
+              <div className="flex flex-col items-center gap-3">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                <p className="text-sm text-gray-500">Đang tải dữ liệu chấm công...</p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-7 bg-white">
+              {calendarDays.map((day, idx) => (
               <div
                 key={idx}
                 onClick={() => day.inMonth && setSelectedDate(day)}
@@ -638,7 +650,8 @@ const MyTimesheet = () => {
                 )}
               </div>
             ))}
-          </div>
+            </div>
+          )}
         </Card>
 
         {/* RIGHT PANEL */}
