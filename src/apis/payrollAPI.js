@@ -14,6 +14,10 @@ export const payrollAPI = {
         return apiClient.post("/payrolls/sync", payload);
     },
 
+    syncHoliday: (payload) => {
+        return apiClient.post("/payrolls/sync-holiday", payload);
+    },
+
     calcalculate: (payload) => {
         return apiClient.post("/payrolls/calculate", payload);
     },

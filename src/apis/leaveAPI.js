@@ -1,6 +1,9 @@
 import apiClient from "./apiClient";
 
 export const leaveAPI = {
+
+
+
     // Post dữ liệu xin nghỉ
     post: async (data) => {
         try {
@@ -12,14 +15,18 @@ export const leaveAPI = {
         }
     },
 
+    getbyID: (id) => {
+        return apiClient.get(`/leaves/${id}`);
+    },
+
     getbyADMIN: () => {
         return apiClient.get("/leaves");
     },
     getbyUSER: () => {
         return apiClient.get("/leaves/my-leaves", { status: "APPROVED" });
     },
-    APPROVED: (id) => {
-        return apiClient.patch(`/leaves/approve/${id}`, { status: "APPROVED" });
+    APPROVED: (id,payload) => {
+        return apiClient.put(`/leaves/${id}/approval`,payload);
     },
 
     CANCELLED: (id) => {

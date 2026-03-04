@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Search, Loader2, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
+import { Search, Loader2, RefreshCw, CheckCircle2, XCircle, Eye } from "lucide-react";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import { leaveAPI } from "../../apis/leaveAPI";
 import { OTApi } from "../../apis/OTAPI";
+import apiClient from "../../apis/apiClient";
 import ApproveOTModal from "../../components/modals/ApproveOTModal";
+import LeaveDetailModal from "../../components/modals/LeaveDetailModal";
 import { toast } from "react-toastify";
 import { useLocation } from "react-router-dom";
 
@@ -131,6 +133,15 @@ const MyLeave = () => {
         otData: null,
     });
 
+    // ✅ Leave Detail Modal
+    const [leaveDetailModal, setLeaveDetailModal] = useState({
+        isOpen: false,
+        leaveId: null,
+    });
+
+    // ✅ Lưu approval level của user hiện tại
+    const [userApprovalLevel, setUserApprovalLevel] = useState(null);
+
     const pendingOTCount = useMemo(() => {
         return ots.filter((ot) => normalizeStatus(ot?.status) === "PENDING").length;
     }, [ots]);
@@ -165,10 +176,17 @@ const MyLeave = () => {
         return false;
     }, [role]);
 
+    const isLEADER = useMemo(() => {
+        if (typeof role === "string") return role === "LEADER";
+        if (Array.isArray(role)) return role.includes("LEADER");
+        if (role?.name) return role.name === "LEADER";
+        return false;
+    }, [role]);
+
     // Kiểm tra có quyền duyệt không (ADMIN, HR, MANAGER)
     const canApprove = useMemo(() => {
-        return isAdmin || isHR || isManager;
-    }, [isAdmin, isHR, isManager]);
+        return isAdmin || isHR || isManager || isLEADER;
+    }, [isAdmin, isHR, isManager, isLEADER]);
 
     const searchQuery = useMemo(() => filters.search.trim().toLowerCase(), [filters.search]);
     const otSearchQuery = useMemo(
@@ -189,15 +207,56 @@ const MyLeave = () => {
             let res;
 
             // ADMIN, HR, MANAGER gọi API getbyADMIN, còn lại gọi getbyUSER
-            if (raw === "ADMIN" || raw === "HR" || raw === "MANAGER") {
+            if (raw === "ADMIN" || raw === "HR" || raw === "MANAGER" || raw === "LEADER") {
                 res = await leaveAPI.getbyADMIN();
             } else {
                 res = await leaveAPI.getbyUSER();
             }
 
-            const root = res?.data?.data?.data ? res.data.data : res?.data;
-            const rows = root?.data || [];
-            const total = root?.results || 0;
+            // ✅ Xử lý cấu trúc response mới từ backend
+            const responseData = res?.data;
+            console.log("FULL RESPONSE DATA:", responseData); // ✅ Log toàn bộ response
+            const rows = responseData?.data || [];
+            console.log("EMPLOYEE_DATA :", responseData.data[0].approvalChain[0])
+            const paginationData = responseData?.pagination || {};
+            console.log("PAGINATION INFO:", paginationData); // ✅ Log thông tin phân trang
+
+            const accountID = localStorage.getItem("employee_ID");
+            console.log("employee_ID :", accountID)
+
+            // ✅ Kiểm tra level duyệt của user hiện tại
+            let currentUserLevel = null;
+            rows.forEach((leave) => {
+                if (leave.approvalChain && Array.isArray(leave.approvalChain)) {
+                    leave.approvalChain.forEach((approval) => {
+                        if (approval.approver?._id === accountID) {
+                            currentUserLevel = approval.level;
+                            console.log(`[approver] User hiện tại là cấp duyệt level ${approval.level}`);
+                        }
+                    });
+                }
+            });
+
+            // Lưu level vào state
+            setUserApprovalLevel(currentUserLevel);
+
+            const level1ID = responseData.data[0]?.approvalChain?.[0];
+            const level2ID = responseData.data[0]?.approvalChain?.[1];
+
+            if (level1ID && level2ID) {
+                console.log("ACCOUNT ID :", accountID)
+                console.log("LEVEL 1:", level1ID.approver._id)
+                console.log("LEVEL 2:", level2ID.approver._id)
+
+                if (accountID == level1ID.approver._id) {
+                    console.log("[approver]BẠN ĐANG LÀ CẤP DUYỆT SỐ 1")
+                } else if (accountID == level2ID.approver._id) {
+                    console.log("[approver]BẠN ĐANG LÀ CẤP DUYỆT SỐ 2")
+                } else {
+                    console.log("[approver]BẠN KHÔNG CÓ QUYỀN DUYỆT")
+                }
+            }
+
 
             const normalizedRows = rows.map((lv) => ({
                 ...lv,
@@ -205,11 +264,12 @@ const MyLeave = () => {
             }));
 
             setLeaves(normalizedRows);
-            setPagination((prev) => ({
-                ...prev,
-                total,
-                totalPages: Math.ceil(total / prev.limit) || 1,
-            }));
+            setPagination({
+                page: paginationData.page || 1,
+                limit: paginationData.limit || 10,
+                total: paginationData.totalRecords || 0,
+                totalPages: paginationData.totalPages || 1,
+            });
         } catch (e) {
             console.error("fetchLeaves error:", e);
         } finally {
@@ -298,12 +358,29 @@ const MyLeave = () => {
 
     const handleApprove = async (leaveId) => {
         try {
-            if (leaveAPI.editStatus) await leaveAPI.editStatus(leaveId, "APPROVED");
-            else if (leaveAPI.APPROVED) await leaveAPI.APPROVED(leaveId);
-            else return console.warn("Thiếu leaveAPI.editStatus / leaveAPI.APPROVED");
+            // ✅ Kiểm tra xem user có quyền duyệt không
+            if (!userApprovalLevel) {
+                toast.error("Bạn không có quyền duyệt đơn này");
+                return;
+            }
+
+            // ✅ Tạo payload với approvalLevel
+            const payload = {
+                approvalLevel: userApprovalLevel,
+                status: "APPROVED"
+            };
+
+            console.log("[handleApprove] Payload:", payload);
+
+            // ✅ Gọi API approve với payload
+            // await apiClient.patch(`/leaves/approve/${leaveId}`, payload);
+            const res = await leaveAPI.APPROVED(leaveId,payload)
+            console.log("[handleApprove] res :", res)
+            toast.success(`Đã duyệt đơn nghỉ (Level ${userApprovalLevel})`);
             await fetchLeaves();
         } catch (e) {
             console.error("approve error:", e);
+            toast.error("Duyệt đơn thất bại");
         }
     };
 
@@ -344,7 +421,18 @@ const MyLeave = () => {
         setApproveOTModal({ isOpen: false, otData: null });
     };
 
-    const colSpanCount = canApprove ? 10 : 9;
+    const openLeaveDetailModal = (leaveId) => {
+        setLeaveDetailModal({
+            isOpen: true,
+            leaveId: leaveId,
+        });
+    };
+
+    const closeLeaveDetailModal = () => {
+        setLeaveDetailModal({ isOpen: false, leaveId: null });
+    };
+
+    const colSpanCount = canApprove ? 11 : 10;
     const otColSpanCount = canApprove ? 10 : 9;
 
     return (
@@ -485,6 +573,7 @@ const MyLeave = () => {
                                     <th className="p-4">Lý do</th>
                                     <th className="p-4">Trạng thái</th>
                                     <th className="p-4">Ngày tạo</th>
+                                    <th className="p-4 text-center">Chi tiết</th>
                                     {canApprove && <th className="p-4 text-center">Hành động</th>}
                                 </tr>
                             </thead>
@@ -545,6 +634,21 @@ const MyLeave = () => {
 
                                                 <td className="p-4 text-xs text-gray-500">{formatDateTime(lv.createdAt)}</td>
 
+                                                {/* Cột Chi tiết - Luôn hiển thị */}
+                                                <td className="p-4">
+                                                    <div className="flex justify-center">
+                                                        <button
+                                                            onClick={() => openLeaveDetailModal(lv._id)}
+                                                            className="p-2 rounded border text-xs font-semibold inline-flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50"
+                                                            title="Xem chi tiết"
+                                                        >
+                                                            <Eye size={14} />
+                                                            Chi tiết
+                                                        </button>
+                                                    </div>
+                                                </td>
+
+                                                {/* Cột Hành động - Chỉ hiển thị cho người có quyền */}
                                                 {canApprove && (
                                                     <td className="p-4">
                                                         <div className="flex justify-center gap-2">
@@ -552,7 +656,7 @@ const MyLeave = () => {
                                                                 disabled={!canAction}
                                                                 onClick={() => handleApprove(lv._id)}
                                                                 className={`p-2 rounded border text-xs font-semibold inline-flex items-center gap-1
-                                  ${canAction
+                                                                    ${canAction
                                                                         ? "text-green-600 border-green-200 hover:bg-green-50"
                                                                         : "text-gray-300 border-gray-200 cursor-not-allowed"
                                                                     }`}
@@ -566,7 +670,7 @@ const MyLeave = () => {
                                                                 disabled={!canAction}
                                                                 onClick={() => handleCancel(lv._id)}
                                                                 className={`p-2 rounded border text-xs font-semibold inline-flex items-center gap-1
-                                  ${canAction
+                                                                    ${canAction
                                                                         ? "text-red-500 border-red-200 hover:bg-red-50"
                                                                         : "text-gray-300 border-gray-200 cursor-not-allowed"
                                                                     }`}
@@ -776,6 +880,13 @@ const MyLeave = () => {
                 onClose={closeApproveOTModal}
                 otData={approveOTModal.otData}
                 onConfirm={handleApproveOT}
+            />
+
+            {/* Leave Detail Modal */}
+            <LeaveDetailModal
+                isOpen={leaveDetailModal.isOpen}
+                onClose={closeLeaveDetailModal}
+                leaveId={leaveDetailModal.leaveId}
             />
         </div>
     );
