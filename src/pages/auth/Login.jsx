@@ -57,8 +57,9 @@ const Login = () => {
       // Cấu trúc response getMe thường là { status: "success", data: { employee: {...} } }
       const responseBody = resMe.data;
       const employeeData = responseBody?.data?.employee;
-      console.log("login/employeeData:", employeeData.accountId._id);
+      console.log("login/EMPLOYEE_DATA:", employeeData);
       localStorage.setItem("accountID", employeeData.accountId._id);
+       localStorage.setItem("employee_ID", employeeData._id);
       if (!employeeData) {
         throw new Error("Không thể lấy thông tin nhân viên.");
       }

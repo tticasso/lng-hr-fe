@@ -16,6 +16,7 @@ import Button from "../common/Button";
 import { employeeApi } from "../../apis/employeeApi";
 import { departmentApi } from "../../apis/departmentApi";
 import { toast } from "react-toastify";
+import { teamAPI } from "../../apis/teamAPI";
 
 // --- REGEX & CONSTANTS ---
 // VN phone: 0 / 84 / +84 + (3|5|7|8|9) + 8 digits
@@ -50,6 +51,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
   };
 
   const [departments, setDepartments] = useState([]);
+  const [teams, setTeams] = useState([]); // State lưu danh sách team
   const [banks, setBanks] = useState([]); // [MỚI] State lưu danh sách ngân hàng
   const [loadingDepts, setLoadingDepts] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -67,6 +69,10 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
       typeof employee.departmentId === "object"
         ? employee.departmentId?._id
         : employee.departmentId || "",
+    team:
+      typeof employee.teamId === "object"
+        ? employee.teamId?._id
+        : employee.teamId || "",
     jobTitle: employee.jobTitle || "",
     jobLevel: employee.jobLevel || "",
     employmentType: employee.employmentType || "Full-time",
@@ -119,7 +125,13 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
         const deptList = deptRes.data?.data || deptRes.data || [];
         setDepartments(deptList);
 
-        // 2. Fetch Banks (External API - VietQR) [MỚI]
+        // 2. Fetch Teams (Internal API)
+        const teamRes = await teamAPI.get();
+        console.log("TEAM_API res:", teamRes);
+        const teamList = teamRes.data?.data || teamRes.data || [];
+        setTeams(teamList);
+
+        // 3. Fetch Banks (External API - VietQR)
         const bankRes = await fetch("https://api.vietqr.io/v2/banks");
         const bankData = await bankRes.json();
         if (bankData.code === "00") {
@@ -133,7 +145,6 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
     };
     fetchData();
   }, []);
-
   // --- VALIDATION LOGIC ---
   const validateForm = () => {
     const newErrors = {};
@@ -279,6 +290,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
         contractEndDate: formatDateInput(formData.contractEndDate),
         // Organization - Đảm bảo có giá trị
         departmentId: formData.department || undefined,
+        teamId: formData.team || undefined,
         jobTitle: jobTitle || undefined,
         jobLevel: normalizeTrim(formData.jobLevel) || undefined,
         employmentType: formData.employmentType || undefined,
@@ -481,6 +493,26 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                       </select>
                       <ErrorMsg field="jobTitle" />
                     </div>
+                  </div>
+                  <div>
+                    <label className={labelClass}>
+                      TEAM
+                    </label>
+                    <select
+                      name="team"
+                      value={formData.team}
+                      onChange={handleChange}
+                      className={inputClass("team")}
+                      disabled={loadingDepts}
+                    >
+                      <option value="">-- Chọn Team --</option>
+                      {teams.map((t) => (
+                        <option key={t._id} value={t._id}>
+                          {t.name} ({t.teamCode})
+                        </option>
+                      ))}
+                    </select>
+                    <ErrorMsg field="team" />
                   </div>
                   {/* ... (Giữ nguyên các trường khác như Cấp bậc, Trạng thái, Hình thức...) ... */}
                   <div className="grid grid-cols-2 gap-3">

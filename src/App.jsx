@@ -34,6 +34,7 @@ import NotificationViewer from "./pages/notification/NotificationViewer";
 import { NotificationProvider } from "./context/NotificationContext";
 import Holiday from "./pages/holiday/Holiday";
 import Department from "./pages/department/Department";
+import TeamPages from "./pages/teamPages/TeamPages";
 
 function App() {
   return (
@@ -103,6 +104,7 @@ function App() {
                 <Route path="employees" element={<EmployeeList />} />
                 <Route path="employees/:id" element={<EmployeeDetail />} />
                 <Route path="announcements" element={<Announcements />} />
+                <Route path="teampages" element={<TeamPages />} />
               </Route>
               {/* <Route
               path="/register"

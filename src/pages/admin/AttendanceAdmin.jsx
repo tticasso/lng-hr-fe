@@ -822,7 +822,25 @@ const AttendanceAdmin = () => {
       console.log("❌ LỖI API:", error);
     }
   };
+  const handclickSyncholiday = async () => {
+    try {
+      const { month, year } = getMonthYear(selectedPeriod);
 
+      const payload = {
+        month: month,
+        year: year
+      };
+
+      console.log("📤 Đồng bộ dữ liệu với payload:", payload);
+
+      const res = await payrollAPI.syncHoliday(payload);
+      toast.success("ĐỒNG BỘ THÀNH CÔNG");
+      console.log("✅ DỮ LIỆU API:", res);
+    } catch (error) {
+      toast.error("ĐỒNG BỘ THẤT BẠI");
+      console.log("❌ LỖI API:", error);
+    }
+  };
   // =========================
   // EXPORT TO EXCEL
   // =========================
@@ -1048,6 +1066,11 @@ const AttendanceAdmin = () => {
             onClick={handclickSynhronized}
             variant="secondary" className="flex items-center gap-2">
             <RefreshCcw size={16} /> Đồng bộ dữ liệu
+          </Button>
+            <Button
+            onClick={handclickSyncholiday}
+            variant="secondary" className="flex items-center gap-2">
+            <RefreshCcw size={16} /> Đồng bộ lịch nghỉ
           </Button>
           <Button
             className={`w-48 flex items-center gap-2 text-white shadow-md ${isPeriodLocked

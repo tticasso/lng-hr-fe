@@ -18,9 +18,11 @@ import {
   FileSpreadsheet,
   CalendarCheck,
   Timer,
+  UserSquare,
 } from "lucide-react";
 import logoLNG from "../assets/LNG.png";
 import { useAuth } from "../context/AuthContext";
+import TeamPages from "../pages/teamPages/TeamPages";
 
 const Sidebar = () => {
   const navigate = useNavigate();
@@ -31,7 +33,7 @@ const Sidebar = () => {
   const isHR = role === "HR";
   const isManager = role === "MANAGER";
   const isEmployee = role === "EMPLOYEE";
-
+  const isLEADER = role === "LEADER";
   const menuGroups = [
     {
       title: "KHÔNG GIAN CÁ NHÂN",
@@ -55,7 +57,7 @@ const Sidebar = () => {
       ],
     },
     // Hiển thị nhóm QUẢN LÝ NHÂN SỰ cho ADMIN, HR, MANAGER
-    ...(isAdmin || isHR || isManager
+    ...(isAdmin || isHR || isManager ||isLEADER
       ? [
         {
           title: "QUẢN LÝ NHÂN SỰ",
@@ -67,6 +69,11 @@ const Sidebar = () => {
                   path: "/hr/employees",
                   label: "Nhân viên",
                   icon: <Users size={20} />,
+                },
+                {
+                  path: "/hr/teampages",
+                  label: "Quản lý Team",
+                  icon: <UserSquare size={20} />,
                 },
                 {
                   path: "/hr/attendance-admin",
