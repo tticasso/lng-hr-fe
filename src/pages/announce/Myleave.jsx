@@ -706,20 +706,6 @@ const MyLeave = () => {
                                                             statusText={statusLabel[displayStatus] || displayStatus}
                                                         />
                                                         {/* ✅ Hiển thị trạng thái duyệt từng level */}
-                                                        {displayStatus === "PENDING" && lv.approvalChain && lv.approvalChain.length > 0 && (
-                                                            <div className="text-xs text-gray-500 mt-1">
-                                                                {lv.approvalChain.map((approval, idx) => (
-                                                                    <div key={idx} className="flex items-center gap-1">
-                                                                        <span>L{approval.level}:</span>
-                                                                        {approval.status === "APPROVED" ? (
-                                                                            <span className="text-green-600">✓ Đã duyệt</span>
-                                                                        ) : (
-                                                                            <span className="text-yellow-600">⏳ Chờ duyệt</span>
-                                                                        )}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
                                                     </div>
                                                 </td>
 

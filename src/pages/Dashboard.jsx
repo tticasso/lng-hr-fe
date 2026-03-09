@@ -228,7 +228,7 @@ const Dashboard = () => {
   const summaryStats = [
     {
       label: "Ngày công thực tế",
-      value: mySheetData?.work?.totalDays?.toFixed(2) || "0.00",
+      value: mySheetData?.work?.actualWorkDays?.toFixed(2) || "0.00",
       unit: "công",
       icon: <Briefcase size={18} className="text-blue-600" />,
       bg: "bg-blue-100",
@@ -335,11 +335,22 @@ const Dashboard = () => {
       type: "ot",
       rawData: ot,
     })),
-  ].sort((a, b) => new Date(b.rawData.createdAt) - new Date(a.rawData.createdAt)); // Sắp xếp theo ngày mới nhất
+  ]
+    .sort((a, b) => new Date(b.rawData.createdAt) - new Date(a.rawData.createdAt)) // Sắp xếp theo ngày mới nhất
+    .slice(0, 3); // ✅ Chỉ lấy 3 yêu cầu mới nhất
 
-  // Tính số lượng Pending và Approved
-  const pendingCount = requests.filter((r) => r.status === "Pending").length;
-  const approvedCount = requests.filter((r) => r.status === "Approved").length;
+  // Tính số lượng Pending và Approved từ TẤT CẢ requests (không giới hạn 3)
+  const allRequests = [
+    ...leaveRequests.map((leave) => ({
+      status: leave.status === "PENDING" ? "Pending" : "Approved",
+    })),
+    ...otRequests.map((ot) => ({
+      status: ot.status === "PENDING" ? "Pending" : "Approved",
+    })),
+  ];
+  
+  const pendingCount = allRequests.filter((r) => r.status === "Pending").length;
+  const approvedCount = allRequests.filter((r) => r.status === "Approved").length;
 
   return (
     <div className="space-y-6">
@@ -458,7 +469,7 @@ const Dashboard = () => {
             {/* Sự kiện 1: Lương */}
             <div className="flex gap-3 items-start p-3 bg-white rounded-lg border border-blue-100 shadow-sm">
               <div className="flex flex-col items-center justify-center bg-blue-100 text-blue-600 rounded p-1 w-12 min-w-[3.5rem]">
-                <span className="text-xs font-bold uppercase">Thg 12</span>
+                <span className="text-xs font-bold uppercase">Thg 3</span>
                 <span className="text-lg font-bold">10</span>
               </div>
               <div>
@@ -466,7 +477,7 @@ const Dashboard = () => {
                   Ngày nhận lương
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  Dự kiến thanh toán lương T11
+                  Dự kiến thanh toán lương T2
                 </p>
               </div>
             </div>
@@ -474,14 +485,14 @@ const Dashboard = () => {
             {/* Sự kiện 2: Townhall */}
             <div className="flex gap-3 items-start">
               <div className="w-12 text-center pt-1">
-                <span className="text-sm font-medium text-gray-500">10/09</span>
+                <span className="text-sm font-medium text-gray-500">08/03</span>
               </div>
               <div className="pt-1 border-l-2 border-gray-200 pl-3">
                 <p className="text-sm font-medium text-gray-700">
-                  Họp toàn công ty (Townhall)
+                 Ngày Quốc Tế Phụ Nữ 🌹
                 </p>
                 <p className="text-xs text-gray-400">
-                  09:00 AM - Phòng họp lớn
+                  Chúc các chị em lúc nào cũng xinh như trên mạng  🎉 🎉 🎉
                 </p>
               </div>
             </div>

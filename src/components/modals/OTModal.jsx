@@ -1,15 +1,8 @@
 // src/components/modals/ModalOT.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { Modal, DatePicker, Select, TimePicker, Input } from "antd";
+import { X, Clock, AlertCircle } from "lucide-react";
+import { DatePicker, TimePicker } from "antd";
 import dayjs from "../../untils/dayjs";
-
-const { TextArea } = Input;
-
-const OT_TYPE_OPTIONS = [
-  { value: "WEEKDAY", label: "Ngày thường" },
-  { value: "WEEKEND", label: "Cuối tuần" },
-  { value: "HOLIDAY", label: "Ngày lễ" },
-];
 
 const makePayload = ({ date, startTime, endTime, reason }) => ({
   // backend cần "YYYY-MM-DD"
@@ -41,21 +34,21 @@ const ModalOT = ({
   const [startTime, setStartTime] = useState(null); // dayjs
   const [endTime, setEndTime] = useState(null); // dayjs
   const [reason, setReason] = useState("");
-useEffect(() => {
-  console.log("[ModalOT] mounted / open =", open);
-  return () => console.log("[ModalOT] unmounted");
-}, []);
 
-useEffect(() => {
-  console.log("[ModalOT] open changed:", open);
-}, [open]);
+  useEffect(() => {
+    console.log("[ModalOT] mounted / open =", open);
+    return () => console.log("[ModalOT] unmounted");
+  }, []);
+
+  useEffect(() => {
+    console.log("[ModalOT] open changed:", open);
+  }, [open]);
 
   // reset/init when open
   useEffect(() => {
     if (!open) return;
 
     setDate(initialValues?.date ? dayjs(initialValues.date) : null);
-    // setOtType(initialValues?.otType || "WEEKDAY");
 
     // cho phép initialValues dạng "20:00" hoặc full datetime
     setStartTime(
@@ -74,7 +67,6 @@ useEffect(() => {
 
   const canSubmit = useMemo(() => {
     if (!date) return false;
-    // if (!otType) return false;
     if (!startTime || !endTime) return false;
 
     // endTime phải sau startTime
@@ -100,90 +92,150 @@ useEffect(() => {
     }
   };
 
+  if (!open) return null;
+
+  const inputClass = (hasError) =>
+    `w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 ${
+      hasError
+        ? "border-red-500 focus:ring-red-200"
+        : "border-gray-300 focus:ring-blue-500"
+    }`;
+
+  const labelClass =
+    "block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide";
+
   return (
-    <Modal
-      title="Tạo đơn OT"
-      open={open}
-      onCancel={onClose}
-      onOk={handleOk}
-      okText="Gửi đơn"
-      cancelText="Hủy"
-      confirmLoading={confirmLoading}
-      okButtonProps={{ disabled: !canSubmit }}
-      destroyOnClose
-    >
-      <div className="flex flex-col gap-4">
-        {/* Date */}
-        <div>
-          <p className="text-sm font-medium mb-1">Ngày OT</p>
-          <DatePicker
-            value={date}
-            onChange={(v) => setDate(v)}
-            format="DD/MM/YYYY"
-            placeholder="Chọn ngày"
-            className="w-full"
-          />
-          {/* <p className="text-xs text-gray-500 mt-1">
-            Hiển thị: dd/mm/yyyy — Gửi lên backend: YYYY-MM-DD
-          </p> */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl flex flex-col">
+        {/* Header */}
+        <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
+          <div>
+            <h3 className="text-lg font-bold flex items-center gap-2">
+              <Clock size={18} className="text-orange-600" />
+              Tạo đơn OT
+            </h3>
+          </div>
+          <button onClick={onClose} disabled={confirmLoading}>
+            <X size={20} />
+          </button>
         </div>
 
-        {/* otType */}
-        {/* <div>
-          <p className="text-sm font-medium mb-1">Loại ngày OT</p>
-          <Select
-            value={otType}
-            onChange={(v) => setOtType(v)}
-            options={OT_TYPE_OPTIONS}
-            className="w-full"
-            placeholder="Chọn loại OT"
-          />
-        </div> */}
-
-        {/* time */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="p-6 space-y-4">
+          {/* Date */}
           <div>
-            <p className="text-sm font-medium mb-1">Giờ bắt đầu</p>
-            <TimePicker
-              value={startTime}
-              onChange={(v) => setStartTime(v)}
-              format="HH:mm"
+            <label className={labelClass}>Ngày OT *</label>
+            <DatePicker
+              value={date}
+              onChange={(v) => setDate(v)}
+              format="DD/MM/YYYY"
+              placeholder="Chọn ngày"
               className="w-full"
-              placeholder="Chọn giờ"
-              minuteStep={5}
+              size="large"
+              status={!date ? "error" : ""}
             />
+            {!date && (
+              <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                <AlertCircle size={12} /> Vui lòng chọn ngày OT
+              </p>
+            )}
           </div>
-          <div>
-            <p className="text-sm font-medium mb-1">Giờ kết thúc</p>
-            <TimePicker
-              value={endTime}
-              onChange={(v) => setEndTime(v)}
-              format="HH:mm"
-              className="w-full"
-              placeholder="Chọn giờ"
-              minuteStep={5}
-            />
-          </div>
-        </div>
 
-        {/* reason */}
-        <div>
-          <p className="text-sm font-medium mb-1">
-            Lý do xin OT <span className="text-red-500">*</span>
-          </p>
-          <TextArea
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Nhập lý do..."
-            autoSize={{ minRows: 3, maxRows: 6 }}
-            status={reason.trim() === "" ? "error" : ""}
-          />
-          {reason.trim() === "" && (
-            <p className="text-xs text-red-500 mt-1">Vui lòng nhập lý do xin OT</p>
-          )}
+          {/* time */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Giờ bắt đầu *</label>
+              <TimePicker
+                value={startTime}
+                onChange={(v) => setStartTime(v)}
+                format="HH:mm"
+                className="w-full"
+                placeholder="Chọn giờ"
+                minuteStep={5}
+                size="large"
+                status={!startTime ? "error" : ""}
+              />
+              {!startTime && (
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <AlertCircle size={12} /> Vui lòng chọn giờ bắt đầu
+                </p>
+              )}
+            </div>
+            <div>
+              <label className={labelClass}>Giờ kết thúc *</label>
+              <TimePicker
+                value={endTime}
+                onChange={(v) => setEndTime(v)}
+                format="HH:mm"
+                className="w-full"
+                placeholder="Chọn giờ"
+                minuteStep={5}
+                size="large"
+                status={
+                  !endTime ||
+                  (endTime && startTime && dayjs(endTime).isSameOrBefore(dayjs(startTime)))
+                    ? "error"
+                    : ""
+                }
+              />
+              {!endTime && (
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <AlertCircle size={12} /> Vui lòng chọn giờ kết thúc
+                </p>
+              )}
+              {endTime && startTime && dayjs(endTime).isSameOrBefore(dayjs(startTime)) && (
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <AlertCircle size={12} /> Giờ kết thúc phải sau giờ bắt đầu
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* reason */}
+          <div>
+            <label className={labelClass}>Lý do xin OT *</label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Nhập lý do..."
+              rows={3}
+              className={inputClass(reason.trim() === "")}
+            />
+            {reason.trim() === "" && (
+              <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                <AlertCircle size={12} /> Vui lòng nhập lý do xin OT
+              </p>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={confirmLoading}
+              className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={handleOk}
+              disabled={!canSubmit || confirmLoading}
+              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium disabled:opacity-50 flex items-center gap-2"
+            >
+              {confirmLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Đang gửi...
+                </>
+              ) : (
+                "Gửi đơn"
+              )}
+            </button>
+          </div>
         </div>
       </div>
-    </Modal>
+    </div>
   );
 };
 

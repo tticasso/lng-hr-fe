@@ -142,7 +142,6 @@ const LeaveRequestModal = ({ onClose, onConfirm, defaultFromDate = "", defaultLe
             >
               <option value="ANNUAL">Nghỉ phép năm (Annual Leave)</option>
               <option value="UNPAID">Nghỉ không lương (Unpaid Leave)</option>
-              {/* <option value="SICK">Nghỉ ốm / bệnh 123 (Sick Leave)</option> */}
               <option value="MATERNITY">Nghỉ thai sản (Maternity Leave)</option>
             </select>
             <ErrorMsg field="leaveType" />

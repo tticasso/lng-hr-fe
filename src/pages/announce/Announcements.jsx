@@ -126,13 +126,25 @@ const Announcements = () => {
       // Xử lý schedule
       if (data.status === "SCHEDULED" && data.scheduledAt) {
         setScheduleType("schedule");
-        const scheduleDate = new Date(data.scheduledAt);
-        // Đảm bảo format YYYY-MM-DD cho date input
-        setScheduledDate(scheduleDate.toISOString().split('T')[0]);
-        // Đảm bảo format HH:mm (24h) cho time input
-        const hours = String(scheduleDate.getHours()).padStart(2, '0');
-        const minutes = String(scheduleDate.getMinutes()).padStart(2, '0');
-        setScheduledTime(`${hours}:${minutes}`);
+        
+        // ✅ Parse ISO string từ API (UTC time)
+        // scheduledAt format: "2026-03-09T10:30:00.000Z" (UTC)
+        const isoString = data.scheduledAt;
+        
+        // ✅ Tách date và time từ ISO string (giữ nguyên UTC, không convert)
+        // Lấy phần trước 'T' là date: "2026-03-09"
+        const datePart = isoString.split('T')[0];
+        
+        // Lấy phần sau 'T' và trước 'Z' hoặc '+' là time: "10:30:00"
+        const timePart = isoString.split('T')[1].split('.')[0]; // "10:30:00"
+        const timeHHMM = timePart.substring(0, 5); // "10:30"
+        
+        console.log("[DEBUG] scheduledAt from API:", isoString);
+        console.log("[DEBUG] Extracted date:", datePart);
+        console.log("[DEBUG] Extracted time:", timeHHMM);
+        
+        setScheduledDate(datePart);
+        setScheduledTime(timeHHMM);
       } else {
         setScheduleType("now");
         setScheduledDate("");
@@ -281,12 +293,15 @@ const Announcements = () => {
     if (scheduleType === "schedule" && scheduledDate && scheduledTime) {
       // scheduledDate format: YYYY-MM-DD
       // scheduledTime format: HH:mm (24h)
-      // Tạo datetime string theo local timezone (không convert sang UTC)
+      
+      // ✅ Gửi datetime string KHÔNG có timezone
+      // Backend sẽ hiểu đây là giờ local và lưu trực tiếp
+      // User chọn 10:30 → Backend lưu 10:30 (không convert)
       scheduledDateTime = `${scheduledDate}T${scheduledTime}:00`;
       
       console.log("[DEBUG] Scheduled Date:", scheduledDate);
       console.log("[DEBUG] Scheduled Time:", scheduledTime);
-      console.log("[DEBUG] Scheduled DateTime (Local):", scheduledDateTime);
+      console.log("[DEBUG] Scheduled DateTime (No Timezone):", scheduledDateTime);
     }
 
     // Chuyển HTML content sang plain text
