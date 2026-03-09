@@ -213,10 +213,10 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
       newErrors.fullName = "Full name is required";
     }
 
-    // 9) department (required)
-    if (!formData.department) {
-      newErrors.department = "Department is required";
-    }
+    // // 9) department (required)
+    // if (!formData.department) {
+    //   newErrors.department = "Department is required";
+    // }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -300,7 +300,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
         // Lifecycle
         startDate: normalizeTrim(formData.startDate) || undefined,
         probationEndDate: normalizeTrim(formData.probationEndDate) || undefined,
-
+        annualLeaveBalance: Number(formData.annualLeaveBalance),
         // Nested Objects Reconstruction
         emergencyContact: {
           name: normalizeTrim(formData.emergencyName) || undefined,
@@ -457,7 +457,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className={labelClass}>
-                        Phòng ban <span className="text-red-500">*</span>
+                        Phòng ban
                       </label>
                       <select
                         name="department"
@@ -490,6 +490,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                         <option value="Developer">Developer</option>
                         <option value="HR">HR</option>
                         <option value="Manager">Manager</option>
+                        {/* <option value="Leader">Leader</option> */}
                       </select>
                       <ErrorMsg field="jobTitle" />
                     </div>

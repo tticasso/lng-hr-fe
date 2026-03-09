@@ -535,7 +535,7 @@ const PayrollEngine = () => {
                   <ul className="space-y-3">
                     <li className="flex items-center gap-3 text-sm text-gray-700">
                       <CheckCircle2 size={16} className="text-green-500" /> Đã
-                      đối chiếu chấm công đầy đủ (125/125 nhân viên).
+                      đối chiếu chấm công đầy đủ ({totalUser-1} nhân viên).
                     </li>
                     <li className="flex items-center gap-3 text-sm text-gray-700">
                       <CheckCircle2 size={16} className="text-green-500" /> Đã

@@ -148,7 +148,7 @@ const Sidebar = () => {
           items: [
             {
               path: "/admin/user-management",
-              label: "Quản lý người dùng",
+              label: "Quản lý tài khoản",
               icon: <UserCog size={20} />,
             },
             {

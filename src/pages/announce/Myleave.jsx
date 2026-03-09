@@ -218,44 +218,41 @@ const MyLeave = () => {
             const responseData = res?.data;
             console.log("FULL RESPONSE DATA:", responseData); // ✅ Log toàn bộ response
             const rows = responseData?.data || [];
-            console.log("EMPLOYEE_DATA :", responseData.data[0].approvalChain[0])
             const paginationData = responseData?.pagination || {};
-            console.log("PAGINATION INFO:", paginationData); // ✅ Log thông tin phân trang
+            console.log("PAGINATION INFO:", paginationData);
 
+            // ✅ Lấy employee_ID từ localStorage
             const accountID = localStorage.getItem("employee_ID");
-            console.log("employee_ID :", accountID)
+            console.log("employee_ID:", accountID);
 
             // ✅ Kiểm tra level duyệt của user hiện tại
             let currentUserLevel = null;
+            
             rows.forEach((leave) => {
                 if (leave.approvalChain && Array.isArray(leave.approvalChain)) {
-                    leave.approvalChain.forEach((approval) => {
-                        if (approval.approver?._id === accountID) {
-                            currentUserLevel = approval.level;
-                            console.log(`[approver] User hiện tại là cấp duyệt level ${approval.level}`);
-                        }
-                    });
+                    // Kiểm tra level 1
+                    const level1 = leave.approvalChain.find(a => a.level === 1);
+                    if (level1?.approver?._id === accountID) {
+                        currentUserLevel = 1;
+                        console.log(`[Approver] User là cấp duyệt level 1 cho đơn ${leave._id}`);
+                    }
+                    
+                    // Kiểm tra level 2
+                    const level2 = leave.approvalChain.find(a => a.level === 2);
+                    if (level2?.approver?._id === accountID) {
+                        currentUserLevel = 2;
+                        console.log(`[Approver] User là cấp duyệt level 2 cho đơn ${leave._id}`);
+                    }
                 }
             });
 
             // Lưu level vào state
             setUserApprovalLevel(currentUserLevel);
-
-            const level1ID = responseData.data[0]?.approvalChain?.[0];
-            const level2ID = responseData.data[0]?.approvalChain?.[1];
-
-            if (level1ID && level2ID) {
-                console.log("ACCOUNT ID :", accountID)
-                console.log("LEVEL 1:", level1ID.approver._id)
-                console.log("LEVEL 2:", level2ID.approver._id)
-
-                if (accountID == level1ID.approver._id) {
-                    console.log("[approver]BẠN ĐANG LÀ CẤP DUYỆT SỐ 1")
-                } else if (accountID == level2ID.approver._id) {
-                    console.log("[approver]BẠN ĐANG LÀ CẤP DUYỆT SỐ 2")
-                } else {
-                    console.log("[approver]BẠN KHÔNG CÓ QUYỀN DUYỆT")
-                }
+            
+            if (currentUserLevel) {
+                console.log(`[Approver] User hiện tại có quyền duyệt ở level ${currentUserLevel}`);
+            } else {
+                console.log("[Approver] User hiện tại KHÔNG có quyền duyệt");
             }
 
 
@@ -359,9 +356,52 @@ const MyLeave = () => {
 
     const handleApprove = async (leaveId) => {
         try {
-            // ✅ Kiểm tra xem user có quyền duyệt không
-            if (!userApprovalLevel) {
+            // ✅ Lấy employee_ID từ localStorage
+            const accountID = localStorage.getItem("employee_ID");
+            
+            // ✅ Tìm đơn nghỉ trong danh sách
+            const leave = leaves.find(lv => lv._id === leaveId);
+            if (!leave) {
+                toast.error("Không tìm thấy đơn nghỉ");
+                return;
+            }
+
+            // ✅ Tìm level của user trong approvalChain của đơn này
+            let userApprovalLevel = null;
+            let userApproval = null;
+
+            // Kiểm tra level 1
+            const level1 = leave.approvalChain?.find(a => a.level === 1);
+            if (level1?.approver?._id === accountID) {
+                userApprovalLevel = 1;
+                userApproval = level1;
+            }
+
+            // Kiểm tra level 2
+            const level2 = leave.approvalChain?.find(a => a.level === 2);
+            if (level2?.approver?._id === accountID) {
+                userApprovalLevel = 2;
+                userApproval = level2;
+            }
+
+            // ✅ Kiểm tra có quyền duyệt không
+            if (!userApprovalLevel || !userApproval) {
                 toast.error("Bạn không có quyền duyệt đơn này");
+                return;
+            }
+
+            // ✅ Kiểm tra nếu là level 2, level 1 phải đã APPROVED
+            if (userApprovalLevel === 2) {
+                const level1Approval = leave.approvalChain?.find(a => a.level === 1);
+                if (level1Approval?.status !== "APPROVED") {
+                    toast.error("Cấp duyệt 1 chưa duyệt đơn này");
+                    return;
+                }
+            }
+
+            // ✅ Kiểm tra nếu đã duyệt rồi
+            if (userApproval.status === "APPROVED") {
+                toast.info("Bạn đã duyệt đơn này rồi");
                 return;
             }
 
@@ -374,14 +414,15 @@ const MyLeave = () => {
             console.log("[handleApprove] Payload:", payload);
 
             // ✅ Gọi API approve với payload
-            // await apiClient.patch(`/leaves/approve/${leaveId}`, payload);
-            const res = await leaveAPI.APPROVED(leaveId,payload)
-            console.log("[handleApprove] res :", res)
+            const res = await leaveAPI.APPROVED(leaveId, payload);
+            console.log("[handleApprove] res:", res);
+            
             toast.success(`Đã duyệt đơn nghỉ (Level ${userApprovalLevel})`);
             await fetchLeaves();
         } catch (e) {
             console.error("approve error:", e);
-            toast.error("Duyệt đơn thất bại");
+            const errorMsg = e.response?.data?.message || "Duyệt đơn thất bại";
+            toast.error(errorMsg);
         }
     };
 
@@ -570,7 +611,7 @@ const MyLeave = () => {
                                     <th className="p-4">Hình thức</th>
                                     <th className="p-4">Từ ngày</th>
                                     <th className="p-4">Đến ngày</th>
-                                    <th className="p-4">Số ngày</th>
+                                    {/* <th className="p-4">Số ngày</th> */}
                                     <th className="p-4">Lý do</th>
                                     <th className="p-4">Trạng thái</th>
                                     <th className="p-4">Ngày tạo</th>
@@ -598,7 +639,39 @@ const MyLeave = () => {
                                 ) : (
                                     filteredLeaves.map((lv) => {
                                         const displayStatus = normalizeStatus(lv.status);
-                                        const canAction = displayStatus === "PENDING";
+                                        const accountID = localStorage.getItem("employee_ID");
+                                        
+                                        // ✅ Kiểm tra user có quyền duyệt đơn này không
+                                        let userApprovalLevel = null;
+                                        let userApproval = null;
+
+                                        // Kiểm tra level 1
+                                        const level1 = lv.approvalChain?.find(a => a.level === 1);
+                                        if (level1?.approver?._id === accountID) {
+                                            userApprovalLevel = 1;
+                                            userApproval = level1;
+                                        }
+
+                                        // Kiểm tra level 2
+                                        const level2 = lv.approvalChain?.find(a => a.level === 2);
+                                        if (level2?.approver?._id === accountID) {
+                                            userApprovalLevel = 2;
+                                            userApproval = level2;
+                                        }
+                                        
+                                        // ✅ Chỉ cho phép duyệt nếu:
+                                        // - Đơn đang PENDING
+                                        // - User có trong approvalChain
+                                        // - Nếu là level 2 thì level 1 phải đã APPROVED
+                                        let canAction = false;
+                                        if (displayStatus === "PENDING" && userApproval) {
+                                            if (userApprovalLevel === 1) {
+                                                canAction = userApproval.status === "PENDING";
+                                            } else if (userApprovalLevel === 2) {
+                                                const level1Approval = lv.approvalChain?.find(a => a.level === 1);
+                                                canAction = level1Approval?.status === "APPROVED" && userApproval.status === "PENDING";
+                                            }
+                                        }
 
                                         return (
                                             <tr key={lv._id} className="hover:bg-blue-50/30">
@@ -620,17 +693,34 @@ const MyLeave = () => {
                                                 <td className="p-4 text-gray-700">{formatDate(lv.fromDate)}</td>
                                                 <td className="p-4 text-gray-700">{formatDate(lv.toDate)}</td>
 
-                                                <td className="p-4 text-gray-700 font-semibold">{lv.totalDays ?? "--"}</td>
+                                                {/* <td className="p-4 text-gray-700 font-semibold">{lv.totalDays ?? "--"}</td> */}
 
                                                 <td className="p-4 text-gray-600 max-w-[360px]">
                                                     <span className="line-clamp-2">{lv.reason || "--"}</span>
                                                 </td>
 
                                                 <td className="p-4">
-                                                    <StatusBadge
-                                                        statusKey={displayStatus}
-                                                        statusText={statusLabel[displayStatus] || displayStatus}
-                                                    />
+                                                    <div className="flex flex-col gap-1">
+                                                        <StatusBadge
+                                                            statusKey={displayStatus}
+                                                            statusText={statusLabel[displayStatus] || displayStatus}
+                                                        />
+                                                        {/* ✅ Hiển thị trạng thái duyệt từng level */}
+                                                        {displayStatus === "PENDING" && lv.approvalChain && lv.approvalChain.length > 0 && (
+                                                            <div className="text-xs text-gray-500 mt-1">
+                                                                {lv.approvalChain.map((approval, idx) => (
+                                                                    <div key={idx} className="flex items-center gap-1">
+                                                                        <span>L{approval.level}:</span>
+                                                                        {approval.status === "APPROVED" ? (
+                                                                            <span className="text-green-600">✓ Đã duyệt</span>
+                                                                        ) : (
+                                                                            <span className="text-yellow-600">⏳ Chờ duyệt</span>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </td>
 
                                                 <td className="p-4 text-xs text-gray-500">{formatDateTime(lv.createdAt)}</td>
@@ -661,7 +751,7 @@ const MyLeave = () => {
                                                                         ? "text-green-600 border-green-200 hover:bg-green-50"
                                                                         : "text-gray-300 border-gray-200 cursor-not-allowed"
                                                                     }`}
-                                                                title="Duyệt"
+                                                                title={canAction ? "Duyệt" : (userApproval?.status === "APPROVED" ? "Đã duyệt" : "Chưa đến lượt")}
                                                             >
                                                                 <CheckCircle2 size={14} />
                                                                 Duyệt
