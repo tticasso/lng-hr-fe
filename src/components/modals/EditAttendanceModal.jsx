@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { X, Save, Paperclip } from "lucide-react";
+import { TimePicker } from "antd";
 import Button from "../common/Button";
-import TimePicker24h from "../common/TimePicker24h";
 import { toast } from "react-toastify";
+import dayjs from "../../untils/dayjs";
 
 const EditAttendanceModal = ({ isOpen, onClose, attendanceLog, employee, onSave }) => {
   const [formData, setFormData] = useState({
@@ -23,8 +24,10 @@ const EditAttendanceModal = ({ isOpen, onClose, attendanceLog, employee, onSave 
     }
   }, [attendanceLog]);
 
-  const handleTimeChange = (field, value) => {
-    setFormData({ ...formData, [field]: value });
+  const handleTimeChange = (field, time) => {
+    // Convert dayjs to HH:mm string
+    const timeString = time ? time.format("HH:mm") : "";
+    setFormData({ ...formData, [field]: timeString });
   };
 
   const handleSave = () => {
@@ -84,20 +87,28 @@ const EditAttendanceModal = ({ isOpen, onClose, attendanceLog, employee, onSave 
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
                 Giờ vào (Mới)
               </label>
-              <TimePicker24h
-                value={formData.checkIn}
-                onChange={(e) => handleTimeChange("checkIn", e.target.value)}
-                className="border border-gray-300 rounded-lg p-2 font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              <TimePicker
+                value={formData.checkIn ? dayjs(formData.checkIn, "HH:mm") : null}
+                onChange={(time) => handleTimeChange("checkIn", time)}
+                format="HH:mm"
+                placeholder="Chọn giờ vào"
+                className="w-full"
+                size="large"
+                minuteStep={5}
               />
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
                 Giờ ra (Mới)
               </label>
-              <TimePicker24h
-                value={formData.checkOut}
-                onChange={(e) => handleTimeChange("checkOut", e.target.value)}
-                className="border border-gray-300 rounded-lg p-2 font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              <TimePicker
+                value={formData.checkOut ? dayjs(formData.checkOut, "HH:mm") : null}
+                onChange={(time) => handleTimeChange("checkOut", time)}
+                format="HH:mm"
+                placeholder="Chọn giờ ra"
+                className="w-full"
+                size="large"
+                minuteStep={5}
               />
             </div>
           </div>
