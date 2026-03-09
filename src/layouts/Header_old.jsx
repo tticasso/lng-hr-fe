@@ -309,7 +309,7 @@ const Header = () => {
 
                   <div className="mt-2 flex items-center gap-2">
                     <span className="text-[11px] text-gray-400 group-hover:text-gray-500">
-                      Nhấn để xem 123
+                      Nhấn để xem
                     </span>
 
                     {/* ✅ Badge “Mới” màu đỏ cho unread */}
