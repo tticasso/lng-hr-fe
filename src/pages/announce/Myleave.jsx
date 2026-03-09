@@ -196,7 +196,7 @@ const MyLeave = () => {
     );
 
     useEffect(() => {
-        fetchLeaves();
+        // fetchLeaves(); // ✅ Removed - sẽ được gọi bởi useEffect theo activeTab
         fetchOTs();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
