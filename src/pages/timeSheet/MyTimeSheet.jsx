@@ -785,11 +785,11 @@ const MyTimesheet = () => {
                 )}
 
                 {/* Action Buttons */}
-                <div className="mt-6 pt-4 border-t border-gray-100 grid grid-cols-1 gap-2">
+                {/* <div className="mt-6 pt-4 border-t border-gray-100 grid grid-cols-1 gap-2">
                   <Button variant="secondary" className="w-full text-xs">
                     Gửi giải trình chấm công
                   </Button>
-                </div>
+                </div> */}
               </div>
             )}
           </Card>

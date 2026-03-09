@@ -491,7 +491,7 @@ const Dashboard = () => {
                 <p className="text-sm font-medium text-gray-700">
                  Ngày Quốc Tế Phụ Nữ 🌹
                 </p>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-red-600">
                   Chúc các chị em lúc nào cũng xinh như trên mạng  🎉 🎉 🎉
                 </p>
               </div>

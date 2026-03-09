@@ -29,7 +29,15 @@ import { payrollAPI } from "../../apis/payrollAPI";
 import { departmentApi } from "../../apis/departmentApi";
 
 const AttendanceAdmin = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState("2026-02"); // Mặc định tháng hiện tại
+  // ✅ Tự động lấy tháng hiện tại (format: YYYY-MM)
+  const getCurrentPeriod = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    return `${year}-${month}`;
+  };
+
+  const [selectedPeriod, setSelectedPeriod] = useState(getCurrentPeriod());
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPeriodLocked, setIsPeriodLocked] = useState(false);
