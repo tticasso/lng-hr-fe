@@ -490,6 +490,10 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                         <option value="Developer">Developer</option>
                         <option value="HR">HR</option>
                         <option value="Manager">Manager</option>
+                        <option value="Design">Design</option>
+                        <option value="SPSale">SP Sale</option>
+                        <option value="Boss">Tổng giám đốc</option>
+                        <option value="CS">CS</option>
                         {/* <option value="Leader">Leader</option> */}
                       </select>
                       <ErrorMsg field="jobTitle" />
