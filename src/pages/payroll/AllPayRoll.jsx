@@ -420,6 +420,7 @@ const AllPayRoll = () => {
                             <option value="">Trạng thái (Tất cả)</option>
                             <option value="FINALIZED">Chưa thanh toán</option>
                             <option value="PAID">Đã thanh toán</option>
+                             <option value="DRAFT">Xem trước</option>
                         </select>
 
                         {selectedRows.length > 0 && (
@@ -535,11 +536,11 @@ const AllPayRoll = () => {
                                                     <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">
                                                         Đã thanh toán
                                                     </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs font-bold">
-                                                        {row.status}
+                                                ) : row.status === "DRAFT" ? (
+                                                    <span className="inline-flex items-center gap-1 bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-xs font-bold">
+                                                        Xem trước
                                                     </span>
-                                                )}
+                                                ) : null}
                                             </td>
                                         </tr>
                                     );

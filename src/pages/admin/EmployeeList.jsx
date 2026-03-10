@@ -55,6 +55,17 @@ const EmployeeList = () => {
     { value: "Terminated", label: "Đã sa thải" },
   ];
 
+  // Function để chuyển đổi status từ tiếng Anh sang tiếng Việt
+  const getVietnameseStatus = (status) => {
+    const statusMap = {
+      "Active": "Đang làm việc",
+      "Probation": "Thử việc", 
+      "Resigned": "Đã nghỉ việc",
+      "Terminated": "Đã sa thải"
+    };
+    return statusMap[status] || status;
+  };
+
   // --- FETCH DEPARTMENTS ---
   const fetchDepartments = async () => {
     try {
@@ -540,7 +551,7 @@ const EmployeeList = () => {
 
                     {/* Status */}
                     <td className="p-4">
-                      <StatusBadge status={emp.status} />
+                      <StatusBadge status={getVietnameseStatus(emp.status)} />
                     </td>
 
                     {/* Actions */}

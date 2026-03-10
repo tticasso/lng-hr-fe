@@ -22,4 +22,21 @@ export const teamAPI = {
     delete: (id) => {
         return apiClient.delete(`/teams/${id}`);
     },
+
+    addmember: (id,payload) => {
+        return apiClient.post(`/teams/${id}/members`,payload);
+    },
+
+     getrotation: (id, month, year) => {
+        return apiClient.get(`/teams/${id}/rotation?month=${month}&year=${year}`);
+    },
+
+    addrotation: (id,payload) => {
+        return apiClient.post(`/teams/${id}/rotation`,payload);
+    },
+
+      updaterotation: (idTEAM,idrotation,payload) => {
+        return apiClient.patch(`/teams/${idTEAM}/rotation/${idrotation}`,payload);
+    },
+     
 }

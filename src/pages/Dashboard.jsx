@@ -470,14 +470,14 @@ const Dashboard = () => {
             <div className="flex gap-3 items-start p-3 bg-white rounded-lg border border-blue-100 shadow-sm">
               <div className="flex flex-col items-center justify-center bg-blue-100 text-blue-600 rounded p-1 w-12 min-w-[3.5rem]">
                 <span className="text-xs font-bold uppercase">Thg 3</span>
-                <span className="text-lg font-bold">10</span>
+                <span className="text-lg font-bold">29</span>
               </div>
               <div>
                 <p className="font-semibold text-gray-800 text-sm">
-                  Ngày nhận lương
+                  Ngày Thành Lập Gia Đình của Nam
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  Dự kiến thanh toán lương T2
+                  Chúc a trăm năm hạnh phúc 
                 </p>
               </div>
             </div>

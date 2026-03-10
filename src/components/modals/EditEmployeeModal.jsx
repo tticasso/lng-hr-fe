@@ -116,6 +116,8 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
 
   // Fetch Departments & Banks
   useEffect(() => {
+    console.log("CHECK :",formData.annualLeaveBalance)
+
     const fetchData = async () => {
       setLoadingDepts(true);
       try {
@@ -335,7 +337,8 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
       });
 
       console.log("Submitting data:", submitData); // Debug log
-
+      console.log("Phép năm tồn (annualLeaveBalance):", formData.annualLeaveBalance); // Log giá trị phép năm tồn
+      
       await employeeApi.updateEmployee(employeeId, submitData);
       toast.success(`Cập nhật nhân viên ${formData.fullName} thành công!`);
       onSuccess();
@@ -538,9 +541,9 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                         onChange={handleChange}
                         className={inputClass("status")}
                       >
-                        <option value="Active">Active</option>
-                        <option value="Probation">Probation</option>
-                        <option value="Resigned">Resigned</option>
+                        <option value="Active">Chính thức</option>
+                        <option value="Probation">Thử việc</option>
+                        <option value="Resigned">Nghỉ việc</option>
                       </select>
                     </div>
                   </div>
