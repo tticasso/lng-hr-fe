@@ -233,55 +233,6 @@ const TeamPages = () => {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 shrink-0">
-                <Card className="p-4">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                            <Users className="text-blue-600" size={20} />
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-500">Tổng team</p>
-                            <p className="text-xl font-bold text-gray-800">{stats.totalTeams}</p>
-                        </div>
-                    </div>
-                </Card>
-
-                <Card className="p-4">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-green-100 rounded-lg">
-                            <Crown className="text-green-600" size={20} />
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-500">Có team leader</p>
-                            <p className="text-xl font-bold text-green-600">{stats.teamsWithLeader}</p>
-                        </div>
-                    </div>
-                </Card>
-
-                <Card className="p-4">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-red-100 rounded-lg">
-                            <Users className="text-red-600" size={20} />
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-500">Chưa có leader</p>
-                            <p className="text-xl font-bold text-red-600">{stats.teamsWithoutLeader}</p>
-                        </div>
-                    </div>
-                </Card>
-
-                <Card className="p-4">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-purple-100 rounded-lg">
-                            <Building2 className="text-purple-600" size={20} />
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-500">Phòng ban</p>
-                            <p className="text-xl font-bold text-purple-600">{stats.activeDepartments}</p>
-                        </div>
-                    </div>
-                </Card>
-            </div>
 
             {/* Filters */}
             <Card className="p-4 shrink-0">

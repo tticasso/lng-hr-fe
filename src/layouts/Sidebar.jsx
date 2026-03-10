@@ -19,6 +19,7 @@ import {
   CalendarCheck,
   Timer,
   UserSquare,
+  CalendarMinus,
 } from "lucide-react";
 import logoLNG from "../assets/LNG.png";
 import { useAuth } from "../context/AuthContext";
@@ -105,6 +106,11 @@ const Sidebar = () => {
                   path: "/hr/boarding",
                   label: "On/Off Boarding",
                   icon: <Presentation size={20} />,
+                },
+                 {
+                  path: "/hr/leavebalance",
+                  label: "Quản lý lịch nghỉ phép",
+                   icon: <CalendarCheck size={20} />,
                 },
               ]
               : []),
