@@ -388,7 +388,7 @@ const Holiday = () => {
                         {holiday.holidayType === "PUBLIC_HOLIDAY" ? (
                           <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-medium">Ngày lễ quốc gia</span>
                         ) : (
-                          <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium">Ngày nghỉ công ty</span>
+                          <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium">Ngày làm việc bù</span>
                         )}
                       </p>
                       <p className="text-sm text-gray-500 mt-1">{holiday.note || "Không có ghi chú"}</p>
@@ -609,49 +609,7 @@ const Holiday = () => {
                   <option value="SUBSTITUTE_WORK_DAY">Ngày làm việc bù</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Áp dụng cho phòng ban</label>
-                <select
-                  multiple
-                  value={formData.appliedDepartments}
-                  onChange={(e) => {
-                    const selected = Array.from(e.target.selectedOptions, option => option.value);
-                    setFormData({ ...formData, appliedDepartments: selected });
-                  }}
-                  className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-h-[100px]"
-                >
-                  {departments.map((dept) => (
-                    <option key={dept._id} value={dept._id}>
-                      {dept.name} ({dept.deptCode})
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Giữ Ctrl (Windows) hoặc Cmd (Mac) để chọn nhiều phòng ban. Không chọn = áp dụng cho tất cả.
-                </p>
-                {formData.appliedDepartments.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {formData.appliedDepartments.map((deptId) => {
-                      const dept = departments.find(d => d._id === deptId);
-                      return dept ? (
-                        <span key={deptId} className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium flex items-center gap-1">
-                          {dept.name}
-                          <button
-                            type="button"
-                            onClick={() => setFormData({
-                              ...formData,
-                              appliedDepartments: formData.appliedDepartments.filter(id => id !== deptId)
-                            })}
-                            className="hover:text-red-600"
-                          >
-                            <X size={12} />
-                          </button>
-                        </span>
-                      ) : null;
-                    })}
-                  </div>
-                )}
-              </div>
+           
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
                 <textarea value={formData.note} onChange={(e) => setFormData({ ...formData, note: e.target.value })} rows="3"
