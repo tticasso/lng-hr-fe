@@ -35,7 +35,7 @@ import { NotificationProvider } from "./context/NotificationContext";
 import Holiday from "./pages/holiday/Holiday";
 import Department from "./pages/department/Department";
 import TeamPages from "./pages/teamPages/TeamPages";
-import LeaveBalance from "./pages/leavebalance/leavebalance";
+import LeaveBalance from "./pages/leavebalance/LeaveBalance";
 
 function App() {
   return (
