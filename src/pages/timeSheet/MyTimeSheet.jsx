@@ -132,7 +132,7 @@ const MyTimesheet = () => {
 
       const res = await holidayAPI.get(startDate, endDate);
       const holidayData = res.data?.data || [];
-      console.log("CHECK_HOLIDAY :",holidayData)
+      console.log("CHECK_HOLIDAY :", holidayData)
     } catch (error) {
       console.error("Error CHECK_HOLIDAY:", error);
       toast.error("Không thể tải dữ liệu lịch nghỉ");
@@ -182,7 +182,11 @@ const MyTimesheet = () => {
     }
   }
 
-
+  const statusMap = {
+    APPROVED: 'Đã duyệt',
+    PENDING: 'Chờ duyệt',
+    REJECTED: 'Từ chối'
+  };
   const handleOT = () => {
     if (!selectedDate?.inMonth || !selectedDate?.isoDate) {
       toast.info("Vui lòng chọn ngày trên lịch trước khi đăng ký OT.");
@@ -582,7 +586,7 @@ const MyTimesheet = () => {
         <StatCard
           icon={<Coffee size={20} />}
           label="Phép năm"
-          value={`${timesheetData?.leave?.used || 0}/${timesheetData?.leave?.totalLimit || 12}`}
+          value={`${timesheetData?.leave?.remaining || 0}/${timesheetData?.leave?.totalLimit || 12}`}
           sub={`Còn lại: ${timesheetData?.leave?.remaining || 0}`}
           color="purple"
         />
@@ -722,11 +726,10 @@ const MyTimesheet = () => {
                       {day.type === "leave" && (
                         <div className="mt-1">
                           <div className="text-center mb-1">
-                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
-                              day.apiData?.status === "PAID_LEAVE" 
-                                ? "text-purple-700 bg-purple-100" 
+                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${day.apiData?.status === "PAID_LEAVE"
+                                ? "text-purple-700 bg-purple-100"
                                 : "text-orange-700 bg-orange-100"
-                            }`}>
+                              }`}>
                               {day.apiData?.status === "PAID_LEAVE" ? "Nghỉ có lương" : "Nghỉ không lương"}
                             </span>
                           </div>
@@ -929,7 +932,7 @@ const MyTimesheet = () => {
                                 <span className="text-gray-600">{ot.otType}</span>
                                 {ot.status && (
                                   <span className={`text-[10px] font-bold ${ot.status === 'APPROVED' ? 'text-green-600' :
-                                      ot.status === 'PENDING' ? 'text-yellow-600' : 'text-red-600'
+                                    ot.status === 'PENDING' ? 'text-yellow-600' : 'text-red-600'
                                     }`}>
                                     {ot.status}
                                   </span>
@@ -959,29 +962,30 @@ const MyTimesheet = () => {
                 ) : selectedDate.type === "leave" ? (
                   <div className="space-y-4">
                     {/* Thông tin nghỉ phép */}
-                    <div className={`p-3 border rounded-lg ${
-                      selectedDate.apiData?.status === "PAID_LEAVE" 
-                        ? "bg-purple-50 border-purple-100" 
+                    <div className={`p-3 border rounded-lg ${selectedDate.apiData?.status === "PAID_LEAVE"
+                        ? "bg-purple-50 border-purple-100"
                         : "bg-orange-50 border-orange-100"
-                    }`}>
+                      }`}>
                       <div className="flex justify-between items-center mb-2">
-                        <span className={`text-sm font-bold flex items-center gap-1 ${
-                          selectedDate.apiData?.status === "PAID_LEAVE" 
-                            ? "text-purple-700" 
+                        <span className={`text-sm font-bold flex items-center gap-1 ${selectedDate.apiData?.status === "PAID_LEAVE"
+                            ? "text-purple-700"
                             : "text-orange-700"
-                        }`}>
-                          <Coffee size={14} /> 
+                          }`}>
+                          <Coffee size={14} />
                           {selectedDate.apiData?.status === "PAID_LEAVE" ? "Nghỉ có lương" : "Nghỉ không lương"}
                         </span>
-                        <span className={`text-xs px-2 py-1 rounded font-bold ${
-                          selectedDate.leaveInfo?.status === 'APPROVED' ? 'bg-green-100 text-green-600' :
-                          selectedDate.leaveInfo?.status === 'PENDING' ? 'bg-yellow-100 text-yellow-600' : 
-                          'bg-red-100 text-red-600'
-                        }`}>
-                          {selectedDate.leaveInfo?.status || 'N/A'}
+                        <span
+                          className={`text-xs px-2 py-1 rounded font-bold ${selectedDate.leaveInfo?.status === 'APPROVED'
+                              ? 'bg-green-100 text-green-600'
+                              : selectedDate.leaveInfo?.status === 'PENDING'
+                                ? 'bg-yellow-100 text-yellow-600'
+                                : 'bg-red-100 text-red-600'
+                            }`}
+                        >
+                          {statusMap[selectedDate.leaveInfo?.status] || 'Không xác định'}
                         </span>
                       </div>
-                      
+
                       {/* Loại nghỉ phép */}
                       {/* {selectedDate.leaveInfo?.leaveType && (
                         <div className="text-xs text-gray-600 mb-1">
@@ -996,7 +1000,7 @@ const MyTimesheet = () => {
                           </span>
                         </div>
                       )} */}
-                      
+
                       {/* Lý do nghỉ */}
                       {selectedDate.leaveInfo?.reason && (
                         <div className="text-xs text-gray-600 mb-2">
@@ -1004,7 +1008,7 @@ const MyTimesheet = () => {
                           <span className="italic">{selectedDate.leaveInfo.reason}</span>
                         </div>
                       )}
-                      
+
                       {/* Note từ API */}
                       {/* {selectedDate.apiData?.note && (
                         <div className="text-xs text-gray-500 italic">
@@ -1017,21 +1021,31 @@ const MyTimesheet = () => {
                     {(selectedDate.checkIn || selectedDate.checkOut) && (
                       <div className="space-y-2">
                         <h4 className="text-sm font-medium text-gray-700">Thông tin chấm công:</h4>
-                        
+
                         {selectedDate.checkIn && (
                           <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
                             <span className="text-xs text-gray-600">Check In:</span>
-                            <span className="font-mono text-sm font-bold text-gray-800">
+                            <span className={`font-mono text-sm font-bold ${selectedDate.status.includes("late") ? "text-red-600" : "text-gray-800"}`}>
                               {selectedDate.checkIn}
+                              {selectedDate.lateMinutes > 0 && (
+                                <span className="text-xs text-red-500 ml-2">
+                                  (+{selectedDate.lateMinutes}p)
+                                </span>
+                              )}
                             </span>
                           </div>
                         )}
-                        
+
                         {selectedDate.checkOut && (
                           <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
                             <span className="text-xs text-gray-600">Check Out:</span>
-                            <span className="font-mono text-sm font-bold text-gray-800">
+                            <span className={`font-mono text-sm font-bold ${selectedDate.status.includes("early") ? "text-blue-600" : "text-gray-800"}`}>
                               {selectedDate.checkOut}
+                              {selectedDate.earlyMinutes > 0 && (
+                                <span className="text-xs text-blue-500 ml-2">
+                                  (-{selectedDate.earlyMinutes}p)
+                                </span>
+                              )}
                             </span>
                           </div>
                         )}
@@ -1056,7 +1070,7 @@ const MyTimesheet = () => {
                                 <span className="text-gray-600">{ot.otType}</span>
                                 {ot.status && (
                                   <span className={`text-[10px] font-bold ${ot.status === 'APPROVED' ? 'text-green-600' :
-                                      ot.status === 'PENDING' ? 'text-yellow-600' : 'text-red-600'
+                                    ot.status === 'PENDING' ? 'text-yellow-600' : 'text-red-600'
                                     }`}>
                                     {ot.status}
                                   </span>
@@ -1162,7 +1176,7 @@ const MyTimesheet = () => {
           <Card className="h-fit">
             <div className="p-4">
               <h3 className="text-sm font-bold text-gray-800 mb-3">Chú thích</h3>
-              
+
               {/* Màu nền các loại ngày */}
               <div className="space-y-2 mb-4">
                 <p className="text-xs font-semibold text-gray-600 mb-2">Loại ngày:</p>
