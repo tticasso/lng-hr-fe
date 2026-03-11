@@ -20,6 +20,7 @@ import { leaveAPI } from "../../apis/leaveAPI";
 import ModalOT from "../../components/modals/OTModal";
 import { OTApi } from "../../apis/OTAPI";
 import { attendancesAPI } from "../../apis/attendancesAPI";
+import { holidayAPI } from "../../apis/holidayAPI";
 
 const MyTimesheet = () => {
   const [selectedDate, setSelectedDate] = useState(null);
@@ -29,6 +30,7 @@ const MyTimesheet = () => {
   const [otPrefillDate, setOtPrefillDate] = useState(""); // YYYY-MM-DD
   const [timesheetData, setTimesheetData] = useState(null);
   const [attendanceData, setAttendanceData] = useState([]);
+  const [holidayData, setHolidayData] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // State cho việc chọn tháng
@@ -71,7 +73,29 @@ const MyTimesheet = () => {
         setLoading(false);
       }
     }
+
+    const callAPIHolidays = async () => {
+      try {
+        const month = selectedMonth + 1; // 0-11 → +1 thành 1-12
+        const year = selectedYear;
+
+        // Tạo startDate và endDate cho tháng hiện tại
+        const startDate = `${year}-${pad2(month)}-01`;
+        const lastDay = new Date(year, month, 0).getDate(); // Ngày cuối tháng
+        const endDate = `${year}-${pad2(month)}-${pad2(lastDay)}`;
+
+        const res = await holidayAPI.get(startDate, endDate);
+        const holidayData = res.data?.data || [];
+        console.log("CHECK_HOLIDAY :", holidayData);
+        setHolidayData(holidayData);
+      } catch (error) {
+        console.log("HOLIDAY API ERROR:", error);
+        setHolidayData([]);
+      }
+    };
+
     callAPIAttendences();
+    callAPIHolidays();
   }, [selectedMonth, selectedYear]) // Thêm dependencies
 
   useEffect(() => {
@@ -89,8 +113,33 @@ const MyTimesheet = () => {
     };
 
     callAPItimesheet();
+    fetchHolidays();
   }, [selectedMonth, selectedYear]); // Thêm dependencies
 
+  // Fetch holidays từ API
+  const fetchHolidays = async () => {
+    try {
+      setLoading(true);
+
+      // Tính toán startDate và endDate từ selectedMonthYear
+      const month = selectedMonth + 1; // 0-11 → +1 thành 1-12
+      const year = selectedYear;
+      const startDate = `${year}-${month}-01`;
+
+      // Tính ngày cuối cùng của tháng
+      const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+      const endDate = `${year}-${month}-${lastDay}`;
+
+      const res = await holidayAPI.get(startDate, endDate);
+      const holidayData = res.data?.data || [];
+      console.log("CHECK_HOLIDAY :",holidayData)
+    } catch (error) {
+      console.error("Error CHECK_HOLIDAY:", error);
+      toast.error("Không thể tải dữ liệu lịch nghỉ");
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
   const callOTAPI = async (payload) => {
@@ -216,7 +265,28 @@ const MyTimesheet = () => {
       }
     });
 
+    // Tạo map cho holiday data
+    const holidayMap = {};
+    console.log("[DEBUG_HOLIDAY] Processing", holidayData.length, "holiday records");
+
+    holidayData.forEach((holiday) => {
+      let dateKey;
+      if (holiday.date) {
+        if (typeof holiday.date === 'string') {
+          dateKey = holiday.date.split('T')[0]; // Lấy phần YYYY-MM-DD
+        } else if (holiday.date instanceof Date) {
+          const d = holiday.date;
+          dateKey = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+        }
+      }
+
+      if (dateKey) {
+        holidayMap[dateKey] = holiday;
+      }
+    });
+
     console.log("[DEBUG1] Mapped", Object.keys(attendanceMap).length, "unique dates");
+    console.log("[DEBUG_HOLIDAY] Mapped", Object.keys(holidayMap).length, "unique holidays");
     console.log("[DEBUG1] Keys:", Object.keys(attendanceMap).sort());
 
     // Tạo dữ liệu cho từng ngày trong tháng
@@ -228,10 +298,11 @@ const MyTimesheet = () => {
 
       // Lấy dữ liệu từ API theo ISO date key
       const apiData = attendanceMap[isoDate];
+      const holidayInfo = holidayMap[isoDate];
 
       // Log chi tiết cho 5 ngày đầu và những ngày có data
-      if (i <= 5 || apiData) {
-        console.log(`[DEBUG1] Day ${i}: isoDate="${isoDate}", apiData exists=${!!apiData}, checkIn=${apiData?.checkIn}, checkOut=${apiData?.checkOut}`);
+      if (i <= 5 || apiData || holidayInfo) {
+        console.log(`[DEBUG1] Day ${i}: isoDate="${isoDate}", apiData exists=${!!apiData}, holiday exists=${!!holidayInfo}, checkIn=${apiData?.checkIn}, checkOut=${apiData?.checkOut}`);
       }
 
       let type = "work";
@@ -243,8 +314,18 @@ const MyTimesheet = () => {
       let holidayName = "";
       let lateMinutes = 0;
 
-      // Xử lý cuối tuần (nếu không có dữ liệu từ API)
-      if (!apiData && (dayOfWeek === 0 || dayOfWeek === 6)) {
+      // Kiểm tra ngày lễ trước - phân biệt theo holidayType
+      if (holidayInfo) {
+        if (holidayInfo.holidayType === "SUBSTITUTE_WORK_DAY") {
+          type = "substitute_work"; // Ngày làm việc bù
+        } else {
+          type = "holiday"; // Ngày nghỉ lễ (PUBLIC_HOLIDAY)
+        }
+        holidayName = holidayInfo.name;
+        console.log(`[DEBUG_HOLIDAY] Found holiday on ${isoDate}: ${holidayName}, type: ${holidayInfo.holidayType}`);
+      }
+      // Xử lý cuối tuần (nếu không có dữ liệu từ API và không phải ngày lễ)
+      else if (!apiData && (dayOfWeek === 0 || dayOfWeek === 6)) {
         type = "weekend";
       }
 
@@ -254,8 +335,13 @@ const MyTimesheet = () => {
         checkOut = apiData.checkOut || null;
         lateMinutes = apiData.lateMinutes || 0;
 
-        // Xử lý status
-        if (apiData.status === "PAID_LEAVE") {
+        // Xử lý status - ưu tiên holiday nếu có
+        if (holidayInfo) {
+          // Giữ type = "holiday" hoặc "substitute_work" nhưng vẫn xử lý attendance data
+        } else if (apiData.status === "PAID_LEAVE") {
+          type = "leave";
+          status.push("leave");
+        } else if (apiData.status === "UNPAID_LEAVE") {
           type = "leave";
           status.push("leave");
         } else if (apiData.status === "PRESENT") {
@@ -274,7 +360,7 @@ const MyTimesheet = () => {
         const totalOT = (apiData.finalOtHours?.weekday || 0) +
           (apiData.finalOtHours?.weekend || 0) +
           (apiData.finalOtHours?.holiday || 0);
-        
+
         // Lấy thông tin thời gian OT từ overtimeId array
         if (apiData.overtimeId && Array.isArray(apiData.overtimeId) && apiData.overtimeId.length > 0) {
           otTimeRanges = apiData.overtimeId.map(ot => ({
@@ -311,10 +397,13 @@ const MyTimesheet = () => {
         fullDate: `${pad2(i)}/${pad2(CURRENT_MONTH + 1)}/${CURRENT_YEAR}`,
         isoDate,
         apiData, // Lưu toàn bộ data từ API để dùng sau
+        holidayInfo, // Lưu thông tin holiday
+        leaveInfo: apiData?.leaveId || null, // Lưu thông tin leave
       });
     }
 
     console.log("[DEBUG1] Final result: Generated", days.length, "days,", days.filter(d => d.apiData).length, "have data");
+    console.log("[DEBUG_HOLIDAY] Days with holidays:", days.filter(d => d.holidayInfo).length);
 
     return days;
   };
@@ -343,17 +432,27 @@ const MyTimesheet = () => {
       baseClass += "z-10 ";
     }
 
-    // Ngày Lễ
+    // Ngày Lễ (PUBLIC_HOLIDAY)
     if (day.type === "holiday")
       return `${baseClass} ${isSelected ? "bg-red-200" : "bg-red-50"}`;
+
+    // Ngày làm việc bù (SUBSTITUTE_WORK_DAY)
+    if (day.type === "substitute_work")
+      return `${baseClass} ${isSelected ? "bg-yellow-200" : "bg-yellow-50"}`;
 
     // Cuối tuần (T7, CN)
     if (day.type === "weekend")
       return `${baseClass} ${isSelected ? "bg-orange-300" : "bg-orange-100"} text-gray-400`;
 
     // Nghỉ phép
-    if (day.type === "leave")
-      return `${baseClass} ${isSelected ? "bg-purple-200" : "bg-purple-50"}`;
+    if (day.type === "leave") {
+      // Phân biệt màu theo loại nghỉ
+      if (day.apiData?.status === "PAID_LEAVE") {
+        return `${baseClass} ${isSelected ? "bg-purple-200" : "bg-purple-50"}`;
+      } else {
+        return `${baseClass} ${isSelected ? "bg-orange-200" : "bg-orange-50"}`;
+      }
+    }
 
     // Ngày hôm nay - viền xanh nước biển
     if (day.isToday)
@@ -519,140 +618,179 @@ const MyTimesheet = () => {
           ) : (
             <div className="grid grid-cols-7 bg-white">
               {calendarDays.map((day, idx) => (
-              <div
-                key={idx}
-                onClick={() => day.inMonth && setSelectedDate(day)}
-                className={getDayStyle(day)}
-              >
-                {/* Date Number & Badges */}
-                <div className="flex justify-between items-start ">
-                  <span
-                    className={`text-lg font-semibold w-7 h-7 flex items-center justify-center rounded-full
+                <div
+                  key={idx}
+                  onClick={() => day.inMonth && setSelectedDate(day)}
+                  className={getDayStyle(day)}
+                >
+                  {/* Date Number & Badges */}
+                  <div className="flex justify-between items-start ">
+                    <span
+                      className={`text-lg font-semibold w-7 h-7 flex items-center justify-center rounded-full
                       ${day.isToday
-                        ? "bg-blue-600 text-white"
-                        : day.type === "holiday"
-                          ? "text-red-600"
-                          : day.type === "weekend"
-                            ? "text-red-400"
-                            : "text-gray-700"
-                      }
+                          ? "bg-blue-600 text-white"
+                          : day.type === "holiday"
+                            ? "text-red-600"
+                            : day.type === "substitute_work"
+                              ? "text-yellow-600"
+                              : day.type === "weekend"
+                                ? "text-red-400"
+                                : "text-gray-700"
+                        }
                    `}
-                  >
-                    {day.inMonth ? day.day : ""}
-                  </span>
+                    >
+                      {day.inMonth ? day.day : ""}
+                    </span>
 
-                  {/* Badges Container (Hiển thị nhiều status cùng lúc) */}
-                  <div className="flex gap-1">
-                    {day.status?.includes("late") && (
-                      <span
-                        className="w-2 h-2 rounded-full bg-red-500"
-                        title="Đi muộn"
-                      ></span>
-                    )}
-                    {day.status?.includes("ot") && (
-                      <span
-                        className="w-2 h-2 rounded-full bg-orange-500"
-                        title="OT"
-                      ></span>
-                    )}
-                    {day.type === "leave" && (
-                      <span
-                        className="w-2 h-2 rounded-full bg-purple-500"
-                        title="Nghỉ phép"
-                      ></span>
-                    )}
+                    {/* Badges Container (Hiển thị nhiều status cùng lúc) */}
+                    <div className="flex gap-1">
+                      {day.status?.includes("late") && (
+                        <span
+                          className="w-2 h-2 rounded-full bg-red-500"
+                          title="Đi muộn"
+                        ></span>
+                      )}
+                      {day.status?.includes("ot") && (
+                        <span
+                          className="w-2 h-2 rounded-full bg-orange-500"
+                          title="OT"
+                        ></span>
+                      )}
+                      {day.type === "leave" && (
+                        <span
+                          className="w-2 h-2 rounded-full bg-purple-500"
+                          title="Nghỉ phép"
+                        ></span>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                {/* 2. Content bên trong ô (Chỉ hiện nếu không phải weekend/trống) */}
-                {day.inMonth && day.type !== "weekend" && (
-                  <div className="mt-1 flex flex-col gap-0.5">
-                    {/* Trường hợp Ngày Lễ */}
-                    {day.type === "holiday" && (
-                      <div className="flex flex-col items-center justify-center h-full mt-2">
-                        <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded text-center leading-tight">
-                          🎄 {day.holidayName}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Trường hợp Nghỉ phép */}
-                    {day.type === "leave" && (
-                      <div className="mt-1">
-                        <div className="text-center mb-1">
-                          <span className="text-[10px] font-medium text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">
-                            Nghỉ phép
+                  {/* 2. Content bên trong ô (Chỉ hiện nếu không phải weekend/trống) */}
+                  {day.inMonth && day.type !== "weekend" && (
+                    <div className="mt-1 flex flex-col gap-0.5">
+                      {/* Trường hợp Ngày Lễ (PUBLIC_HOLIDAY) */}
+                      {day.type === "holiday" && (
+                        <div className="flex flex-col items-center justify-center h-full mt-2">
+                          <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded text-center leading-tight">
+                            🎄 {day.holidayName}
                           </span>
                         </div>
-                        {/* Hiển thị check in/out nếu có */}
-                        {(day.checkIn || day.checkOut) && (
-                          <div className="flex justify-center items-center text-[10px] text-gray-500 px-1.5 py-0.5 rounded">
-                            <span className={`font-mono ${day.status.includes("late") ? "text-red-600 font-bold" : "text-gray-600"}`}>
-                              {day.checkIn || "--:--"}
-                            </span>
-                            <span className="px-1"> - </span>
-                            <span className="font-mono text-gray-600">
-                              {day.checkOut || "--:--"}
-                            </span>
-                          </div>
-                        )}
-                        {/* Hiển thị OT nếu có */}
-                        {day.status.includes("ot") && day.otTimeRanges && day.otTimeRanges.length > 0 && (
-                          <div className="text-[10px] text-center font-bold text-orange-600 bg-orange-50 px-1 rounded mt-0.5">
-                            OT: {day.otTimeRanges.map(ot => `${ot.startTime}-${ot.endTime}`).join(", ")}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                      )}
 
-                    {/* Trường hợp Đi làm */}
-                    {day.type === "work" && (() => {
-                      // Kiểm tra xem có phải ngày trong tương lai không
-                      const isCurrentMonth = CURRENT_YEAR === todayInfo.year && CURRENT_MONTH === todayInfo.month;
-                      const isFutureDay = isCurrentMonth ? day.day > TODAY :
-                        (CURRENT_YEAR > todayInfo.year || (CURRENT_YEAR === todayInfo.year && CURRENT_MONTH > todayInfo.month));
-
-                      // Nếu là ngày tương lai và không có dữ liệu chấm công, không hiển thị gì
-                      if (isFutureDay && !day.checkIn && !day.checkOut) {
-                        return null;
-                      }
-
-                      return (
-                        <>
-                          {day.checkIn || day.checkOut ? (
-                            <div className="flex justify-center items-center text-[11px] text-gray-500 px-1.5 py-0.5 rounded">
-                              <span
-                                className={`font-mono font-bold ${day.status.includes("late")
-                                  ? "text-red-600"
-                                  : "text-gray-700"
-                                  }`}
-                              >
+                      {/* Trường hợp Ngày làm việc bù (SUBSTITUTE_WORK_DAY) */}
+                      {day.type === "substitute_work" && (
+                        <div className="flex flex-col items-center justify-center h-full mt-2">
+                          <span className="text-[10px] font-bold text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded text-center leading-tight">
+                            🔄 {day.holidayName}
+                          </span>
+                          {/* Hiển thị check in/out nếu có */}
+                          {(day.checkIn || day.checkOut) && (
+                            <div className="flex justify-center items-center text-[10px] text-gray-500 px-1.5 py-0.5 rounded mt-1">
+                              <span className={`font-mono ${day.status.includes("late") ? "text-red-600 font-bold" : "text-gray-600"}`}>
                                 {day.checkIn || "--:--"}
                               </span>
-                              <span className="px-2"> - </span>
-                              <span className="font-mono font-bold text-gray-700">
+                              <span className="px-1"> - </span>
+                              <span className="font-mono text-gray-600">
                                 {day.checkOut || "--:--"}
                               </span>
                             </div>
-                          ) : (
-                            <div className="text-[10px] text-center text-gray-400 mt-2">
-                              Chưa chấm công
-                            </div>
                           )}
-
-                          {/* Nếu có OT thì hiện thêm dòng OT */}
+                          {/* Hiển thị OT nếu có */}
                           {day.status.includes("ot") && day.otTimeRanges && day.otTimeRanges.length > 0 && (
                             <div className="text-[10px] text-center font-bold text-orange-600 bg-orange-50 px-1 rounded mt-0.5">
                               OT: {day.otTimeRanges.map(ot => `${ot.startTime}-${ot.endTime}`).join(", ")}
                             </div>
                           )}
-                        </>
-                      );
-                    })()}
-                  </div>
-                )}
-              </div>
-            ))}
+                        </div>
+                      )}
+
+                      {/* Trường hợp Nghỉ phép */}
+                      {day.type === "leave" && (
+                        <div className="mt-1">
+                          <div className="text-center mb-1">
+                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                              day.apiData?.status === "PAID_LEAVE" 
+                                ? "text-purple-700 bg-purple-100" 
+                                : "text-orange-700 bg-orange-100"
+                            }`}>
+                              {day.apiData?.status === "PAID_LEAVE" ? "Nghỉ có lương" : "Nghỉ không lương"}
+                            </span>
+                          </div>
+                          {/* Hiển thị lý do nghỉ nếu có */}
+                          {/* {day.leaveInfo?.reason && (
+                            <div className="text-[9px] text-center text-gray-500 mb-1 px-1">
+                              {day.leaveInfo.reason}
+                            </div>
+                          )} */}
+                          {/* Hiển thị check in/out nếu có */}
+                          {(day.checkIn || day.checkOut) && (
+                            <div className="flex justify-center items-center text-[10px] text-gray-500 px-1.5 py-0.5 rounded">
+                              <span className={`font-mono ${day.status.includes("late") ? "text-red-600 font-bold" : "text-gray-600"}`}>
+                                {day.checkIn || "--:--"}
+                              </span>
+                              <span className="px-1"> - </span>
+                              <span className="font-mono text-gray-600">
+                                {day.checkOut || "--:--"}
+                              </span>
+                            </div>
+                          )}
+                          {/* Hiển thị OT nếu có */}
+                          {day.status.includes("ot") && day.otTimeRanges && day.otTimeRanges.length > 0 && (
+                            <div className="text-[10px] text-center font-bold text-orange-600 bg-orange-50 px-1 rounded mt-0.5">
+                              OT: {day.otTimeRanges.map(ot => `${ot.startTime}-${ot.endTime}`).join(", ")}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Trường hợp Đi làm */}
+                      {day.type === "work" && (() => {
+                        // Kiểm tra xem có phải ngày trong tương lai không
+                        const isCurrentMonth = CURRENT_YEAR === todayInfo.year && CURRENT_MONTH === todayInfo.month;
+                        const isFutureDay = isCurrentMonth ? day.day > TODAY :
+                          (CURRENT_YEAR > todayInfo.year || (CURRENT_YEAR === todayInfo.year && CURRENT_MONTH > todayInfo.month));
+
+                        // Nếu là ngày tương lai và không có dữ liệu chấm công, không hiển thị gì
+                        if (isFutureDay && !day.checkIn && !day.checkOut) {
+                          return null;
+                        }
+
+                        return (
+                          <>
+                            {day.checkIn || day.checkOut ? (
+                              <div className="flex justify-center items-center text-[11px] text-gray-500 px-1.5 py-0.5 rounded">
+                                <span
+                                  className={`font-mono font-bold ${day.status.includes("late")
+                                    ? "text-red-600"
+                                    : "text-gray-700"
+                                    }`}
+                                >
+                                  {day.checkIn || "--:--"}
+                                </span>
+                                <span className="px-2"> - </span>
+                                <span className="font-mono font-bold text-gray-700">
+                                  {day.checkOut || "--:--"}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="text-[10px] text-center text-gray-400 mt-2">
+                                Chưa chấm công
+                              </div>
+                            )}
+
+                            {/* Nếu có OT thì hiện thêm dòng OT */}
+                            {day.status.includes("ot") && day.otTimeRanges && day.otTimeRanges.length > 0 && (
+                              <div className="text-[10px] text-center font-bold text-orange-600 bg-orange-50 px-1 rounded mt-0.5">
+                                OT: {day.otTimeRanges.map(ot => `${ot.startTime}-${ot.endTime}`).join(", ")}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </Card>
@@ -680,9 +818,10 @@ const MyTimesheet = () => {
                   <div className="flex gap-2 mt-2">
                     {selectedDate.isToday && <StatusBadge status="Hôm nay" />}
                     {selectedDate.type === "holiday" && (
-                      <span className="text-xs bg-red-100 text-red-600 font-bold px-2 py-1 rounded">
-                        Ngày lễ
-                      </span>
+                      <StatusBadge status="Ngày lễ" />
+                    )}
+                    {selectedDate.type === "substitute_work" && (
+                      <StatusBadge status="Ngày làm việc bù" />
                     )}
                     {selectedDate.status?.includes("late") && (
                       <span className="text-xs bg-red-100 text-red-600 font-bold px-2 py-1 rounded">
@@ -698,7 +837,7 @@ const MyTimesheet = () => {
                 </div>
 
                 {/* Time Detail */}
-                {selectedDate.type === "work" ? (
+                {selectedDate.type === "work" || selectedDate.type === "substitute_work" ? (
                   <div className="space-y-4">
                     {selectedDate.checkIn && (
                       <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
@@ -765,10 +904,9 @@ const MyTimesheet = () => {
                               <div className="flex flex-col">
                                 <span className="text-gray-600">{ot.otType}</span>
                                 {ot.status && (
-                                  <span className={`text-[10px] font-bold ${
-                                    ot.status === 'APPROVED' ? 'text-green-600' : 
-                                    ot.status === 'PENDING' ? 'text-yellow-600' : 'text-red-600'
-                                  }`}>
+                                  <span className={`text-[10px] font-bold ${ot.status === 'APPROVED' ? 'text-green-600' :
+                                      ot.status === 'PENDING' ? 'text-yellow-600' : 'text-red-600'
+                                    }`}>
                                     {ot.status}
                                   </span>
                                 )}
@@ -794,13 +932,137 @@ const MyTimesheet = () => {
                       </div>
                     )}
                   </div>
+                ) : selectedDate.type === "leave" ? (
+                  <div className="space-y-4">
+                    {/* Thông tin nghỉ phép */}
+                    <div className={`p-3 border rounded-lg ${
+                      selectedDate.apiData?.status === "PAID_LEAVE" 
+                        ? "bg-purple-50 border-purple-100" 
+                        : "bg-orange-50 border-orange-100"
+                    }`}>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className={`text-sm font-bold flex items-center gap-1 ${
+                          selectedDate.apiData?.status === "PAID_LEAVE" 
+                            ? "text-purple-700" 
+                            : "text-orange-700"
+                        }`}>
+                          <Coffee size={14} /> 
+                          {selectedDate.apiData?.status === "PAID_LEAVE" ? "Nghỉ có lương" : "Nghỉ không lương"}
+                        </span>
+                        <span className={`text-xs px-2 py-1 rounded font-bold ${
+                          selectedDate.leaveInfo?.status === 'APPROVED' ? 'bg-green-100 text-green-600' :
+                          selectedDate.leaveInfo?.status === 'PENDING' ? 'bg-yellow-100 text-yellow-600' : 
+                          'bg-red-100 text-red-600'
+                        }`}>
+                          {selectedDate.leaveInfo?.status || 'N/A'}
+                        </span>
+                      </div>
+                      
+                      {/* Loại nghỉ phép */}
+                      {selectedDate.leaveInfo?.leaveType && (
+                        <div className="text-xs text-gray-600 mb-1">
+                          <span className="font-medium">Loại: </span>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                            selectedDate.leaveInfo.leaveType === 'ANNUAL' ? 'bg-blue-100 text-blue-600' :
+                            selectedDate.leaveInfo.leaveType === 'SICK' ? 'bg-red-100 text-red-600' :
+                            selectedDate.leaveInfo.leaveType === 'UNPAID' ? 'bg-gray-100 text-gray-600' :
+                            'bg-purple-100 text-purple-600'
+                          }`}>
+                            {selectedDate.leaveInfo.leaveType}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {/* Lý do nghỉ */}
+                      {selectedDate.leaveInfo?.reason && (
+                        <div className="text-xs text-gray-600 mb-2">
+                          <span className="font-medium">Lý do: </span>
+                          <span className="italic">{selectedDate.leaveInfo.reason}</span>
+                        </div>
+                      )}
+                      
+                      {/* Note từ API */}
+                      {/* {selectedDate.apiData?.note && (
+                        <div className="text-xs text-gray-500 italic">
+                          {selectedDate.apiData.note}
+                        </div>
+                      )} */}
+                    </div>
+
+                    {/* Thông tin chấm công nếu có */}
+                    {(selectedDate.checkIn || selectedDate.checkOut) && (
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium text-gray-700">Thông tin chấm công:</h4>
+                        
+                        {selectedDate.checkIn && (
+                          <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                            <span className="text-xs text-gray-600">Check In:</span>
+                            <span className="font-mono text-sm font-bold text-gray-800">
+                              {selectedDate.checkIn}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {selectedDate.checkOut && (
+                          <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                            <span className="text-xs text-gray-600">Check Out:</span>
+                            <span className="font-mono text-sm font-bold text-gray-800">
+                              {selectedDate.checkOut}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* OT nếu có */}
+                    {selectedDate.status.includes("ot") && selectedDate.otTimeRanges && selectedDate.otTimeRanges.length > 0 && (
+                      <div className="p-3 bg-orange-50 border border-orange-100 rounded-lg">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-bold text-orange-700 flex items-center gap-1">
+                            <Zap size={14} /> Overtime
+                          </span>
+                          <span className="text-sm font-bold text-orange-700">
+                            {selectedDate.otHours} giờ
+                          </span>
+                        </div>
+                        <div className="space-y-1">
+                          {selectedDate.otTimeRanges.map((ot, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-xs bg-white px-2 py-1.5 rounded">
+                              <div className="flex flex-col">
+                                <span className="text-gray-600">{ot.otType}</span>
+                                {ot.status && (
+                                  <span className={`text-[10px] font-bold ${ot.status === 'APPROVED' ? 'text-green-600' :
+                                      ot.status === 'PENDING' ? 'text-yellow-600' : 'text-red-600'
+                                    }`}>
+                                    {ot.status}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <div className="font-mono font-bold text-orange-600">
+                                  {ot.startTime} - {ot.endTime}
+                                </div>
+                                {ot.approvedHours && (
+                                  <div className="text-[10px] text-gray-500">
+                                    {ot.approvedHours}h duyệt
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div className="py-4 text-center text-gray-500 italic bg-gray-50 rounded-lg">
                     {selectedDate.type === "weekend"
                       ? "Cuối tuần - Không có lịch làm việc"
                       : selectedDate.type === "holiday"
                         ? `Nghỉ lễ: ${selectedDate.holidayName}`
-                        : "Nghỉ phép có lương"}
+                        : selectedDate.type === "substitute_work"
+                          ? `Ngày làm việc bù: ${selectedDate.holidayName}`
+                          : "Không có thông tin"}
                   </div>
                 )}
 
@@ -823,7 +1085,10 @@ const MyTimesheet = () => {
                 ? selectedDate?.day < TODAY
                 : (CURRENT_YEAR < todayInfo.year || (CURRENT_YEAR === todayInfo.year && CURRENT_MONTH < todayInfo.month));
 
-              // Nếu là ngày quá khứ, ẩn nút xin nghỉ
+              // Chỉ kiểm tra ngày lễ PUBLIC_HOLIDAY (bỏ chủ nhật và ngày làm việc bù)
+              const isHoliday = selectedDate?.type === "holiday";
+
+              // Nếu là ngày quá khứ, chỉ hiện nút OT
               if (isPastDay) {
                 return (
                   <Button
@@ -836,7 +1101,20 @@ const MyTimesheet = () => {
                 );
               }
 
-              // Ngày hiện tại hoặc tương lai, hiển thị cả 2 nút
+              // Nếu là ngày lễ, chỉ hiện nút OT
+              if (isHoliday) {
+                return (
+                  <Button
+                    onClick={handleOT}
+                    variant="OT"
+                    className="col-span-2 flex flex-col items-center gap-1 py-3 bg-orange-400 text-white shadow-md hover:bg-orange-600"
+                  >
+                    <Zap size={20} /> <span className="text-xs">Đăng ký OT</span>
+                  </Button>
+                );
+              }
+
+              // Ngày hiện tại hoặc tương lai (không phải lễ), hiển thị cả 2 nút
               return (
                 <>
                   <Button
