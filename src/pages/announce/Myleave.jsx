@@ -702,13 +702,10 @@ const MyLeave = () => {
                                                 </td>
 
                                                 <td className="p-4">
-                                                    <div className="flex flex-col gap-1">
-                                                        <StatusBadge
-                                                            statusKey={displayStatus}
-                                                            statusText={statusLabel[displayStatus] || displayStatus}
-                                                        />
-                                                        {/* ✅ Hiển thị trạng thái duyệt từng level */}
-                                                    </div>
+                                                    <StatusBadge
+                                                        statusKey={displayStatus}
+                                                        statusText={statusLabel[displayStatus] || displayStatus}
+                                                    />
                                                 </td>
 
                                                 <td className="p-4 text-xs text-gray-500">{formatDateTime(lv.createdAt)}</td>
@@ -854,9 +851,9 @@ const MyLeave = () => {
                                     <th className="p-4">Nhân sự</th>
                                     <th className="p-4">Ngày OT</th>
                                     <th className="p-4">Loại OT</th>
-                                    <th className="p-4">Từ - Đến</th>
-                                    <th className="p-4">Tổng giờ</th>
+                                    <th className="p-4">Giờ đăng ký</th>
                                     <th className="p-4">Giờ duyệt</th>
+                                    <th className="p-4">Tổng giờ duyệt</th>
                                     <th className="p-4">Lý do</th>
                                     <th className="p-4">Trạng thái</th>
                                     <th className="p-4">Ngày tạo</th>
@@ -903,14 +900,20 @@ const MyLeave = () => {
                                                 </td>
 
                                                 <td className="p-4 text-gray-700">
-                                                    {ot?.startTime || "--"} - {ot?.endTime || "--"}
+                                                    {ot?.startTime && ot?.endTime 
+                                                        ? `${ot.startTime} - ${ot.endTime}`
+                                                        : "--"}
+                                                </td>
+
+                                                <td className="p-4 text-gray-700">
+                                                    {ot?.approvedStartTime && ot?.approvedEndTime 
+                                                        ? `${ot.approvedStartTime} - ${ot.approvedEndTime}`
+                                                        : "--"}
                                                 </td>
 
                                                 <td className="p-4 text-gray-700 font-semibold">
-                                                    {formatHours(ot?.totalHours)}
+                                                    {formatHours(ot?.approvedHours)}
                                                 </td>
-
-                                                <td className="p-4 text-gray-700">{formatHours(ot?.approvedHours)}</td>
 
                                                 <td className="p-4 text-gray-600 max-w-[360px]">
                                                     <span className="line-clamp-2">{ot?.reason || "--"}</span>

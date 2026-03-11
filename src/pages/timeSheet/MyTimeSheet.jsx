@@ -708,7 +708,7 @@ const MyTimesheet = () => {
                                 {day.checkIn || "--:--"}
                               </span>
                               <span className="px-1"> - </span>
-                              <span className="font-mono text-gray-600">
+                              <span className={`font-mono ${day.status.includes("early") ? "text-blue-600 font-bold" : "text-gray-600"}`}>
                                 {day.checkOut || "--:--"}
                               </span>
                             </div>
@@ -746,7 +746,7 @@ const MyTimesheet = () => {
                                 {day.checkIn || "--:--"}
                               </span>
                               <span className="px-1"> - </span>
-                              <span className="font-mono text-gray-600">
+                              <span className={`font-mono ${day.status.includes("early") ? "text-blue-600 font-bold" : "text-gray-600"}`}>
                                 {day.checkOut || "--:--"}
                               </span>
                             </div>
@@ -785,7 +785,7 @@ const MyTimesheet = () => {
                                   {day.checkIn || "--:--"}
                                 </span>
                                 <span className="px-2"> - </span>
-                                <span className="font-mono font-bold text-gray-700">
+                                <span className={`font-mono font-bold ${day.status.includes("early") ? "text-blue-600" : "text-gray-700"}`}>
                                   {day.checkOut || "--:--"}
                                 </span>
                               </div>
@@ -843,6 +843,11 @@ const MyTimesheet = () => {
                     {selectedDate.status?.includes("late") && (
                       <span className="text-xs bg-red-100 text-red-600 font-bold px-2 py-1 rounded">
                         Đi muộn
+                      </span>
+                    )}
+                    {selectedDate.status?.includes("early") && (
+                      <span className="text-xs bg-blue-100 text-blue-600 font-bold px-2 py-1 rounded">
+                        Về sớm
                       </span>
                     )}
                     {selectedDate.status?.includes("ot") && (
