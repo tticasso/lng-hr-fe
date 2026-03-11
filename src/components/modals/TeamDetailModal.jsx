@@ -242,14 +242,31 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
         }
     };
 
-    // Lọc nhân viên có thể thêm vào rotation (tất cả thành viên trong team)
+    // Lọc nhân viên có thể thêm vào rotation (tất cả thành viên trong team + leader)
     const getAvailableEmployeesForRotation = () => {
-        if (!teamDetail?.members) return [];
+        if (!teamDetail) return [];
 
-        return teamDetail.members.filter(member => {
+        // Tạo danh sách bao gồm cả members và leader
+        const allTeamMembers = [];
+        
+        // Thêm tất cả members
+        if (teamDetail.members && teamDetail.members.length > 0) {
+            allTeamMembers.push(...teamDetail.members);
+        }
+        
+        // Thêm leader nếu có và chưa có trong danh sách members
+        if (teamDetail.leader) {
+            const isLeaderInMembers = teamDetail.members?.some(member => member._id === teamDetail.leader._id);
+            if (!isLeaderInMembers) {
+                allTeamMembers.push(teamDetail.leader);
+            }
+        }
+
+        // Lọc theo search term
+        return allTeamMembers.filter(person => {
             const matchesSearch = !searchTerm ||
-                member.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                member.employeeCode?.toLowerCase().includes(searchTerm.toLowerCase());
+                person.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                person.employeeCode?.toLowerCase().includes(searchTerm.toLowerCase());
 
             return matchesSearch;
         });
