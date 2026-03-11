@@ -1356,7 +1356,17 @@ const AttendanceAdmin = () => {
 
                         // Determine status display
                         let statusBadge;
-                        if (!log.checkOut) {
+                        if ((log.status === "UNPAID_LEAVE" || log.status === "PAID_LEAVE") && log.leaveId?.status === "APPROVED") {
+                          // Chỉ hiển thị khi đơn nghỉ đã được duyệt
+                          const statusColor = log.status === "PAID_LEAVE" ? "purple" : "orange";
+                          const statusText = log.status === "PAID_LEAVE" ? "Nghỉ có lương" : "Nghỉ không lương";
+                          
+                          statusBadge = (
+                            <span className={`text-xs bg-${statusColor}-100 text-${statusColor}-700 px-2 py-0.5 rounded font-bold`}>
+                              {statusText}
+                            </span>
+                          );
+                        } else if (!log.checkOut) {
                           statusBadge = (
                             <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded font-bold">
                               Thiếu ra
