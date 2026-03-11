@@ -26,4 +26,8 @@ export const OTApi = {
         return apiClient.patch(`/overtimes/approve/${id}`,payload
         );
     },
+
+    cancel: (id) => {
+        return apiClient.patch(`/overtimes/cancel/${id}`);
+    },
 }

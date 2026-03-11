@@ -336,7 +336,7 @@ const MyLeave = () => {
 
     const filteredOTs = useMemo(() => {
         const q = otSearchQuery;
-        const stGroup = otFilters.statusGroup; // "PENDING" | "APPROVED" | ""
+        const stGroup = otFilters.statusGroup; // "PENDING" | "APPROVED" | "REJECTED" | ""
         const type = otFilters.otType;
 
         return ots.filter((ot) => {
@@ -345,8 +345,7 @@ const MyLeave = () => {
 
             const matchName = !q || name.includes(q);
 
-            const matchStatus =
-                !stGroup || (stGroup === "APPROVED" ? st === "APPROVED" : st === "PENDING");
+            const matchStatus = !stGroup || st === stGroup;
 
             const matchType = !type || ot?.otType === type;
 
@@ -451,6 +450,18 @@ const MyLeave = () => {
 
             toast.error(`${e.normalizedMessage}`)
             console.error("approve OT error:", e);
+        }
+    };
+
+    const handleCancelOT = async (otId) => {
+        try {
+            await OTApi.cancel(otId);
+            toast.success("Đã từ chối đơn OT");
+            fetchOTs();
+        } catch (e) {
+            console.error("cancel OT error:", e);
+            const errorMsg = e.response?.data?.message || "Từ chối đơn OT thất bại";
+            toast.error(errorMsg);
         }
     };
 
@@ -813,7 +824,7 @@ const MyLeave = () => {
                                 />
                             </div>
 
-                            {/* Trạng thái: Đã duyệt / Chưa duyệt */}
+                            {/* Trạng thái: Đã duyệt / Chưa duyệt / Từ chối */}
                             <select
                                 className="border rounded-lg px-3 py-2 text-sm outline-none"
                                 value={otFilters.statusGroup}
@@ -822,6 +833,7 @@ const MyLeave = () => {
                                 <option value="">Tất cả trạng thái</option>
                                 <option value="PENDING">Chưa duyệt</option>
                                 <option value="APPROVED">Đã duyệt</option>
+                                <option value="REJECTED">Từ chối</option>
                             </select>
 
                             {/* Loại OT */}
@@ -929,7 +941,7 @@ const MyLeave = () => {
 
                                                 {canApprove && (
                                                     <td className="p-4">
-                                                        <div className="flex justify-center">
+                                                        <div className="flex justify-center gap-2">
                                                             <button
                                                                 disabled={!canApproveOT}
                                                                 onClick={() => openApproveOTModal(ot)}
@@ -942,6 +954,20 @@ const MyLeave = () => {
                                                             >
                                                                 <CheckCircle2 size={14} />
                                                                 Duyệt
+                                                            </button>
+
+                                                            <button
+                                                                disabled={!canApproveOT}
+                                                                onClick={() => handleCancelOT(ot._id)}
+                                                                className={`p-2 rounded border text-xs font-semibold inline-flex items-center gap-1
+                                  ${canApproveOT
+                                                                        ? "text-red-500 border-red-200 hover:bg-red-50"
+                                                                        : "text-gray-300 border-gray-200 cursor-not-allowed"
+                                                                    }`}
+                                                                title="Từ chối OT"
+                                                            >
+                                                                <XCircle size={14} />
+                                                                Từ chối
                                                             </button>
                                                         </div>
                                                     </td>
