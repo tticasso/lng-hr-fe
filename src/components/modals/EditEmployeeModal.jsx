@@ -599,7 +599,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                         className={inputClass("startDate")}
                       />
                     </div>
-                    <div>
+                    {/* <div>
                       <label className={labelClass}>Phép năm tồn</label>
                       <input
                         type="number"
@@ -608,7 +608,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                         onChange={handleChange}
                         className={inputClass("annualLeaveBalance")}
                       />
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </div>

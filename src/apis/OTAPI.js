@@ -22,8 +22,8 @@ export const OTApi = {
         }
     },
 
-    put: (id,approvedHours) => {
-        return apiClient.patch(`/overtimes/approve/${id}`, { status: "APPROVED",approvedHours }
+    put: (id,payload) => {
+        return apiClient.patch(`/overtimes/approve/${id}`,payload
         );
     },
 }
