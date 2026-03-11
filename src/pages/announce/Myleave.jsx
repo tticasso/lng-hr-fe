@@ -227,7 +227,7 @@ const MyLeave = () => {
 
             // ✅ Kiểm tra level duyệt của user hiện tại
             let currentUserLevel = null;
-            
+
             rows.forEach((leave) => {
                 if (leave.approvalChain && Array.isArray(leave.approvalChain)) {
                     // Kiểm tra level 1
@@ -236,7 +236,7 @@ const MyLeave = () => {
                         currentUserLevel = 1;
                         console.log(`[Approver] User là cấp duyệt level 1 cho đơn ${leave._id}`);
                     }
-                    
+
                     // Kiểm tra level 2
                     const level2 = leave.approvalChain.find(a => a.level === 2);
                     if (level2?.approver?._id === accountID) {
@@ -248,7 +248,7 @@ const MyLeave = () => {
 
             // Lưu level vào state
             setUserApprovalLevel(currentUserLevel);
-            
+
             if (currentUserLevel) {
                 console.log(`[Approver] User hiện tại có quyền duyệt ở level ${currentUserLevel}`);
             } else {
@@ -358,7 +358,7 @@ const MyLeave = () => {
         try {
             // ✅ Lấy employee_ID từ localStorage
             const accountID = localStorage.getItem("employee_ID");
-            
+
             // ✅ Tìm đơn nghỉ trong danh sách
             const leave = leaves.find(lv => lv._id === leaveId);
             if (!leave) {
@@ -416,7 +416,7 @@ const MyLeave = () => {
             // ✅ Gọi API approve với payload
             const res = await leaveAPI.APPROVED(leaveId, payload);
             console.log("[handleApprove] res:", res);
-            
+
             toast.success(`Đã duyệt đơn nghỉ (Level ${userApprovalLevel})`);
             await fetchLeaves();
         } catch (e) {
@@ -437,17 +437,19 @@ const MyLeave = () => {
         }
     };
 
-    const handleApproveOT = async (otId, approvedHours) => {
+    const handleApproveOT = async (otId, payload) => {
         console.log("RES otId: ", otId);
-        console.log("RES approvedHours: ", approvedHours);
+        console.log("RES payload: ", payload);
         try {
-            const res = await OTApi.put(otId, approvedHours);
+            const res = await OTApi.put(otId, payload);
+            console.log("RESPONSE :", res)
             toast.success("DUYỆT THÀNH CÔNG")
             setApproveOTModal({ isOpen: false, otData: null });
             fetchOTs();
         } catch (e) {
             setApproveOTModal({ isOpen: false, otData: null });
-            toast.error("DUYỆT THẤT BẠI")
+
+            toast.error(`${e.normalizedMessage}`)
             console.error("approve OT error:", e);
         }
     };
@@ -640,7 +642,7 @@ const MyLeave = () => {
                                     filteredLeaves.map((lv) => {
                                         const displayStatus = normalizeStatus(lv.status);
                                         const accountID = localStorage.getItem("employee_ID");
-                                        
+
                                         // ✅ Kiểm tra user có quyền duyệt đơn này không
                                         let userApprovalLevel = null;
                                         let userApproval = null;
@@ -658,7 +660,7 @@ const MyLeave = () => {
                                             userApprovalLevel = 2;
                                             userApproval = level2;
                                         }
-                                        
+
                                         // ✅ Chỉ cho phép duyệt nếu:
                                         // - Đơn đang PENDING
                                         // - User có trong approvalChain

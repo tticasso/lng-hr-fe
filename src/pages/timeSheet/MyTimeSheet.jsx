@@ -278,9 +278,12 @@ const MyTimesheet = () => {
         // Lấy thông tin thời gian OT từ overtimeId array
         if (apiData.overtimeId && Array.isArray(apiData.overtimeId) && apiData.overtimeId.length > 0) {
           otTimeRanges = apiData.overtimeId.map(ot => ({
-            startTime: ot.startTime,
-            endTime: ot.endTime,
-            otType: ot.otType
+            startTime: ot.approvedStartTime || ot.startTime, // Ưu tiên approvedStartTime
+            endTime: ot.approvedEndTime || ot.endTime, // Ưu tiên approvedEndTime
+            otType: ot.otType,
+            totalHours: ot.totalHours,
+            approvedHours: ot.approvedHours,
+            status: ot.status
           }));
           status.push("ot");
           otHours = totalOT;
@@ -759,10 +762,27 @@ const MyTimesheet = () => {
                         <div className="space-y-1">
                           {selectedDate.otTimeRanges.map((ot, idx) => (
                             <div key={idx} className="flex items-center justify-between text-xs bg-white px-2 py-1.5 rounded">
-                              <span className="text-gray-600">{ot.otType}</span>
-                              <span className="font-mono font-bold text-orange-600">
-                                {ot.startTime} - {ot.endTime}
-                              </span>
+                              <div className="flex flex-col">
+                                <span className="text-gray-600">{ot.otType}</span>
+                                {ot.status && (
+                                  <span className={`text-[10px] font-bold ${
+                                    ot.status === 'APPROVED' ? 'text-green-600' : 
+                                    ot.status === 'PENDING' ? 'text-yellow-600' : 'text-red-600'
+                                  }`}>
+                                    {ot.status}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <div className="font-mono font-bold text-orange-600">
+                                  {ot.startTime} - {ot.endTime}
+                                </div>
+                                {ot.approvedHours && (
+                                  <div className="text-[10px] text-gray-500">
+                                    {ot.approvedHours}h duyệt
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           ))}
                         </div>

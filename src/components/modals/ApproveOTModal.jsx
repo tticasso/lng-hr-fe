@@ -1,26 +1,49 @@
 import React, { useState, useEffect } from "react";
 import { X, CheckCircle2, Save, CheckCircle } from "lucide-react";
-import { Button } from "antd";
+import { Button, TimePicker } from "antd";
+import dayjs from "../../untils/dayjs";
 
 const ApproveOTModal = ({ isOpen, onClose, otData, onConfirm }) => {
-  const [approvedHours, setApprovedHours] = useState("");
+  const [approvedStartTime, setApprovedStartTime] = useState(null);
+  const [approvedEndTime, setApprovedEndTime] = useState(null);
 
   useEffect(() => {
     if (isOpen && otData) {
-      // Điền sẵn tổng giờ vào input
-      setApprovedHours(otData.totalHours || "");
+      // Điền sẵn giờ bắt đầu và kết thúc từ dữ liệu OT
+      setApprovedStartTime(
+        otData.startTime 
+          ? dayjs(otData.startTime, ["HH:mm", dayjs.ISO_8601], true)
+          : null
+      );
+      setApprovedEndTime(
+        otData.endTime 
+          ? dayjs(otData.endTime, ["HH:mm", dayjs.ISO_8601], true)
+          : null
+      );
     }
   }, [isOpen, otData]);
 
   if (!isOpen || !otData) return null;
 
   const handleConfirm = () => {
-    const hours = parseFloat(approvedHours);
-    if (isNaN(hours) || hours <= 0) {
-      alert("Vui lòng nhập số giờ hợp lệ!");
+    if (!approvedStartTime || !approvedEndTime) {
+      alert("Vui lòng nhập đầy đủ giờ bắt đầu và kết thúc!");
       return;
     }
-    onConfirm(otData._id, hours);
+    
+    // Kiểm tra giờ kết thúc phải sau giờ bắt đầu
+    if (dayjs(approvedEndTime).isSameOrBefore(dayjs(approvedStartTime))) {
+      alert("Giờ kết thúc phải sau giờ bắt đầu!");
+      return;
+    }
+
+    const payload = {
+      status: "APPROVED",
+      approvedStartTime: dayjs(approvedStartTime).format("HH:mm"),
+      approvedEndTime: dayjs(approvedEndTime).format("HH:mm")
+    };
+    
+    onConfirm(otData._id, payload);
   };
 
   const handleOverlayClick = (e) => {
@@ -68,23 +91,47 @@ const ApproveOTModal = ({ isOpen, onClose, otData, onConfirm }) => {
           {/* Divider */}
           <div className="border-t"></div>
 
-          {/* Input số giờ duyệt */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Thời gian muốn duyệt <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              step="0.5"
-              min="0"
-              max={otData.totalHours || 24}
-              value={approvedHours}
-              onChange={(e) => setApprovedHours(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              placeholder="Nhập số giờ duyệt"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Bạn có thể chỉnh sửa số giờ duyệt (tối đa {otData.totalHours || 0} giờ)
+          {/* Input giờ bắt đầu và kết thúc */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Giờ bắt đầu duyệt <span className="text-red-500">*</span>
+              </label>
+              <TimePicker
+                value={approvedStartTime}
+                onChange={(v) => setApprovedStartTime(v)}
+                format="HH:mm"
+                className="w-full"
+                placeholder="Chọn giờ bắt đầu"
+                minuteStep={5}
+                size="large"
+                status={!approvedStartTime ? "error" : ""}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Giờ kết thúc duyệt <span className="text-red-500">*</span>
+              </label>
+              <TimePicker
+                value={approvedEndTime}
+                onChange={(v) => setApprovedEndTime(v)}
+                format="HH:mm"
+                className="w-full"
+                placeholder="Chọn giờ kết thúc"
+                minuteStep={5}
+                size="large"
+                status={
+                  !approvedEndTime ||
+                  (approvedEndTime && approvedStartTime && dayjs(approvedEndTime).isSameOrBefore(dayjs(approvedStartTime)))
+                    ? "error"
+                    : ""
+                }
+              />
+            </div>
+            
+            <p className="text-xs text-gray-500">
+              Bạn có thể chỉnh sửa thời gian duyệt cho đơn OT này
             </p>
           </div>
         </div>

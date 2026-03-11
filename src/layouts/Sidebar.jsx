@@ -97,16 +97,16 @@ const Sidebar = () => {
                   label: "Quản lý thời gian",
                   icon: <Timer size={20} />,
                 },
-                {
-                  path: "/hr/recruitment",
-                  label: "Tuyển dụng",
-                  icon: <BriefcaseBusiness size={20} />,
-                },
-                {
-                  path: "/hr/boarding",
-                  label: "On/Off Boarding",
-                  icon: <Presentation size={20} />,
-                },
+                // {
+                //   path: "/hr/recruitment",
+                //   label: "Tuyển dụng",
+                //   icon: <BriefcaseBusiness size={20} />,
+                // },
+                // {
+                //   path: "/hr/boarding",
+                //   label: "On/Off Boarding",
+                //   icon: <Presentation size={20} />,
+                // },
                  {
                   path: "/hr/leavebalance",
                   label: "Quản lý lịch nghỉ phép",
@@ -131,7 +131,7 @@ const Sidebar = () => {
         // Chỉ hiển thị 2 menu này cho ADMIN và HR
         ...(isAdmin || isHR
           ? [
-            { path: "/hr/reports", label: "Báo cáo", icon: <FileText size={20} /> },
+            // { path: "/hr/reports", label: "Báo cáo", icon: <FileText size={20} /> },
             {
               path: "/hr/payroll-engine",
               label: "Công cụ tính lương",
