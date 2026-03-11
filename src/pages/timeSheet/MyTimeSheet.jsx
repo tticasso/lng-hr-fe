@@ -959,7 +959,7 @@ const MyTimesheet = () => {
                       </div>
                       
                       {/* Loại nghỉ phép */}
-                      {selectedDate.leaveInfo?.leaveType && (
+                      {/* {selectedDate.leaveInfo?.leaveType && (
                         <div className="text-xs text-gray-600 mb-1">
                           <span className="font-medium">Loại: </span>
                           <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
@@ -971,7 +971,7 @@ const MyTimesheet = () => {
                             {selectedDate.leaveInfo.leaveType}
                           </span>
                         </div>
-                      )}
+                      )} */}
                       
                       {/* Lý do nghỉ */}
                       {selectedDate.leaveInfo?.reason && (
