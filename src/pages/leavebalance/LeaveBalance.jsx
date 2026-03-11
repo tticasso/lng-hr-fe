@@ -246,8 +246,8 @@ const LeaveBalance = () => {
                                     <th className="p-4 w-10">#</th>
                                     <th className="p-4">Nhân viên</th>
                                     <th className="p-4">Năm</th>
-                                    <th className="p-4">Tỷ lệ/tháng</th>
-                                    <th className="p-4">Đã tích lũy</th>
+                                    {/* <th className="p-4">Tỷ lệ/tháng</th> */}
+                                    {/* <th className="p-4">Đã tích lũy</th> */}
                                     <th className="p-4">Đã sử dụng</th>
                                     <th className="p-4">Số dư hiện tại</th>
                                     <th className="p-4">Chuyển từ năm trước</th>
@@ -294,16 +294,16 @@ const LeaveBalance = () => {
                                         </td>
 
                                         {/* Monthly Rate */}
-                                        <td className="p-4 text-sm text-gray-600">
+                                        {/* <td className="p-4 text-sm text-gray-600">
                                             {item.monthlyRate} ngày/tháng
-                                        </td>
+                                        </td> */}
 
                                         {/* Total Accrued */}
-                                        <td className="p-4">
+                                        {/* <td className="p-4">
                                             <span className="text-sm font-medium text-green-600">
                                                 {item.totalAccrued} ngày
                                             </span>
-                                        </td>
+                                        </td> */}
 
                                         {/* Total Used */}
                                         <td className="p-4">
