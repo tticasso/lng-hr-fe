@@ -313,6 +313,7 @@ const MyTimesheet = () => {
       let otTimeRanges = []; // Mảng chứa các khoảng thời gian OT
       let holidayName = "";
       let lateMinutes = 0;
+      let earlyMinutes = 0;
 
       // Kiểm tra ngày lễ trước - phân biệt theo holidayType
       if (holidayInfo) {
@@ -334,6 +335,7 @@ const MyTimesheet = () => {
         checkIn = apiData.checkIn || null;
         checkOut = apiData.checkOut || null;
         lateMinutes = apiData.lateMinutes || 0;
+        earlyMinutes = apiData.earlyMinutes || 0;
 
         // Xử lý status - ưu tiên holiday nếu có
         if (holidayInfo) {
@@ -354,6 +356,11 @@ const MyTimesheet = () => {
         // Check late (áp dụng cho tất cả status)
         if (lateMinutes > 0) {
           status.push("late");
+        }
+
+        // Check early (áp dụng cho tất cả status)
+        if (earlyMinutes > 0) {
+          status.push("early");
         }
 
         // Check OT (áp dụng cho tất cả status)
@@ -394,6 +401,7 @@ const MyTimesheet = () => {
         otTimeRanges, // Thêm mảng thời gian OT
         holidayName,
         lateMinutes,
+        earlyMinutes,
         fullDate: `${pad2(i)}/${pad2(CURRENT_MONTH + 1)}/${CURRENT_YEAR}`,
         isoDate,
         apiData, // Lưu toàn bộ data từ API để dùng sau
@@ -650,6 +658,12 @@ const MyTimesheet = () => {
                           title="Đi muộn"
                         ></span>
                       )}
+                      {day.status?.includes("early") && (
+                        <span
+                          className="w-2 h-2 rounded-full bg-blue-500"
+                          title="Về sớm"
+                        ></span>
+                      )}
                       {day.status?.includes("ot") && (
                         <span
                           className="w-2 h-2 rounded-full bg-orange-500"
@@ -690,7 +704,7 @@ const MyTimesheet = () => {
                                 {day.checkIn || "--:--"}
                               </span>
                               <span className="px-1"> - </span>
-                              <span className="font-mono text-gray-600">
+                              <span className={`font-mono ${day.status.includes("early") ? "text-blue-600 font-bold" : "text-gray-600"}`}>
                                 {day.checkOut || "--:--"}
                               </span>
                             </div>
@@ -729,7 +743,7 @@ const MyTimesheet = () => {
                                 {day.checkIn || "--:--"}
                               </span>
                               <span className="px-1"> - </span>
-                              <span className="font-mono text-gray-600">
+                              <span className={`font-mono ${day.status.includes("early") ? "text-blue-600 font-bold" : "text-gray-600"}`}>
                                 {day.checkOut || "--:--"}
                               </span>
                             </div>
@@ -768,7 +782,7 @@ const MyTimesheet = () => {
                                   {day.checkIn || "--:--"}
                                 </span>
                                 <span className="px-2"> - </span>
-                                <span className="font-mono font-bold text-gray-700">
+                                <span className={`font-mono font-bold ${day.status.includes("early") ? "text-blue-600" : "text-gray-700"}`}>
                                   {day.checkOut || "--:--"}
                                 </span>
                               </div>
@@ -828,6 +842,11 @@ const MyTimesheet = () => {
                         Đi muộn
                       </span>
                     )}
+                    {selectedDate.status?.includes("early") && (
+                      <span className="text-xs bg-blue-100 text-blue-600 font-bold px-2 py-1 rounded">
+                        Về sớm
+                      </span>
+                    )}
                     {selectedDate.status?.includes("ot") && (
                       <span className="text-xs bg-orange-100 text-orange-600 font-bold px-2 py-1 rounded">
                         Có OT
@@ -875,8 +894,13 @@ const MyTimesheet = () => {
                             Check Out
                           </span>
                         </div>
-                        <span className="font-mono text-lg font-bold text-gray-800">
+                        <span className={`font-mono text-lg font-bold ${selectedDate.status.includes("early") ? "text-blue-600" : "text-gray-800"}`}>
                           {selectedDate.checkOut}
+                          {selectedDate.earlyMinutes > 0 && (
+                            <span className="text-xs text-blue-500 ml-2">
+                              (-{selectedDate.earlyMinutes}p)
+                            </span>
+                          )}
                         </span>
                       </div>
                     )}
@@ -959,7 +983,7 @@ const MyTimesheet = () => {
                       </div>
                       
                       {/* Loại nghỉ phép */}
-                      {selectedDate.leaveInfo?.leaveType && (
+                      {/* {selectedDate.leaveInfo?.leaveType && (
                         <div className="text-xs text-gray-600 mb-1">
                           <span className="font-medium">Loại: </span>
                           <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
@@ -971,7 +995,7 @@ const MyTimesheet = () => {
                             {selectedDate.leaveInfo.leaveType}
                           </span>
                         </div>
-                      )}
+                      )} */}
                       
                       {/* Lý do nghỉ */}
                       {selectedDate.leaveInfo?.reason && (
@@ -1133,6 +1157,71 @@ const MyTimesheet = () => {
               );
             })()}
           </div>
+
+          {/* Legend - Chú thích */}
+          <Card className="h-fit">
+            <div className="p-4">
+              <h3 className="text-sm font-bold text-gray-800 mb-3">Chú thích</h3>
+              
+              {/* Màu nền các loại ngày */}
+              <div className="space-y-2 mb-4">
+                <p className="text-xs font-semibold text-gray-600 mb-2">Loại ngày:</p>
+                <div className="grid grid-cols-1 gap-1.5 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-red-50 border border-red-200 rounded"></div>
+                    <span>Ngày nghỉ lễ</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-yellow-50 border border-yellow-200 rounded"></div>
+                    <span>Ngày làm việc bù</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-orange-100 border border-orange-200 rounded"></div>
+                    <span>Cuối tuần</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-purple-50 border border-purple-200 rounded"></div>
+                    <span>Nghỉ có lương</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-orange-50 border border-orange-200 rounded"></div>
+                    <span>Nghỉ không lương</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-green-100 border border-green-200 rounded"></div>
+                    <span>Ngày đã qua</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-blue-100 border border-blue-400 rounded ring-1 ring-blue-400"></div>
+                    <span>Hôm nay</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ký hiệu trạng thái */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-600 mb-2">Trạng thái:</p>
+                <div className="grid grid-cols-1 gap-1.5 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                    <span>Đi muộn</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span>Về sớm</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                    <span>Có OT</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                    <span>Nghỉ phép</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
         </div>
       </div>
     </div>
