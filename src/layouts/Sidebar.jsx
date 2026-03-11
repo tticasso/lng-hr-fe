@@ -71,11 +71,21 @@ const Sidebar = () => {
                   label: "Nhân viên",
                   icon: <Users size={20} />,
                 },
+              ]
+              : []),
+            // ADMIN, HR và MANAGER có thể quản lý Team
+            ...(isAdmin || isHR || isManager
+              ? [
                 {
                   path: "/hr/teampages",
                   label: "Quản lý Team",
                   icon: <UserSquare size={20} />,
                 },
+              ]
+              : []),
+            // Tiếp tục các menu khác cho ADMIN và HR
+            ...(isAdmin || isHR
+              ? [
                 {
                   path: "/hr/attendance-admin",
                   label: "Quản lý chấm công",

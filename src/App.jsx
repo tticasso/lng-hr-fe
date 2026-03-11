@@ -105,7 +105,35 @@ function App() {
                 <Route path="employees" element={<EmployeeList />} />
                 <Route path="employees/:id" element={<EmployeeDetail />} />
                 <Route path="announcements" element={<Announcements />} />
-                <Route path="teampages" element={<TeamPages />} />
+                <Route path="leavebalance" element={<LeaveBalance />} />
+              </Route>
+              
+              {/* Route riêng cho Team Management - ADMIN, HR, MANAGER có thể truy cập */}
+              <Route 
+                path="hr/teampages" 
+                element={
+                  <RequireAuth roles={["ADMIN", "HR", "MANAGER"]}>
+                    <TeamPages />
+                  </RequireAuth>
+                } 
+              />
+              
+              <Route
+                path="hr"
+                element={
+                  <RequireAuth roles={["ADMIN", "HR"]}>
+                    <Outlet />
+                  </RequireAuth>
+                }
+              >
+                <Route path="payroll-engine" element={<PayrollEngine />} />
+                <Route path="recruitment" element={<Recruitment />} />
+                <Route path="boarding" element={<OnboardingOffboarding />} />
+                <Route path="training" element={<TrainingPerformance />} />
+                <Route path="attendance-admin" element={<AttendanceAdmin />} />
+                <Route path="employees" element={<EmployeeList />} />
+                <Route path="employees/:id" element={<EmployeeDetail />} />
+                <Route path="announcements" element={<Announcements />} />
                 <Route path="leavebalance" element={<LeaveBalance />} />
               </Route>
               {/* <Route
