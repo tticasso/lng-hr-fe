@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   Home,
@@ -20,6 +20,16 @@ import {
   Timer,
   UserSquare,
   CalendarMinus,
+  ChevronDown,
+  ChevronRight,
+  Building2,
+  ClipboardCheck,
+  Network,
+  UserPlus,
+  UserPlus2,
+  Group,
+  GitBranch,
+  User,
 } from "lucide-react";
 import logoLNG from "../assets/LNG.png";
 import { useAuth } from "../context/AuthContext";
@@ -30,11 +40,20 @@ const Sidebar = () => {
   const role = localStorage.getItem("role");
   console.log("ROLE :", role);
 
+  const [expandedDropdowns, setExpandedDropdowns] = useState({});
+
   const isAdmin = role === "ADMIN";
   const isHR = role === "HR";
   const isManager = role === "MANAGER";
   const isEmployee = role === "EMPLOYEE";
   const isLEADER = role === "LEADER";
+
+  const toggleDropdown = (key) => {
+    setExpandedDropdowns(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
   const menuGroups = [
     {
       title: "KHÔNG GIAN CÁ NHÂN",
@@ -45,90 +64,74 @@ const Sidebar = () => {
           label: "Lịch làm việc",
           icon: <CalendarCheck2 size={20} />,
         },
-        // Hiển thị "Yêu cầu của tôi" cho EMPLOYEE (không phải ADMIN, HR, MANAGER)
-        ...(isEmployee
-          ? [
-            {
-              path: "/leave",
-              label: "Yêu cầu của tôi",
-              icon: <Plane size={20} />,
-            },
-          ]
-          : []),
       ],
     },
-    // Hiển thị nhóm QUẢN LÝ NHÂN SỰ cho ADMIN, HR, MANAGER
-    ...(isAdmin || isHR || isManager ||isLEADER
+    // Hiển thị nhóm QUẢN LÝ NHÂN SỰ cho ADMIN, HR, MANAGER, LEADER
+    ...(isAdmin || isHR || isManager || isLEADER
       ? [
         {
           title: "QUẢN LÝ NHÂN SỰ",
           items: [
-            // ADMIN và HR có đầy đủ menu
-            ...(isAdmin || isHR
-              ? [
+            // Dropdown Phòng ban
+            {
+              type: "dropdown",
+              key: "department",
+              label: "Phòng ban",
+              icon: <Building2 size={20} />,
+              children: [
                 {
-                  path: "/hr/employees",
-                  label: "Nhân viên",
-                  icon: <Users size={20} />,
+                  path: "/department",
+                  label: "Quản lý phòng ban",
+                  icon: <Network size={20} />,
+                  roles: ["ADMIN", "HR"]
                 },
-              ]
-              : []),
-            // ADMIN, HR và MANAGER có thể quản lý Team
-            ...(isAdmin || isHR || isManager
-              ? [
                 {
                   path: "/hr/teampages",
                   label: "Quản lý Team",
-                  icon: <UserSquare size={20} />,
+                  icon: <GitBranch size={20} />,
+                  roles: ["ADMIN", "HR", "MANAGER"]
                 },
               ]
-              : []),
-            // Tiếp tục các menu khác cho ADMIN và HR
-            ...(isAdmin || isHR
-              ? [
+            },
+            // Dropdown Nhân sự
+            {
+              type: "dropdown",
+              key: "hr",
+              label: "Nhân sự",
+              icon: <Users size={20} />,
+              children: [
                 {
-                  path: "/hr/attendance-admin",
-                  label: "Quản lý chấm công",
-                  icon: <Coins size={20} />,
+                  path: "/hr/employees",
+                  label: "Nhân viên",
+                  icon: <User size={20} />,
+                  roles: ["ADMIN", "HR"]
                 },
                 {
-                  path: "department",
-                  label: "Quản lý phòng ban",
-                  icon: <Users size={20} />,
-                },
-                {
-                  path: "/hr/announcements",
-                  label: "Thông báo",
-                  icon: <SquareStar size={20} />,
-                },
-
-                {
-                  path: "/holiday",
-                  label: "Quản lý thời gian",
-                  icon: <Timer size={20} />,
-                },
-                // {
-                //   path: "/hr/recruitment",
-                //   label: "Tuyển dụng",
-                //   icon: <BriefcaseBusiness size={20} />,
-                // },
-                // {
-                //   path: "/hr/boarding",
-                //   label: "On/Off Boarding",
-                //   icon: <Presentation size={20} />,
-                // },
-                 {
                   path: "/hr/leavebalance",
-                  label: "Quản lý lịch nghỉ phép",
-                   icon: <CalendarCheck size={20} />,
+                  label: "Quản lý số dư phép",
+                  icon: <CalendarCheck size={20} />,
+                  roles: ["ADMIN", "HR"]
                 },
               ]
-              : []),
-            // ADMIN, HR, MANAGER đều có "Quản lý yêu cầu"
+            },
+            // Menu đơn
+            {
+              path: "/holiday",
+              label: "Quản lý thời gian",
+              icon: <Timer size={20} />,
+              roles: ["ADMIN", "HR"]
+            },
+            {
+              path: "/hr/announcements",
+              label: "Thông báo",
+              icon: <SquareStar size={20} />,
+              roles: ["ADMIN", "HR"]
+            },
             {
               path: "/leave",
               label: "Quản lý yêu cầu",
               icon: <Plane size={20} />,
+              roles: ["ADMIN", "HR", "MANAGER", "LEADER"]
             },
           ],
         },
@@ -137,26 +140,36 @@ const Sidebar = () => {
     {
       title: "TIỀN LƯƠNG & PHÚC LỢI",
       items: [
-        { path: "/payroll", label: "Bảng lương", icon: <DollarSign size={20} /> },
-        // Chỉ hiển thị 2 menu này cho ADMIN và HR
+        {
+          path: "/payroll",
+          label: "Bảng lương",
+          icon: <DollarSign size={20} />
+        },
+        // Menu cho ADMIN và HR
         ...(isAdmin || isHR
           ? [
-            // { path: "/hr/reports", label: "Báo cáo", icon: <FileText size={20} /> },
+            {
+              path: "/hr/attendance-admin",
+              label: "Quản lý chấm công",
+              icon: <ClipboardCheck size={20} />,
+            },
+            {
+              path: "/allpayroll",
+              label: "Bảng lương theo tháng",
+              icon: <FileSpreadsheet size={20} />,
+            },
             {
               path: "/hr/payroll-engine",
               label: "Công cụ tính lương",
               icon: <Landmark size={20} />,
             },
-            {
-              path: "allpayroll",
-              label: "Bảng Lương theo tháng",
-              icon: <FileSpreadsheet size={20} />,
-            },
+
+
           ]
           : []),
       ],
     },
-    // Chỉ hiển thị nhóm QUẢN TRỊ HỆ THỐNG cho ADMIN (không có HR)
+    // Chỉ hiển thị nhóm QUẢN TRỊ HỆ THỐNG cho ADMIN
     ...(isAdmin
       ? [
         {
@@ -203,29 +216,101 @@ const Sidebar = () => {
             </h3>
 
             <div className="space-y-1">
-              {group.items.map((item) => (
-                <NavLink
-                  key={`${group.title}-${item.path}-${item.label}`}
-                  to={item.path}
-                  className={({ isActive }) => `
-                    relative flex items-center px-4 py-2.5 rounded-lg transition-all duration-200 font-medium text-sm
-                    ${isActive
-                      ? "bg-blue-50 text-primary"
-                      : "text-gray-500 hover:text-primary hover:bg-gray-50"
-                    }
-                  `}
-                >
-                  {({ isActive }) => (
-                    <>
-                      {isActive && (
-                        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-md" />
+              {group.items.map((item, itemIndex) => {
+                // Kiểm tra quyền truy cập cho item đơn
+                if (item.roles && !item.roles.includes(role)) {
+                  return null;
+                }
+
+                // Render dropdown
+                if (item.type === "dropdown") {
+                  const isExpanded = expandedDropdowns[item.key];
+                  const hasVisibleChildren = item.children.some(child =>
+                    !child.roles || child.roles.includes(role)
+                  );
+
+                  if (!hasVisibleChildren) return null;
+
+                  return (
+                    <div key={`${group.title}-${item.key}`}>
+                      <button
+                        onClick={() => toggleDropdown(item.key)}
+                        className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg transition-all duration-200 font-medium text-sm text-gray-500 hover:text-primary hover:bg-gray-50"
+                      >
+                        <div className="flex items-center">
+                          <span className="mr-3">{item.icon}</span>
+                          <span>{item.label}</span>
+                        </div>
+                        {isExpanded ? (
+                          <ChevronDown size={16} />
+                        ) : (
+                          <ChevronRight size={16} />
+                        )}
+                      </button>
+
+                      {isExpanded && (
+                        <div className="ml-4 mt-1 space-y-1">
+                          {item.children.map((child, childIndex) => {
+                            // Kiểm tra quyền truy cập cho child
+                            if (child.roles && !child.roles.includes(role)) {
+                              return null;
+                            }
+
+                            return (
+                              <NavLink
+                                key={`${item.key}-${child.path}-${child.label}`}
+                                to={child.path}
+                                className={({ isActive }) => `
+                                  relative flex items-center px-4 py-2 rounded-lg transition-all duration-200 font-medium text-sm
+                                  ${isActive
+                                    ? "bg-blue-50 text-primary"
+                                    : "text-gray-500 hover:text-primary hover:bg-gray-50"
+                                  }
+                                `}
+                              >
+                                {({ isActive }) => (
+                                  <>
+                                    {isActive && (
+                                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-md" />
+                                    )}
+                                    <span className="mr-3">{child.icon}</span>
+                                    <span>{child.label}</span>
+                                  </>
+                                )}
+                              </NavLink>
+                            );
+                          })}
+                        </div>
                       )}
-                      <span className="mr-3">{item.icon}</span>
-                      <span>{item.label}</span>
-                    </>
-                  )}
-                </NavLink>
-              ))}
+                    </div>
+                  );
+                }
+
+                // Render menu item thường
+                return (
+                  <NavLink
+                    key={`${group.title}-${item.path}-${item.label}`}
+                    to={item.path}
+                    className={({ isActive }) => `
+                      relative flex items-center px-4 py-2.5 rounded-lg transition-all duration-200 font-medium text-sm
+                      ${isActive
+                        ? "bg-blue-50 text-primary"
+                        : "text-gray-500 hover:text-primary hover:bg-gray-50"
+                      }
+                    `}
+                  >
+                    {({ isActive }) => (
+                      <>
+                        {isActive && (
+                          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-md" />
+                        )}
+                        <span className="mr-3">{item.icon}</span>
+                        <span>{item.label}</span>
+                      </>
+                    )}
+                  </NavLink>
+                );
+              })}
             </div>
           </div>
         ))}

@@ -351,7 +351,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                         <div>
                                             <p className="text-xs text-gray-500">Mã phòng ban</p>
                                             <p className="font-medium text-sm text-gray-800">
-                                                {teamDetail.departmentId?.deptCode || "--"}
+                                                {teamDetail.teamCode || "--"}
                                             </p>
                                         </div>
                                     </div>
