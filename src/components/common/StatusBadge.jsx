@@ -11,6 +11,7 @@ const StatusBadge = ({ status }) => {
       case "đang làm việc":
         return "bg-green-100 text-success"; // Nền nhạt, chữ đậm
       case "pending":
+      case "Chờ duyệt":
       case "probation":
       case "interviewing":
       case "thử việc":
