@@ -357,7 +357,7 @@ const EmployeeList = () => {
   };
 
   return (
-    <div className="space-y-6 relative">
+    <div className="flex flex-col h-[calc(100vh-120px)] relative">
       {/* --- EDIT MODAL (Imported Component) --- */}
       {isEditModalOpen && selectedEmployee && (
         <EditEmployeeModal
@@ -367,30 +367,32 @@ const EmployeeList = () => {
         />
       )}
 
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">
-            Quản lý nhân viên
-          </h1>
-          <p className="text-sm text-gray-500">
-            Quản lý hồ sơ nhân sự ({filteredEmployees.length} bản ghi)
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Button
-            variant="secondary"
-            className="flex items-center gap-2"
-            onClick={handleExportExcel}
-            disabled={filteredEmployees.length === 0}
-          >
-            <Download size={18} /> Xuất Excel
-          </Button>
+      {/* HEADER - Fixed */}
+      <div className="flex-shrink-0 mb-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">
+              Quản lý nhân viên
+            </h1>
+            <p className="text-sm text-gray-500">
+              Quản lý hồ sơ nhân sự ({filteredEmployees.length} bản ghi)
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              variant="secondary"
+              className="flex items-center gap-2"
+              onClick={handleExportExcel}
+              disabled={filteredEmployees.length === 0}
+            >
+              <Download size={18} /> Xuất Excel
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* TOOLBAR */}
-      <Card className="p-4">
+      {/* TOOLBAR - Fixed */}
+      <Card className="p-4 flex-shrink-0 mb-4">
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1 relative">
             <Search
@@ -456,22 +458,22 @@ const EmployeeList = () => {
         </div>
       </Card>
 
-      {/* DATA TABLE */}
-      <Card className="p-0 overflow-hidden border border-gray-200">
-        <div className="overflow-x-auto min-h-[400px]">
+      {/* DATA TABLE - Scrollable */}
+      <Card className="p-0 overflow-hidden border border-gray-200 flex-1 flex flex-col">
+        <div className="overflow-y-auto flex-1">
           {loading ? (
-            <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+            <div className="flex flex-col items-center justify-center h-full text-gray-500">
               <Loader2 size={40} className="animate-spin text-blue-500 mb-2" />
               <p>Đang tải dữ liệu...</p>
             </div>
           ) : currentEmployees.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+            <div className="flex flex-col items-center justify-center h-full text-gray-400">
               <p>Không tìm thấy nhân viên nào phù hợp.</p>
             </div>
           ) : (
             <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold tracking-wider">
+              <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
+                <tr className="text-xs uppercase text-gray-500 font-semibold tracking-wider">
                   <th className="p-4 w-10">#</th>
                   <th className="p-4">Nhân viên</th>
                   <th className="p-4">Mã NV</th>
@@ -582,8 +584,8 @@ const EmployeeList = () => {
           )}
         </div>
 
-        {/* PAGINATION FOOTER */}
-        <div className="p-4 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-gray-500">
+        {/* PAGINATION FOOTER - Fixed at bottom */}
+        <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-gray-500">
           <div>
             Hiển thị{" "}
             <strong>
