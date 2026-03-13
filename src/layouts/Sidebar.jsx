@@ -43,6 +43,7 @@ const Sidebar = () => {
   const role = localStorage.getItem("role");
   console.log("ROLE :", role);
   const NOTIFICATION_AVATAR = "https://res.cloudinary.com/drnzb64by/image/upload/v1773214517/z7609441220202_ae9c723f392d90214ab47b178bcafdcd_simbbv.jpg";
+  const NOTIFICATION_AVATAR2 = "https://res.cloudinary.com/dplhdyxgl/image/upload/v1772177306/logo_j0iody.jpg";
 
   const [expandedDropdowns, setExpandedDropdowns] = useState({});
   const { isCollapsed, toggleSidebar } = useSidebar();
@@ -216,22 +217,32 @@ const Sidebar = () => {
   };
 
   return (
-    <div className={`h-screen bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
-      {/* Header with Logo and Toggle Button */}
-      <div className="h-20 flex items-center justify-between px-4 border-b border-gray-100">
+    <div className={`h-screen bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0 transition-[width] duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-64'}`}>
+      {/* Header with Logo */}
+      <div className="h-20 flex items-center justify-center px-4 border-b border-gray-100">
         {!isCollapsed && (
           <div className="flex items-center gap-2">
             <img src={NOTIFICATION_AVATAR} alt="LNG Logo" className="w-36" />
           </div>
         )}
-        <button
-          onClick={toggleSidebar}
-          className={`p-2 rounded-lg hover:bg-gray-100 transition-colors ${isCollapsed ? 'mx-auto' : ''}`}
-          title={isCollapsed ? "Mở rộng menu" : "Thu gọn menu"}
-        >
-          {isCollapsed ? <Menu size={20} className="text-gray-600" /> : <X size={20} className="text-gray-600" />}
-        </button>
+        {isCollapsed && (
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center">
+            <img src={NOTIFICATION_AVATAR2} alt="LNG Logo" className="w-30" />
+          </div>
+        )}
       </div>
+
+      {/* Toggle Button - Modern circular design */}
+      <button
+        onClick={toggleSidebar}
+        className="absolute -right-5 top-[85%] -translate-y-1/2 z-50 w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-gray-50 transition-all shadow-md hover:shadow-lg hover:scale-110 active:scale-95 group border border-gray-200"
+        title={isCollapsed ? "Mở rộng menu" : "Thu gọn menu"}
+      >
+        <ChevronRight
+          size={20}
+          className={`text-gray-600 transition-transform duration-300 group-hover:text-gray-800 group-hover:scale-110 ${isCollapsed ? '' : 'rotate-180'}`}
+        />
+      </button>
 
       <nav className="flex-1 overflow-y-auto py-4 px-4 space-y-6">
         {menuGroups.map((group, index) => (
