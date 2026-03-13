@@ -8,6 +8,7 @@ import { notificationApi } from "../apis/notificationAPI";
 import logoImage from "../assets/logo.png";
 import { toast } from "react-toastify";
 import { useNotification } from "../context/NotificationContext";
+import { useSidebar } from "../context/SidebarContext";
 import AnnouncementDetailModal from "../components/modals/AnnouncementDetailModal";
 import { announcementAPI } from "../apis/announcements";
 
@@ -46,6 +47,7 @@ const Header = () => {
   const [jobTitle, setJobTitle] = useState("");
   const [fullName, setFullName] = useState("");
   const { openNotify, setOpenNotify } = useNotification();
+  const { isCollapsed } = useSidebar();
 
   // ✅ tab filter: all (thông báo) | unread (chưa đọc)
   const [notifyTab, setNotifyTab] = useState("all");
@@ -361,7 +363,7 @@ const Header = () => {
   return (
     <>
       {/* HEADER */}
-      <header className="h-16 bg-white shadow-sm flex items-center justify-between px-6 fixed top-0 right-0 left-64 z-30">
+      <header className={`h-16 bg-white shadow-sm flex items-center justify-between px-6 fixed top-0 right-0 z-30 transition-all duration-300 ${isCollapsed ? 'left-20' : 'left-64'}`}>
         {/* Search */}
         <div className="relative flex items-center bg-gray-100 rounded-lg px-3 py-2 w-96">
           <Search size={18} className="text-gray-400 mr-2" />

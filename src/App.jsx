@@ -32,6 +32,7 @@ import MyLeave from "./pages/announce/Myleave";
 import AllPayRoll from "./pages/payroll/AllPayRoll";
 import NotificationViewer from "./pages/notification/NotificationViewer";
 import { NotificationProvider } from "./context/NotificationContext";
+import { SidebarProvider } from "./context/SidebarContext";
 import Holiday from "./pages/holiday/Holiday";
 import Department from "./pages/department/Department";
 import TeamPages from "./pages/teamPages/TeamPages";
@@ -40,8 +41,9 @@ import LeaveBalance from "./pages/leavebalance/LeaveBalance";
 function App() {
   return (
     <>
-      <NotificationProvider>
-        <BrowserRouter>
+      <SidebarProvider>
+        <NotificationProvider>
+          <BrowserRouter>
           <Routes>
             <Route
               path="/login"
@@ -155,6 +157,7 @@ function App() {
         </BrowserRouter>
         <ToastContainer position="top-right" autoClose={3000} />
       </NotificationProvider>
+      </SidebarProvider>
     </>
   );
 }

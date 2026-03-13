@@ -30,17 +30,22 @@ import {
   Group,
   GitBranch,
   User,
+  Menu,
+  X,
 } from "lucide-react";
 import logoLNG from "../assets/LNG.png";
 import { useAuth } from "../context/AuthContext";
+import { useSidebar } from "../context/SidebarContext";
 import TeamPages from "../pages/teamPages/TeamPages";
 
 const Sidebar = () => {
   const navigate = useNavigate();
   const role = localStorage.getItem("role");
   console.log("ROLE :", role);
+  const NOTIFICATION_AVATAR = "https://res.cloudinary.com/drnzb64by/image/upload/v1773214517/z7609441220202_ae9c723f392d90214ab47b178bcafdcd_simbbv.jpg";
 
   const [expandedDropdowns, setExpandedDropdowns] = useState({});
+  const { isCollapsed, toggleSidebar } = useSidebar();
 
   const isAdmin = role === "ADMIN";
   const isHR = role === "HR";
@@ -49,11 +54,21 @@ const Sidebar = () => {
   const isLEADER = role === "LEADER";
 
   const toggleDropdown = (key) => {
+    if (isCollapsed) {
+      toggleSidebar();
+    }
     setExpandedDropdowns(prev => ({
       ...prev,
       [key]: !prev[key]
     }));
   };
+
+  // Đóng tất cả dropdown khi sidebar thu gọn
+  React.useEffect(() => {
+    if (isCollapsed) {
+      setExpandedDropdowns({});
+    }
+  }, [isCollapsed]);
   const menuGroups = [
     {
       title: "KHÔNG GIAN CÁ NHÂN",
@@ -201,19 +216,31 @@ const Sidebar = () => {
   };
 
   return (
-    <div className="h-screen w-64 bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0">
-      <div className="h-20 flex items-center">
-        <div className="flex items-center gap-2 px-6">
-          <img src={logoLNG} alt="LNG Logo" className="w-36" />
-        </div>
+    <div className={`h-screen bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
+      {/* Header with Logo and Toggle Button */}
+      <div className="h-20 flex items-center justify-between px-4 border-b border-gray-100">
+        {!isCollapsed && (
+          <div className="flex items-center gap-2">
+            <img src={NOTIFICATION_AVATAR} alt="LNG Logo" className="w-36" />
+          </div>
+        )}
+        <button
+          onClick={toggleSidebar}
+          className={`p-2 rounded-lg hover:bg-gray-100 transition-colors ${isCollapsed ? 'mx-auto' : ''}`}
+          title={isCollapsed ? "Mở rộng menu" : "Thu gọn menu"}
+        >
+          {isCollapsed ? <Menu size={20} className="text-gray-600" /> : <X size={20} className="text-gray-600" />}
+        </button>
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4 px-4 space-y-6">
         {menuGroups.map((group, index) => (
           <div key={index}>
-            <h3 className="px-4 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-              {group.title}
-            </h3>
+            {!isCollapsed && (
+              <h3 className="px-4 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                {group.title}
+              </h3>
+            )}
 
             <div className="space-y-1">
               {group.items.map((item, itemIndex) => {
@@ -235,20 +262,23 @@ const Sidebar = () => {
                     <div key={`${group.title}-${item.key}`}>
                       <button
                         onClick={() => toggleDropdown(item.key)}
-                        className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg transition-all duration-200 font-medium text-sm text-gray-500 hover:text-primary hover:bg-gray-50"
+                        className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg transition-all duration-200 font-medium text-sm text-gray-500 hover:text-primary hover:bg-gray-50 ${isCollapsed ? 'justify-center' : ''}`}
+                        title={isCollapsed ? item.label : ''}
                       >
                         <div className="flex items-center">
-                          <span className="mr-3">{item.icon}</span>
-                          <span>{item.label}</span>
+                          <span className={isCollapsed ? '' : 'mr-3'}>{item.icon}</span>
+                          {!isCollapsed && <span>{item.label}</span>}
                         </div>
-                        {isExpanded ? (
-                          <ChevronDown size={16} />
-                        ) : (
-                          <ChevronRight size={16} />
+                        {!isCollapsed && (
+                          isExpanded ? (
+                            <ChevronDown size={16} />
+                          ) : (
+                            <ChevronRight size={16} />
+                          )
                         )}
                       </button>
 
-                      {isExpanded && (
+                      {isExpanded && !isCollapsed && (
                         <div className="ml-4 mt-1 space-y-1">
                           {item.children.map((child, childIndex) => {
                             // Kiểm tra quyền truy cập cho child
@@ -297,15 +327,17 @@ const Sidebar = () => {
                         ? "bg-blue-50 text-primary"
                         : "text-gray-500 hover:text-primary hover:bg-gray-50"
                       }
+                      ${isCollapsed ? 'justify-center' : ''}
                     `}
+                    title={isCollapsed ? item.label : ''}
                   >
                     {({ isActive }) => (
                       <>
-                        {isActive && (
+                        {isActive && !isCollapsed && (
                           <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-md" />
                         )}
-                        <span className="mr-3">{item.icon}</span>
-                        <span>{item.label}</span>
+                        <span className={isCollapsed ? '' : 'mr-3'}>{item.icon}</span>
+                        {!isCollapsed && <span>{item.label}</span>}
                       </>
                     )}
                   </NavLink>
@@ -319,16 +351,19 @@ const Sidebar = () => {
       <div className="p-4 border-t border-gray-100 mt-auto">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors font-medium group"
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors font-medium group ${isCollapsed ? 'justify-center' : ''}`}
+          title={isCollapsed ? "Đăng xuất" : ''}
         >
           <LogOut size={20} className="group-hover:text-red-600" />
-          <span className="group-hover:text-red-600">Đăng xuất</span>
+          {!isCollapsed && <span className="group-hover:text-red-600">Đăng xuất</span>}
         </button>
       </div>
 
-      <div className="p-4 text-xs text-center text-gray-400">
-        © 2026 LNG Inc.
-      </div>
+      {!isCollapsed && (
+        <div className="p-4 text-xs text-center text-gray-400">
+          © 2026 LNG Inc.
+        </div>
+      )}
     </div>
   );
 };
