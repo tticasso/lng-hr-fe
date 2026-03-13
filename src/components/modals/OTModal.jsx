@@ -28,6 +28,13 @@ const ModalOT = ({
   initialValues,
 }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
+  const [showValidation, setShowValidation] = useState(false);
+  const [touched, setTouched] = useState({
+    date: false,
+    startTime: false,
+    endTime: false,
+    reason: false,
+  });
 
   const [date, setDate] = useState(null); // dayjs
   const [otType, setOtType] = useState("WEEKDAY");
@@ -47,6 +54,15 @@ const ModalOT = ({
   // reset/init when open
   useEffect(() => {
     if (!open) return;
+
+    // Reset validation states when modal opens
+    setShowValidation(false);
+    setTouched({
+      date: false,
+      startTime: false,
+      endTime: false,
+      reason: false,
+    });
 
     setDate(initialValues?.date ? dayjs(initialValues.date) : null);
 
@@ -79,7 +95,12 @@ const ModalOT = ({
   }, [date, startTime, endTime, reason]);
 
   const handleOk = async () => {
-    if (!canSubmit) return;
+    setShowValidation(true);
+    
+    // Kiểm tra validation - nếu không đủ thì chỉ hiển thị errors, không call API
+    if (!canSubmit) {
+      return; // Dừng lại, không call API
+    }
 
     const payload = makePayload({ date, startTime, endTime, reason });
 
@@ -90,6 +111,14 @@ const ModalOT = ({
     } finally {
       setConfirmLoading(false);
     }
+  };
+
+  const handleFieldTouch = (field) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+  };
+
+  const shouldShowError = (field, condition) => {
+    return (showValidation || touched[field]) && condition;
   };
 
   if (!open) return null;
@@ -126,14 +155,17 @@ const ModalOT = ({
             <label className={labelClass}>Ngày OT *</label>
             <DatePicker
               value={date}
-              onChange={(v) => setDate(v)}
+              onChange={(v) => {
+                setDate(v);
+                handleFieldTouch('date');
+              }}
               format="DD/MM/YYYY"
               placeholder="Chọn ngày"
               className="w-full"
               size="large"
-              status={!date ? "error" : ""}
+              status={shouldShowError('date', !date) ? "error" : ""}
             />
-            {!date && (
+            {shouldShowError('date', !date) && (
               <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
                 <AlertCircle size={12} /> Vui lòng chọn ngày OT
               </p>
@@ -146,15 +178,18 @@ const ModalOT = ({
               <label className={labelClass}>Giờ bắt đầu *</label>
               <TimePicker
                 value={startTime}
-                onChange={(v) => setStartTime(v)}
+                onChange={(v) => {
+                  setStartTime(v);
+                  handleFieldTouch('startTime');
+                }}
                 format="HH:mm"
                 className="w-full"
                 placeholder="Chọn giờ"
                 minuteStep={5}
                 size="large"
-                status={!startTime ? "error" : ""}
+                status={shouldShowError('startTime', !startTime) ? "error" : ""}
               />
-              {!startTime && (
+              {shouldShowError('startTime', !startTime) && (
                 <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
                   <AlertCircle size={12} /> Vui lòng chọn giờ bắt đầu
                 </p>
@@ -164,25 +199,28 @@ const ModalOT = ({
               <label className={labelClass}>Giờ kết thúc *</label>
               <TimePicker
                 value={endTime}
-                onChange={(v) => setEndTime(v)}
+                onChange={(v) => {
+                  setEndTime(v);
+                  handleFieldTouch('endTime');
+                }}
                 format="HH:mm"
                 className="w-full"
                 placeholder="Chọn giờ"
                 minuteStep={5}
                 size="large"
                 status={
-                  !endTime ||
-                  (endTime && startTime && dayjs(endTime).isSameOrBefore(dayjs(startTime)))
-                    ? "error"
-                    : ""
+                  shouldShowError('endTime', 
+                    !endTime ||
+                    (endTime && startTime && dayjs(endTime).isSameOrBefore(dayjs(startTime)))
+                  ) ? "error" : ""
                 }
               />
-              {!endTime && (
+              {shouldShowError('endTime', !endTime) && (
                 <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
                   <AlertCircle size={12} /> Vui lòng chọn giờ kết thúc
                 </p>
               )}
-              {endTime && startTime && dayjs(endTime).isSameOrBefore(dayjs(startTime)) && (
+              {shouldShowError('endTime', endTime && startTime && dayjs(endTime).isSameOrBefore(dayjs(startTime))) && (
                 <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
                   <AlertCircle size={12} /> Giờ kết thúc phải sau giờ bắt đầu
                 </p>
@@ -195,12 +233,15 @@ const ModalOT = ({
             <label className={labelClass}>Lý do xin OT *</label>
             <textarea
               value={reason}
-              onChange={(e) => setReason(e.target.value)}
+              onChange={(e) => {
+                setReason(e.target.value);
+                handleFieldTouch('reason');
+              }}
               placeholder="Nhập lý do..."
               rows={3}
-              className={inputClass(reason.trim() === "")}
+              className={inputClass(shouldShowError('reason', reason.trim() === ""))}
             />
-            {reason.trim() === "" && (
+            {shouldShowError('reason', reason.trim() === "") && (
               <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
                 <AlertCircle size={12} /> Vui lòng nhập lý do xin OT
               </p>
@@ -220,7 +261,7 @@ const ModalOT = ({
             <button
               type="button"
               onClick={handleOk}
-              disabled={!canSubmit || confirmLoading}
+              disabled={confirmLoading}
               className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium disabled:opacity-50 flex items-center gap-2"
             >
               {confirmLoading ? (

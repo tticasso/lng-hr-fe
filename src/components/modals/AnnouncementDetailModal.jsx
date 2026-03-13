@@ -122,11 +122,11 @@ const AnnouncementDetailModal = ({ isOpen, onClose, announcementId }) => {
 
               {/* Meta Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
+                {/* <div className="flex items-center gap-2 text-sm text-gray-600">
                   <User size={16} className="text-blue-500" />
                   <span className="font-medium">Người tạo:</span>
                   <span>{announcement.authorId?.username || "Unknown"}</span>
-                </div>
+                </div> */}
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <Calendar size={16} className="text-green-500" />
                   <span className="font-medium">Ngày đăng:</span>

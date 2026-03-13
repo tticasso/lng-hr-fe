@@ -869,7 +869,7 @@ const MyLeave = () => {
                                     <th className="p-4">Lý do</th>
                                     <th className="p-4">Trạng thái</th>
                                     <th className="p-4">Ngày tạo</th>
-                                    {canApprove && <th className="p-4 text-center">Action</th>}
+                                    {canApprove && <th className="p-4 text-center">Hành Động</th>}
                                 </tr>
                             </thead>
 

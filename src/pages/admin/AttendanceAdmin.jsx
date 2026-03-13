@@ -1165,7 +1165,7 @@ const AttendanceAdmin = () => {
             <table className="w-full text-left text-sm border-collapse">
               <thead className="bg-white text-gray-500 font-bold border-b border-gray-200 uppercase text-xs sticky top-0 z-10 shadow-sm">
                 <tr>
-                  <th className="p-4 w-14 text-center">#</th>
+                  <th className="p-4 w-14 text-center">STT</th>
                   <th className="p-4">Nhân viên</th>
                   <th className="p-4">Phòng ban</th>
                   <th className="p-4 text-center">Ngày công</th>
