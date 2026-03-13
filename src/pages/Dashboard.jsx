@@ -348,7 +348,7 @@ const Dashboard = () => {
       status: ot.status === "PENDING" ? "Pending" : "Approved",
     })),
   ];
-  
+
   const pendingCount = allRequests.filter((r) => r.status === "Pending").length;
   const approvedCount = allRequests.filter((r) => r.status === "Approved").length;
 
@@ -477,7 +477,7 @@ const Dashboard = () => {
                   Ngày Thành Lập Gia Đình của Nam
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  Chúc a trăm năm hạnh phúc 
+                  Chúc a trăm năm hạnh phúc
                 </p>
               </div>
             </div>
@@ -485,14 +485,14 @@ const Dashboard = () => {
             {/* Sự kiện 2: Townhall */}
             <div className="flex gap-3 items-start">
               <div className="w-12 text-center pt-1">
-                <span className="text-sm font-medium text-gray-500">08/03</span>
+                <span className="text-sm font-medium text-gray-500">29/03</span>
               </div>
               <div className="pt-1 border-l-2 border-gray-200 pl-3">
                 <p className="text-sm font-medium text-gray-700">
-                 Ngày Quốc Tế Phụ Nữ 🌹
+                  Chúc mừng sinh nhật Linh 🎂🎉
                 </p>
-                <p className="text-xs text-red-600">
-                  Chúc các chị em lúc nào cũng xinh như trên mạng  🎉 🎉 🎉
+                <p className="text-xs text-black-600">
+                  Chúc Linh tuổi mới thật nhiều sức khỏe, luôn vui vẻ và gặp thật nhiều may mắn trong cuộc sống. Mong rằng mọi dự định và ước mơ của Linh trong năm mới đều sẽ thành hiện thực. Hãy luôn giữ nụ cười rạng rỡ và tận hưởng thật nhiều khoảnh khắc hạnh phúc nhé. Chúc Linh có một ngày sinh nhật thật ý nghĩa và tràn đầy niềm vui! ✨🎈
                 </p>
               </div>
             </div>
@@ -682,7 +682,7 @@ const Dashboard = () => {
               </button>
 
               {/* Action 4: Gửi Ticket HR */}
-              <button 
+              <button
                 className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-purple-50 hover:border-purple-200 hover:shadow-sm transition-all group"
                 onClick={() => setIsHRSupportModalOpen(true)}
               >
