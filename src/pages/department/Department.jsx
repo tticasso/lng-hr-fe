@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Building2, Users, Calendar, Edit, Trash2, Plus, User, X, Info, Eye } from "lucide-react";
+import { Building2, Users, Calendar, Edit, Trash2, Plus, User, X, Info, Eye, Search, RotateCcw } from "lucide-react";
 import { departmentApi } from "../../apis/departmentApi";
 import { toast } from "react-toastify";
 import Card from "../../components/common/Card";
@@ -15,6 +15,7 @@ const Department = () => {
     const [loadingDetail, setLoadingDetail] = useState(false);
     const [editingDepartment, setEditingDepartment] = useState(null);
     const [employees, setEmployees] = useState([]);
+    const [searchTerm, setSearchTerm] = useState("");
     const [formData, setFormData] = useState({
         name: "",
         deptCode: "",
@@ -175,27 +176,65 @@ const Department = () => {
         });
     };
 
+    // Lọc phòng ban theo tên hoặc mã
+    const filteredDepartments = departments.filter((dept) => {
+        const search = searchTerm.toLowerCase().trim();
+        return (
+            dept.name.toLowerCase().includes(search) ||
+            dept.deptCode.toLowerCase().includes(search)
+        );
+    });
+
+    // Reset bộ lọc
+    const handleResetFilter = () => {
+        setSearchTerm("");
+    };
+
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                        {/* <Building2 size={28} className="text-blue-600" /> */}
-                        Quản lý Phòng ban
-                    </h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Danh sách các phòng ban trong công ty
-                    </p>
+            {/* Header - Sticky */}
+            <div className="sticky top-0 z-10 bg-white pb-4 -mx-6 px-6 -mt-6 pt-6 shadow-sm">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                            {/* <Building2 size={28} className="text-blue-600" /> */}
+                            Quản lý Phòng ban
+                        </h1>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Danh sách các phòng ban trong công ty
+                        </p>
+                    </div>
+
+                    <Button
+                        onClick={handleAdd}
+                        className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                    >
+                        <Plus size={18} />
+                        Thêm phòng ban
+                    </Button>
                 </div>
 
-                <Button
-                    onClick={handleAdd}
-                    className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-                >
-                    <Plus size={18} />
-                    Thêm phòng ban
-                </Button>
+                {/* Bộ lọc */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex-1 relative">
+                        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Tìm kiếm theo tên hoặc mã phòng ban..."
+                            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        />
+                    </div>
+                    <Button
+                        onClick={handleResetFilter}
+                        variant="secondary"
+                        className="flex items-center gap-2 whitespace-nowrap"
+                    >
+                        <RotateCcw size={16} />
+                        Reset
+                    </Button>
+                </div>
             </div>
 
             {/* Department List */}
@@ -206,12 +245,12 @@ const Department = () => {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {departments.length === 0 ? (
+                    {filteredDepartments.length === 0 ? (
                         <div className="col-span-full p-12 text-center text-gray-500 border border-gray-200 rounded-lg">
-                            Chưa có phòng ban nào
+                            {searchTerm ? "Không tìm thấy phòng ban nào" : "Chưa có phòng ban nào"}
                         </div>
                     ) : (
-                        departments.map((dept) => (
+                        filteredDepartments.map((dept) => (
                             <Card key={dept._id} className="hover:shadow-lg transition-shadow">
                                 <div className="p-6 space-y-4">
                                     {/* Header */}

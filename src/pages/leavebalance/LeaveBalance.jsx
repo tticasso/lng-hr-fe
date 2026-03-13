@@ -163,34 +163,36 @@ const LeaveBalance = () => {
         }
     };
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Quản lý số dư phép</h1>
-                    <p className="text-sm text-gray-500">
-                        Theo dõi số dư phép năm của nhân viên ({filteredData.length} bản ghi)
-                    </p>
+        <div className="flex flex-col h-[calc(100vh-120px)]">
+            {/* Header - Fixed */}
+            <div className="flex-shrink-0 mb-4">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-800">Quản lý số dư phép</h1>
+                        <p className="text-sm text-gray-500">
+                            Theo dõi số dư phép năm của nhân viên ({filteredData.length} bản ghi)
+                        </p>
+                    </div>
+                    <Button
+                        variant="secondary"
+                        className="flex items-center gap-2"
+                        onClick={callAPI}
+                    >
+                        {loading ? (
+                            <Loader2 size={18} className="animate-spin" />
+                        ) : (
+                            <RefreshCw size={18} />
+                        )}
+                        Làm mới
+                    </Button>
                 </div>
-                <Button
-                    variant="secondary"
-                    className="flex items-center gap-2"
-                    onClick={callAPI}
-                >
-                    {loading ? (
-                        <Loader2 size={18} className="animate-spin" />
-                    ) : (
-                        <RefreshCw size={18} />
-                    )}
-                    Làm mới
-                </Button>
             </div>
 
             {/* Stats Cards */}
         
 
-            {/* Filters */}
-            <Card className="p-4">
+            {/* Filters - Fixed */}
+            <Card className="p-4 flex-shrink-0 mb-4">
                 <div className="flex flex-col lg:flex-row gap-4">
                     <div className="flex-1 relative">
                         <Search
@@ -226,23 +228,23 @@ const LeaveBalance = () => {
                     </div> */}
                 </div>
             </Card>
-            {/* Data Table */}
-            <Card className="p-0 overflow-hidden border border-gray-200">
-                <div className="overflow-x-auto">
+            {/* Data Table - Scrollable */}
+            <Card className="p-0 overflow-hidden border border-gray-200 flex-1 flex flex-col">
+                <div className="overflow-y-auto flex-1">
                     {loading ? (
-                        <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+                        <div className="flex flex-col items-center justify-center h-full text-gray-500">
                             <Loader2 size={40} className="animate-spin text-blue-500 mb-2" />
                             <p>Đang tải dữ liệu...</p>
                         </div>
                     ) : filteredData.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                        <div className="flex flex-col items-center justify-center h-full text-gray-400">
                             <Calendar size={48} className="mb-3 text-gray-300" />
                             <p>Không tìm thấy dữ liệu phù hợp.</p>
                         </div>
                     ) : (
                         <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold tracking-wider">
+                            <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
+                                <tr className="text-xs uppercase text-gray-500 font-semibold tracking-wider">
                                     <th className="p-4 w-10">#</th>
                                     <th className="p-4">Nhân viên</th>
                                     <th className="p-4">Năm</th>
@@ -352,9 +354,9 @@ const LeaveBalance = () => {
                     )}
                 </div>
 
-                {/* Pagination Info */}
+                {/* Pagination Info - Fixed at bottom */}
                 {!loading && filteredData.length > 0 && (
-                    <div className="p-4 border-t border-gray-200 bg-gray-50 text-sm text-gray-500">
+                    <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-gray-50 text-sm text-gray-500">
                         Hiển thị <strong>{filteredData.length}</strong> bản ghi
                     </div>
                 )}
