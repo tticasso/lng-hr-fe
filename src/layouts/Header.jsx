@@ -363,7 +363,7 @@ const Header = () => {
   return (
     <>
       {/* HEADER */}
-      <header className={`h-16 bg-white shadow-sm flex items-center justify-between px-6 fixed top-0 right-0 z-30 transition-all duration-300 ${isCollapsed ? 'left-20' : 'left-64'}`}>
+      <header className={`h-16 bg-white shadow-sm flex items-center justify-between px-6 fixed top-0 right-0 z-30 transition-[left] duration-300 ease-in-out ${isCollapsed ? 'left-20' : 'left-64'}`}>
         {/* Search */}
         <div className="relative flex items-center bg-gray-100 rounded-lg px-3 py-2 w-96">
           <Search size={18} className="text-gray-400 mr-2" />

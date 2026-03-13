@@ -12,7 +12,7 @@ const MainLayout = () => {
     <div className="flex h-screen">
       <Sidebar />
 
-      <div className={`flex-1 flex flex-col transition-all duration-300 ${isCollapsed ? 'ml-20' : 'ml-64'}`}>
+      <div className={`flex-1 flex flex-col transition-[margin-left] duration-300 ease-in-out ${isCollapsed ? 'ml-20' : 'ml-64'}`}>
         <Header />
 
         {/* Nội dung trang (có scroll nếu dài quá) */}
