@@ -54,6 +54,10 @@ const Sidebar = () => {
   const isEmployee = role === "EMPLOYEE";
   const isLEADER = role === "LEADER";
 
+  // Debug log
+  console.log("DEBUG - isEmployee:", isEmployee);
+  console.log("DEBUG - role comparison:", role, "===", "EMPLOYEE", "->", role === "EMPLOYEE");
+
   const toggleDropdown = (key) => {
     if (isCollapsed) {
       toggleSidebar();
@@ -82,8 +86,8 @@ const Sidebar = () => {
         },
       ],
     },
-    // Hiển thị nhóm QUẢN LÝ NHÂN SỰ cho ADMIN, HR, MANAGER, LEADER
-    ...(isAdmin || isHR || isManager || isLEADER
+    // Hiển thị nhóm QUẢN LÝ NHÂN SỰ cho ADMIN, HR, MANAGER, LEADER, EMPLOYEE
+    ...(isAdmin || isHR || isManager || isLEADER || isEmployee
       ? [
         {
           title: "QUẢN LÝ NHÂN SỰ",
@@ -145,9 +149,9 @@ const Sidebar = () => {
             },
             {
               path: "/leave",
-              label: "Quản lý yêu cầu",
+              label: isEmployee ? "Yêu cầu của tôi" : "Quản lý yêu cầu",
               icon: <Plane size={20} />,
-              roles: ["ADMIN", "HR", "MANAGER", "LEADER"]
+              roles: ["ADMIN", "HR", "MANAGER", "LEADER","EMPLOYEE"]
             },
           ],
         },
