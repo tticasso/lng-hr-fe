@@ -52,7 +52,7 @@ const Login = () => {
 
       // 3. Gọi API getMe để lấy thông tin chi tiết (bao gồm isProfileUpdated)
       const resMe = await employeeApi.getMe();
-
+       console.log("EMPLOYEE + 2")
       // Lấy object employee từ response getMe
       // Cấu trúc response getMe thường là { status: "success", data: { employee: {...} } }
       const responseBody = resMe.data;

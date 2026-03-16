@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Bell, Search, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { employeeApi } from "../apis/employeeApi";
 import NotificationDetailModal from "../components/modals/NotificationDetailModal";
 import useSocket from "../pages/notification/useSocket";
 import { notificationApi } from "../apis/notificationAPI";
@@ -9,6 +8,7 @@ import logoImage from "../assets/logo.png";
 import { toast } from "react-toastify";
 import { useNotification } from "../context/NotificationContext";
 import { useSidebar } from "../context/SidebarContext";
+import { useAuth } from "../context/AuthContext";
 import AnnouncementDetailModal from "../components/modals/AnnouncementDetailModal";
 import { announcementAPI } from "../apis/announcements";
 
@@ -44,10 +44,13 @@ const formatNotifyTime = (dateInput) => {
 };
 
 const Header = () => {
-  const [jobTitle, setJobTitle] = useState("");
-  const [fullName, setFullName] = useState("");
+  const { user } = useAuth(); // Lấy user từ AuthContext thay vì gọi API
   const { openNotify, setOpenNotify } = useNotification();
   const { isCollapsed } = useSidebar();
+
+  // Lấy thông tin từ user context thay vì gọi API
+  const fullName = user?.fullName || "";
+  const jobTitle = user?.jobTitle || "";
 
   // ✅ tab filter: all (thông báo) | unread (chưa đọc)
   const [notifyTab, setNotifyTab] = useState("all");
@@ -63,20 +66,6 @@ const Header = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const callAPI = async () => {
-      try {
-        const res = await employeeApi.getMe();
-        const emp = res?.data?.data?.employee;
-        setFullName(emp?.fullName || "");
-        setJobTitle(emp?.jobTitle || "");
-      } catch (error) {
-        console.error(error);
-      }
-    };
-    callAPI();
-  }, []);
 
   const initials = useMemo(() => {
     const s = fullName.trim();
