@@ -114,7 +114,7 @@ function App() {
               <Route 
                 path="hr/teampages" 
                 element={
-                  <RequireAuth roles={["ADMIN", "HR", "MANAGER"]}>
+                  <RequireAuth roles={["ADMIN", "HR", "MANAGER","LEADER"]}>
                     <TeamPages />
                   </RequireAuth>
                 } 
