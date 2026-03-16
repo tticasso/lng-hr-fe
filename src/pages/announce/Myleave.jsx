@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { Search, Loader2, RefreshCw, CheckCircle2, XCircle, Eye } from "lucide-react";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
@@ -94,11 +94,11 @@ const MyLeave = () => {
     const [activeTab, setActiveTab] = useState("LEAVE"); // "LEAVE" | "OT"
 
     // ✅ Nhận activeTab từ navigation state
-    useEffect(() => {
-        if (location.state?.activeTab) {
-            setActiveTab(location.state.activeTab);
-        }
-    }, [location.state]);
+    // useEffect(() => {
+    //     if (location.state?.activeTab && location.state.activeTab !== activeTab) {
+    //         setActiveTab(location.state.activeTab);
+    //     }
+    // }, [location.state, activeTab]);
 
     // LEAVE
     const [loading, setLoading] = useState(true);
@@ -142,6 +142,32 @@ const MyLeave = () => {
 
     // ✅ Lưu approval level của user hiện tại
     const [userApprovalLevel, setUserApprovalLevel] = useState(null);
+
+    // ✅ Ref để track đã fetch data chưa
+    const hasFetchedLeaves = useRef(false);
+    const hasFetchedOTs = useRef(false);
+
+    // ✅ Gộp useEffect để fetch data dựa trên activeTab và pagination (chỉ cho LEAVE tab)
+    useEffect(() => {
+        console.log("🔄 useEffect triggered:", { activeTab, page: pagination.page });
+        
+        if (activeTab === "LEAVE") {
+            console.log("📞 Calling fetchLeaves...");
+            const t = setTimeout(() => {
+                fetchLeaves();
+                hasFetchedLeaves.current = true;
+            }, 300);
+            return () => clearTimeout(t);
+        } else if (activeTab === "OT") {
+            console.log("📞 Calling fetchOTs...");
+            const t = setTimeout(() => {
+                fetchOTs();
+                hasFetchedOTs.current = true;
+            }, 200);
+            return () => clearTimeout(t);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab]); // Chỉ cần page, không cần limit
 
     const pendingOTCount = useMemo(() => {
         return ots.filter((ot) => normalizeStatus(ot?.status) === "PENDING").length;
@@ -194,12 +220,6 @@ const MyLeave = () => {
         () => otFilters.searchName.trim().toLowerCase(),
         [otFilters.searchName]
     );
-
-    useEffect(() => {
-        // fetchLeaves(); // ✅ Removed - sẽ được gọi bởi useEffect theo activeTab
-        fetchOTs();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
 
     const fetchLeaves = async () => {
         setLoading(true);
@@ -298,20 +318,6 @@ const MyLeave = () => {
             setOtLoading(false);
         }
     };
-
-    useEffect(() => {
-        if (activeTab !== "LEAVE") return;
-        const t = setTimeout(() => fetchLeaves(), 300);
-        return () => clearTimeout(t);
-        // eslint-disable-next-line
-    }, [activeTab, pagination.page, pagination.limit]);
-
-    useEffect(() => {
-        if (activeTab !== "OT") return;
-        const t = setTimeout(() => fetchOTs(), 200);
-        return () => clearTimeout(t);
-        // eslint-disable-next-line
-    }, [activeTab]);
 
     const filteredLeaves = useMemo(() => {
         const type = filters.leaveType;
