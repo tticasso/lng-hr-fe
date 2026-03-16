@@ -48,6 +48,7 @@ const MyPayslip = () => {
 
           // 2. Fetch employee detail để lấy thông tin thiếu
           const empRes = await employeeApi.getMe();
+           console.log("EMPLOYEE + 3")
           const empData = empRes.data?.data?.employee || empRes.data?.employee;
           setEmployeeDetail(empData);
         }

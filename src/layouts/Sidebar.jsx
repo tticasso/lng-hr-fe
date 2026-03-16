@@ -149,7 +149,7 @@ const Sidebar = () => {
             },
             {
               path: "/leave",
-              label: isEmployee ? "Yêu cầu của tôi" : "Yêu cầu",
+              label:"Đơn Nghỉ/OT",
               icon: <Plane size={20} />,
               roles: ["ADMIN", "HR", "MANAGER", "LEADER","EMPLOYEE"]
             },

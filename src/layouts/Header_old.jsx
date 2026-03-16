@@ -50,6 +50,7 @@ const Header = () => {
       try {
         const res = await employeeApi.getMe();
         const emp = res?.data?.data?.employee;
+        console.log("EMPLOYEE + 1")
         setFullName(emp?.fullName || "");
         setJobTitle(emp?.jobTitle || "");
       } catch (error) {
