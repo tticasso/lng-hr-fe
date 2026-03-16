@@ -96,20 +96,20 @@ const Sidebar = () => {
             {
               type: "dropdown",
               key: "department",
-              label: "Phòng ban",
+              label: "Bộ phận",
               icon: <Building2 size={20} />,
               children: [
                 {
                   path: "/department",
-                  label: "Quản lý phòng ban",
+                  label: "Phòng ban",
                   icon: <Network size={20} />,
-                  roles: ["ADMIN", "HR"]
+                  roles: ["ADMIN", "HR","MANAGER"]
                 },
                 {
                   path: "/hr/teampages",
-                  label: "Quản lý Team",
+                  label: "Team",
                   icon: <GitBranch size={20} />,
-                  roles: ["ADMIN", "HR", "MANAGER"]
+                  roles: ["ADMIN", "HR", "MANAGER","LEADER"]
                 },
               ]
             },
@@ -128,7 +128,7 @@ const Sidebar = () => {
                 },
                 {
                   path: "/hr/leavebalance",
-                  label: "Quản lý số dư phép",
+                  label: "Công phép",
                   icon: <CalendarCheck size={20} />,
                   roles: ["ADMIN", "HR"]
                 },
@@ -137,7 +137,7 @@ const Sidebar = () => {
             // Menu đơn
             {
               path: "/holiday",
-              label: "Quản lý thời gian",
+              label: "Lịch nghỉ",
               icon: <Timer size={20} />,
               roles: ["ADMIN", "HR"]
             },
@@ -149,7 +149,7 @@ const Sidebar = () => {
             },
             {
               path: "/leave",
-              label: isEmployee ? "Yêu cầu của tôi" : "Quản lý yêu cầu",
+              label: isEmployee ? "Yêu cầu của tôi" : "Yêu cầu",
               icon: <Plane size={20} />,
               roles: ["ADMIN", "HR", "MANAGER", "LEADER","EMPLOYEE"]
             },
@@ -162,7 +162,7 @@ const Sidebar = () => {
       items: [
         {
           path: "/payroll",
-          label: "Bảng lương",
+          label: "Phiếu lương",
           icon: <DollarSign size={20} />
         },
         // Menu cho ADMIN và HR
@@ -170,17 +170,17 @@ const Sidebar = () => {
           ? [
             {
               path: "/hr/attendance-admin",
-              label: "Quản lý chấm công",
+              label: "Chấm công",
               icon: <ClipboardCheck size={20} />,
             },
             {
               path: "/allpayroll",
-              label: "Bảng lương theo tháng",
+              label: "Bảng lương",
               icon: <FileSpreadsheet size={20} />,
             },
             {
               path: "/hr/payroll-engine",
-              label: "Công cụ tính lương",
+              label: "Tính lương",
               icon: <Landmark size={20} />,
             },
 
