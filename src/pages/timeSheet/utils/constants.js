@@ -33,6 +33,7 @@ export const legendItems = {
     { color: "bg-orange-100 border-orange-200", label: "Cuối tuần" },
     { color: "bg-purple-50 border-purple-200", label: "Nghỉ có lương" },
     { color: "bg-orange-50 border-orange-200", label: "Nghỉ không lương" },
+    { color: "bg-teal-50 border-teal-200", label: "Nghỉ luân phiên" },
     { color: "bg-green-100 border-green-200", label: "Ngày đã qua" },
     { color: "bg-blue-100 border-blue-400 ring-1 ring-blue-400", label: "Hôm nay" },
   ],

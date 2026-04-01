@@ -473,7 +473,7 @@ const AllPayRoll = () => {
                                     <th className="p-4 text-right">Lương cơ bản</th>
                                     <th className="p-4 text-right">Lương làm thêm</th>
                                     <th className="p-4 text-right">Phụ cấp</th>
-                                    <th className="p-4 text-right">Khấu trừ</th>
+                                    <th className="p-4 text-right">Công chuẩn</th>
                                     <th className="p-4 text-right bg-blue-100">Thực nhận</th>
                                     <th className="p-4 text-center">Trạng thái</th>
                                 </tr>
@@ -522,7 +522,7 @@ const AllPayRoll = () => {
                                                 {formatMoney(row.totalAllowance || 0)}
                                             </td>
                                             <td className="p-4 text-right font-mono text-red-600">
-                                                -{formatMoney(row.totalDeduction || 0)}
+                                               {row.actualWorkDays}/{row.standardWorkDays}
                                             </td>
                                             <td className="p-4 text-right font-mono font-bold text-blue-700 bg-blue-50/50 text-base">
                                                 {formatMoney(row.netIncome || 0)}
