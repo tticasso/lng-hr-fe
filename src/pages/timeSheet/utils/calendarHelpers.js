@@ -47,6 +47,10 @@ export const getDayStyle = (day, selectedDate, currentMonth, currentYear, todayI
   if (day.type === "weekend")
     return `${baseClass} ${isSelected ? "bg-orange-300" : "bg-orange-100"} text-gray-400`;
 
+  // Nghỉ luân phiên
+  if (day.type === "rotation_off")
+    return `${baseClass} ${isSelected ? "bg-teal-200" : "bg-teal-50"}`;
+
   // Nghỉ phép
   if (day.type === "leave") {
     if (day.apiData?.status === "PAID_LEAVE") {

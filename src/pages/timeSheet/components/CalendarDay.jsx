@@ -85,6 +85,22 @@ const CalendarDay = memo(({
             </div>
           )}
 
+          {/* Rotation Off */}
+          {day.type === "rotation_off" && (
+            <div className="mt-1">
+              <div className="text-center mb-1">
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded text-teal-700 bg-teal-100">
+                  Nghỉ luân phiên
+                </span>
+              </div>
+              {day.apiData?.note && (
+                <div className="text-[9px] text-center text-teal-600 mt-1">
+                  {day.apiData.note}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Leave */}
           {day.type === "leave" && (
             <div className="mt-1">

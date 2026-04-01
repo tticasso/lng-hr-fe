@@ -93,7 +93,11 @@ export const useCalendarData = (
         lateMinutes = apiData.lateMinutes || 0;
         earlyMinutes = apiData.earlyMinutes || 0;
 
-        if (!holidayInfo) {
+        // Kiểm tra nghỉ luân phiên
+        if (apiData.isRotationOff && apiData.status === "OFF") {
+          type = "rotation_off";
+          status.push("rotation_off");
+        } else if (!holidayInfo) {
           if (apiData.status === "PAID_LEAVE" || apiData.status === "UNPAID_LEAVE") {
             type = "leave";
             status.push("leave");
