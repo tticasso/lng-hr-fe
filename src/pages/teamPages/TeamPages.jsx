@@ -7,7 +7,6 @@ import TeamDetailModal from "../../components/modals/TeamDetailModal";
 import CreateTeamModal from "../../components/modals/CreateTeamModal";
 import DeleteConfirmModal from "../../components/modals/DeleteConfirmModal";
 import { departmentApi } from "../../apis/departmentApi";
-import { employeeApi } from "../../apis/employeeApi";
 import { toast } from "react-toastify";
 
 const TeamPages = () => {
@@ -38,22 +37,9 @@ const TeamPages = () => {
     useEffect(() => {
         CallAPITeam();
         CallAPIDepartmen();
-        CallAPIEmployee();
+        // CallAPIEmployee(); // ✅ Removed - không sử dụng data và CreateTeamModal sẽ gọi khi cần
     }, []);
 
-
-    const CallAPIEmployee = async () => {
-        setLoading(true);
-
-        try {
-            const res = await employeeApi.getAll();
-            console.log("EMPLOYEE_API res:", res);
-
-        } catch (error) {
-            console.log("EMPLOYEE_API error:", error);
-
-        }
-    }
 
     const CallAPIDepartmen = async () => {
         setLoading(true);
