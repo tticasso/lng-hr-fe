@@ -103,13 +103,13 @@ const Sidebar = () => {
                   path: "/department",
                   label: "Phòng ban",
                   icon: <Network size={20} />,
-                  roles: ["ADMIN", "HR","MANAGER"]
+                  roles: ["ADMIN", "HR", "MANAGER", "LEADER", "EMPLOYEE"]
                 },
                 {
                   path: "/hr/teampages",
                   label: "Team",
                   icon: <GitBranch size={20} />,
-                  roles: ["ADMIN", "HR", "MANAGER","LEADER"]
+                  roles: ["ADMIN", "HR", "MANAGER", "LEADER", "EMPLOYEE"],
                 },
               ]
             },
@@ -149,9 +149,9 @@ const Sidebar = () => {
             },
             {
               path: "/leave",
-              label:"Đơn Nghỉ/OT",
+              label: "Đơn Nghỉ/OT",
               icon: <Plane size={20} />,
-              roles: ["ADMIN", "HR", "MANAGER", "LEADER","EMPLOYEE"]
+              roles: ["ADMIN", "HR", "MANAGER", "LEADER", "EMPLOYEE"]
             },
           ],
         },

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Building2, Users, Calendar, Edit, Trash2, Plus, User, X, Info, Eye, Search, RotateCcw } from "lucide-react";
 import { departmentApi } from "../../apis/departmentApi";
 import { toast } from "react-toastify";
@@ -190,6 +190,20 @@ const Department = () => {
         setSearchTerm("");
     };
 
+    const role = useMemo(() => {
+        const raw = localStorage.getItem("role");
+        try {
+            return JSON.parse(raw);
+        } catch {
+            return raw;
+        }
+    }, []);
+
+    // Kiểm tra quyền thực hiện actions (thêm, sửa, xóa)
+    const canManage = useMemo(() => {
+        return role === "ADMIN" || role === "HR" || role === "MANAGER";
+    }, [role]);
+
     return (
         <div className="space-y-6">
             {/* Header - Sticky */}
@@ -205,13 +219,15 @@ const Department = () => {
                         </p>
                     </div>
 
-                    <Button
-                        onClick={handleAdd}
-                        className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-                    >
-                        <Plus size={18} />
-                        Thêm phòng ban
-                    </Button>
+                    {canManage && (
+                        <Button
+                            onClick={handleAdd}
+                            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                        >
+                            <Plus size={18} />
+                            Thêm phòng ban
+                        </Button>
+                    )}
                 </div>
 
                 {/* Bộ lọc */}
@@ -287,7 +303,7 @@ const Department = () => {
                                     )}
 
                                     {/* Info Grid */}
-                                    <div className="space-y-2 pt-2 border-t border-gray-100">
+                                    {/* <div className="space-y-2 pt-2 border-t border-gray-100">
                                         <div className="flex items-center justify-between text-sm">
                                             <span className="text-gray-600 flex items-center gap-1">
                                                 <Calendar size={14} />
@@ -307,7 +323,7 @@ const Department = () => {
                                                 )}
                                             </p>
                                         </div>
-                                    </div>
+                                    </div> */}
 
                                     {/* Actions */}
                                     <div className="flex gap-2 pt-2 border-t border-gray-100">
@@ -318,20 +334,24 @@ const Department = () => {
                                             <Eye size={14} />
                                             Xem
                                         </button>
-                                        <button
-                                            onClick={() => handleEdit(dept)}
-                                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-sm font-medium"
-                                        >
-                                            <Edit size={14} />
-                                            Sửa
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(dept)}
-                                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
-                                        >
-                                            <Trash2 size={14} />
-                                            Xóa
-                                        </button>
+                                        {canManage && (
+                                            <>
+                                                <button
+                                                    onClick={() => handleEdit(dept)}
+                                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-sm font-medium"
+                                                >
+                                                    <Edit size={14} />
+                                                    Sửa
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(dept)}
+                                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
+                                                >
+                                                    <Trash2 size={14} />
+                                                    Xóa
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </Card>
@@ -436,8 +456,8 @@ const Department = () => {
                                                 type="button"
                                                 onClick={() => toggleWeek(week)}
                                                 className={`w-12 h-12 rounded-lg font-bold text-sm transition-all ${formData.saturdayOffWeeks.includes(week)
-                                                        ? "bg-blue-600 text-white border-2 border-blue-600"
-                                                        : "bg-white text-gray-600 border-2 border-gray-300 hover:border-blue-400"
+                                                    ? "bg-blue-600 text-white border-2 border-blue-600"
+                                                    : "bg-white text-gray-600 border-2 border-gray-300 hover:border-blue-400"
                                                     }`}
                                             >
                                                 {week}
@@ -603,16 +623,18 @@ const Department = () => {
                                     >
                                         Đóng
                                     </Button>
-                                    <Button
-                                        onClick={() => {
-                                            setIsDetailModalOpen(false);
-                                            handleEdit(selectedDepartment);
-                                        }}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-                                    >
-                                        <Edit size={16} />
-                                        Chỉnh sửa
-                                    </Button>
+                                    {canManage && (
+                                        <Button
+                                            onClick={() => {
+                                                setIsDetailModalOpen(false);
+                                                handleEdit(selectedDepartment);
+                                            }}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                                        >
+                                            <Edit size={16} />
+                                            Chỉnh sửa
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                         ) : (
