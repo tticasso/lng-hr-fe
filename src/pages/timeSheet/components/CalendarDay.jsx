@@ -63,29 +63,9 @@ const CalendarDay = memo(({
       </div>
 
       {/* Day Content */}
-      {day.inMonth && day.type !== "weekend" && (
+      {day.inMonth && (
         <div className="mt-1 flex flex-col gap-0.5">
-          {/* Holiday */}
-          {day.type === "holiday" && (
-            <div className="flex flex-col items-center justify-center h-full mt-2">
-              <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded text-center leading-tight">
-                🎄 {day.holidayName}
-              </span>
-            </div>
-          )}
-
-          {/* Substitute Work Day */}
-          {day.type === "substitute_work" && (
-            <div className="flex flex-col items-center justify-center h-full mt-2">
-              <span className="text-[10px] font-bold text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded text-center leading-tight">
-                🔄 {day.holidayName}
-              </span>
-              {renderCheckInOut(day)}
-              {renderOTInfo(day)}
-            </div>
-          )}
-
-          {/* Rotation Off */}
+          {/* Rotation Off - Hiển thị trước để không bị chặn bởi weekend */}
           {day.type === "rotation_off" && (
             <div className="mt-1">
               <div className="text-center mb-1">
@@ -98,46 +78,74 @@ const CalendarDay = memo(({
                   {day.apiData.note}
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Leave */}
-          {day.type === "leave" && (
-            <div className="mt-1">
-              <div className="text-center mb-1">
-                <span
-                  className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
-                    day.apiData?.status === "PAID_LEAVE"
-                      ? "text-purple-700 bg-purple-100"
-                      : "text-orange-700 bg-orange-100"
-                  }`}
-                >
-                  {day.apiData?.status === "PAID_LEAVE"
-                    ? "Nghỉ có lương"
-                    : "Nghỉ không lương"}
-                </span>
-              </div>
+              {/* Hiển thị thông tin check-in/out và OT cho ngày nghỉ luân phiên */}
               {renderCheckInOut(day)}
               {renderOTInfo(day)}
             </div>
           )}
 
-          {/* Work Day */}
-          {day.type === "work" && (() => {
-            const isFutureDay = !isPastDay(day.day, selectedMonth, selectedYear, todayInfo) && 
-                               !day.isToday;
+          {/* Chỉ hiển thị nội dung khác nếu không phải weekend */}
+          {day.type !== "weekend" && (
+            <>
+              {/* Holiday */}
+              {day.type === "holiday" && (
+                <div className="flex flex-col items-center justify-center h-full mt-2">
+                  <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded text-center leading-tight">
+                    🎄 {day.holidayName}
+                  </span>
+                </div>
+              )}
 
-            if (isFutureDay && !day.checkIn && !day.checkOut) {
-              return null;
-            }
+              {/* Substitute Work Day */}
+              {day.type === "substitute_work" && (
+                <div className="flex flex-col items-center justify-center h-full mt-2">
+                  <span className="text-[10px] font-bold text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded text-center leading-tight">
+                    🔄 {day.holidayName}
+                  </span>
+                  {renderCheckInOut(day)}
+                  {renderOTInfo(day)}
+                </div>
+              )}
 
-            return (
-              <>
-                {renderCheckInOut(day)}
-                {renderOTInfo(day)}
-              </>
-            );
-          })()}
+              {/* Leave */}
+              {day.type === "leave" && (
+                <div className="mt-1">
+                  <div className="text-center mb-1">
+                    <span
+                      className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                        day.apiData?.status === "PAID_LEAVE"
+                          ? "text-purple-700 bg-purple-100"
+                          : "text-orange-700 bg-orange-100"
+                      }`}
+                    >
+                      {day.apiData?.status === "PAID_LEAVE"
+                        ? "Nghỉ có lương"
+                        : "Nghỉ không lương"}
+                    </span>
+                  </div>
+                  {renderCheckInOut(day)}
+                  {renderOTInfo(day)}
+                </div>
+              )}
+
+              {/* Work Day */}
+              {day.type === "work" && (() => {
+                const isFutureDay = !isPastDay(day.day, selectedMonth, selectedYear, todayInfo) && 
+                                   !day.isToday;
+
+                if (isFutureDay && !day.checkIn && !day.checkOut) {
+                  return null;
+                }
+
+                return (
+                  <>
+                    {renderCheckInOut(day)}
+                    {renderOTInfo(day)}
+                  </>
+                );
+              })()}
+            </>
+          )}
         </div>
       )}
     </div>
