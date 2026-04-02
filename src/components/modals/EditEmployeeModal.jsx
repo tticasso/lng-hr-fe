@@ -87,6 +87,8 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
     baseSalary: employee.baseSalary || 0,
     lunchAllowance: employee.allowances?.lunch || 0, // Map từ allowances.lunch
     fuelAllowance: employee.allowances?.fuel || 0, // Map từ allowances.fuel
+    otherAllowance: employee.allowances?.other || 0, // Map từ allowances.other
+    responsibilityAllowance: employee.responsibilityAllowance || 0, // Map từ responsibilityAllowance
 
     // --- 3. Hợp đồng (Model chưa có, giữ nguyên UI nhưng Backend có thể không lưu) ---
     contractNumber: employee.contractNumber || "",
@@ -321,8 +323,9 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
         allowances: {
           lunch: Number(formData.lunchAllowance) || 0,
           fuel: Number(formData.fuelAllowance) || 0,
-          other: 0,
+          other: Number(formData.otherAllowance) || 0,
         },
+        responsibilityAllowance: Number(formData.responsibilityAllowance) || 0,
 
         // Contract info
         contractNumber: normalizeTrim(formData.contractNumber) || undefined,
@@ -841,6 +844,30 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                         value={formatNumberWithDots(formData.fuelAllowance)}
                         onChange={handleMoneyChange}
                         className={inputClass("fuelAllowance")}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelClass}>Phụ cấp khác</label>
+                      <input
+                        type="text"
+                        name="otherAllowance"
+                        value={formatNumberWithDots(formData.otherAllowance)}
+                        onChange={handleMoneyChange}
+                        className={inputClass("otherAllowance")}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Phụ cấp trách nhiệm</label>
+                      <input
+                        type="text"
+                        name="responsibilityAllowance"
+                        value={formatNumberWithDots(formData.responsibilityAllowance)}
+                        onChange={handleMoneyChange}
+                        className={inputClass("responsibilityAllowance")}
                         placeholder="0"
                       />
                     </div>
