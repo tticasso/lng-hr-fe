@@ -28,5 +28,7 @@ export const attendancesAPI = {
         return apiClient.patch(`/attendances/${id}`, payload);
     },
 
-
+     delete: (id) => {
+        return apiClient.delete(`/attendances/${id}`);
+    },
 };

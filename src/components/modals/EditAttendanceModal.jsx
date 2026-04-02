@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { X, Save, Paperclip } from "lucide-react";
+import { X, Save, Paperclip, Trash2 } from "lucide-react";
 import { TimePicker } from "antd";
 import Button from "../common/Button";
 import { toast } from "react-toastify";
 import dayjs from "../../untils/dayjs";
+import { attendancesAPI } from "../../apis/attendancesAPI";
 
-const EditAttendanceModal = ({ isOpen, onClose, attendanceLog, employee, onSave }) => {
+const EditAttendanceModal = ({ isOpen, onClose, attendanceLog, employee, onSave, onDelete }) => {
   const [formData, setFormData] = useState({
     checkIn: "",
     checkOut: "",
     reason: "",
     attachment: null,
   });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (attendanceLog) {
@@ -60,6 +62,36 @@ const EditAttendanceModal = ({ isOpen, onClose, attendanceLog, employee, onSave 
 
     // toast.success("Đã lưu thay đổi chấm công");
     onClose();
+  };
+
+  const handleDelete = async () => {
+    if (!attendanceLog?._id) {
+      toast.error("Không tìm thấy ID bản ghi chấm công");
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      `Bạn có chắc chắn muốn xóa bản ghi chấm công ngày ${new Date(attendanceLog.date).toLocaleDateString("vi-VN")} của ${employee?.fullName}?`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      setIsDeleting(true);
+      await attendancesAPI.delete(attendanceLog._id);
+      toast.success("Đã xóa bản ghi chấm công thành công");
+      
+      if (onDelete) {
+        onDelete(attendanceLog._id);
+      }
+      
+      onClose();
+    } catch (error) {
+      console.error("Error deleting attendance:", error);
+      toast.error(error.response?.data?.message || "Xóa bản ghi chấm công thất bại");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -149,16 +181,29 @@ const EditAttendanceModal = ({ isOpen, onClose, attendanceLog, employee, onSave 
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
-          <Button variant="secondary" onClick={onClose}>
-            Hủy
-          </Button>
+        <div className="px-6 py-4 border-t border-gray-100 flex justify-between items-center bg-gray-50">
           <Button
-            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-            onClick={handleSave}
+            variant="secondary"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="bg-red-50 text-red-600 hover:bg-red-100 border-red-200 flex items-center gap-2"
           >
-            <Save size={16} /> Lưu thay đổi
+            <Trash2 size={16} />
+            {isDeleting ? "Đang xóa..." : "Xóa"}
           </Button>
+          
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={onClose} disabled={isDeleting}>
+              Hủy
+            </Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+              onClick={handleSave}
+              disabled={isDeleting}
+            >
+              <Save size={16} /> Lưu thay đổi
+            </Button>
+          </div>
         </div>
       </div>
     </div>
