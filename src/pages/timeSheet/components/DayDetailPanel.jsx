@@ -86,15 +86,7 @@ const DayDetailPanel = memo(({
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 gap-3">
-        {isPastDay ? (
-          <Button
-            onClick={() => onOTRequest(selectedDate.isoDate)}
-            variant="OT"
-            className="col-span-2 flex flex-col items-center gap-1 py-3 bg-orange-400 text-white shadow-md hover:bg-orange-600"
-          >
-            <Zap size={20} /> <span className="text-xs">Đăng ký OT</span>
-          </Button>
-        ) : isHoliday ? (
+        {isHoliday ? (
           <Button
             onClick={() => onOTRequest(selectedDate.isoDate)}
             variant="OT"

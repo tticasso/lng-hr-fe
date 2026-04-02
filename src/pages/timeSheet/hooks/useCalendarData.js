@@ -94,7 +94,7 @@ export const useCalendarData = (
         earlyMinutes = apiData.earlyMinutes || 0;
 
         // Kiểm tra nghỉ luân phiên
-        if (apiData.isRotationOff && apiData.status === "OFF") {
+        if (apiData.isRotationOff) {
           type = "rotation_off";
           status.push("rotation_off");
         } else if (!holidayInfo) {
