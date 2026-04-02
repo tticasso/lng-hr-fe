@@ -15,6 +15,21 @@ const TeamPages = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [departmentFilter, setDepartmentFilter] = useState("");
 
+    // Role-based permissions
+    const role = useMemo(() => {
+        const raw = localStorage.getItem("role");
+        try {
+            return JSON.parse(raw);
+        } catch {
+            return raw;
+        }
+    }, []);
+
+    // Kiểm tra quyền thực hiện actions (thêm, sửa, xóa)
+    const canManage = useMemo(() => {
+        return role === "ADMIN" || role === "HR" || role === "MANAGER";
+    }, [role]);
+
     // Team Detail Modal
     const [teamDetailModal, setTeamDetailModal] = useState({
         isOpen: false,
@@ -195,14 +210,16 @@ const TeamPages = () => {
                     </p>
                 </div>
                 <div className="flex gap-3">
-                    <Button
-                        variant="primary"
-                        className="flex gap-2 items-center bg-blue-600 hover:bg-blue-700 text-white"
-                        onClick={openCreateTeamModal}
-                    >
-                        <Plus size={16} />
-                        Tạo Team
-                    </Button>
+                    {canManage && (
+                        <Button
+                            variant="primary"
+                            className="flex gap-2 items-center bg-blue-600 hover:bg-blue-700 text-white"
+                            onClick={openCreateTeamModal}
+                        >
+                            <Plus size={16} />
+                            Tạo Team
+                        </Button>
+                    )}
                     <Button
                         variant="secondary"
                         className="flex gap-2 items-center"
@@ -373,21 +390,25 @@ const TeamPages = () => {
                                             <Eye size={14} />
                                             Chi tiết
                                         </button>
-                                        <button
-                                            onClick={() => openEditTeamModal(team)}
-                                            className="flex-1 py-2 px-3 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
-                                            title="Chỉnh sửa"
-                                        >
-                                            <Edit size={14} />
-                                            Sửa
-                                        </button>
-                                        <button
-                                            onClick={() => openDeleteModal(team)}
-                                            className="py-2 px-3 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center"
-                                            title="Xóa team"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
+                                        {canManage && (
+                                            <>
+                                                <button
+                                                    onClick={() => openEditTeamModal(team)}
+                                                    className="flex-1 py-2 px-3 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
+                                                    title="Chỉnh sửa"
+                                                >
+                                                    <Edit size={14} />
+                                                    Sửa
+                                                </button>
+                                                <button
+                                                    onClick={() => openDeleteModal(team)}
+                                                    className="py-2 px-3 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center"
+                                                    title="Xóa team"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </Card>
