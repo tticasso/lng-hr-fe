@@ -17,7 +17,7 @@ export const attendancesAPI = {
 
     // Import attendance từ Excel
     import: (formData) => {
-        return apiClient.post('/attendances/import-excel', formData, {
+        return apiClient.post('/attendances/sync-excel', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },

@@ -1,14 +1,12 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Search, Loader2, RefreshCw, CheckCircle2, XCircle, Eye } from "lucide-react";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import { leaveAPI } from "../../apis/leaveAPI";
 import { OTApi } from "../../apis/OTAPI";
-import apiClient from "../../apis/apiClient";
 import ApproveOTModal from "../../components/modals/ApproveOTModal";
 import LeaveDetailModal from "../../components/modals/LeaveDetailModal";
 import { toast } from "react-toastify";
-import { useLocation } from "react-router-dom";
 
 const leaveTypeLabel = {
     ANNUAL: "Nghỉ phép năm",
@@ -90,15 +88,7 @@ const StatusBadge = ({ statusKey, statusText }) => {
 };
 
 const MyLeave = () => {
-    const location = useLocation();
     const [activeTab, setActiveTab] = useState("LEAVE"); // "LEAVE" | "OT"
-
-    // ✅ Nhận activeTab từ navigation state
-    // useEffect(() => {
-    //     if (location.state?.activeTab && location.state.activeTab !== activeTab) {
-    //         setActiveTab(location.state.activeTab);
-    //     }
-    // }, [location.state, activeTab]);
 
     // LEAVE
     const [loading, setLoading] = useState(true);
@@ -141,7 +131,7 @@ const MyLeave = () => {
     });
 
     // ✅ Lưu approval level của user hiện tại
-    const [userApprovalLevel, setUserApprovalLevel] = useState(null);
+    // const [userApprovalLevel, setUserApprovalLevel] = useState(null);
 
     // ✅ Ref để track đã fetch data chưa
     const hasFetchedLeaves = useRef(false);
@@ -267,7 +257,7 @@ const MyLeave = () => {
             });
 
             // Lưu level vào state
-            setUserApprovalLevel(currentUserLevel);
+            // setUserApprovalLevel(currentUserLevel);
 
             if (currentUserLevel) {
                 console.log(`[Approver] User hiện tại có quyền duyệt ở level ${currentUserLevel}`);
@@ -324,7 +314,7 @@ const MyLeave = () => {
         const st = filters.status;
         const q = searchQuery;
 
-        return leaves.filter((lv) => {
+        const filtered = leaves.filter((lv) => {
             const name = (lv.employeeId?.fullName || "").toLowerCase();
             const reason = (lv.reason || "").toLowerCase();
 
@@ -333,6 +323,21 @@ const MyLeave = () => {
             const matchStatus = !st || normalizeStatus(lv?.status) === st;
 
             return matchSearch && matchType && matchStatus;
+        });
+
+        // Sắp xếp: PENDING lên đầu, sau đó sắp xếp theo thời gian tạo mới nhất
+        return filtered.sort((a, b) => {
+            const statusA = normalizeStatus(a.status);
+            const statusB = normalizeStatus(b.status);
+            
+            // PENDING lên đầu
+            if (statusA === "PENDING" && statusB !== "PENDING") return -1;
+            if (statusA !== "PENDING" && statusB === "PENDING") return 1;
+            
+            // Trong cùng trạng thái, sắp xếp theo thời gian tạo mới nhất lên đầu
+            const dateA = new Date(a.createdAt || 0);
+            const dateB = new Date(b.createdAt || 0);
+            return dateB - dateA;
         });
     }, [leaves, filters.leaveType, filters.status, searchQuery]);
 
@@ -345,17 +350,30 @@ const MyLeave = () => {
         const stGroup = otFilters.statusGroup; // "PENDING" | "APPROVED" | "REJECTED" | ""
         const type = otFilters.otType;
 
-        return ots.filter((ot) => {
+        const filtered = ots.filter((ot) => {
             const name = (ot?.employeeId?.fullName || "").toLowerCase();
             const st = normalizeStatus(ot?.status);
 
             const matchName = !q || name.includes(q);
-
             const matchStatus = !stGroup || st === stGroup;
-
             const matchType = !type || ot?.otType === type;
 
             return matchName && matchStatus && matchType;
+        });
+
+        // Sắp xếp: PENDING lên đầu, sau đó sắp xếp theo thời gian tạo mới nhất
+        return filtered.sort((a, b) => {
+            const statusA = normalizeStatus(a?.status);
+            const statusB = normalizeStatus(b?.status);
+            
+            // PENDING lên đầu
+            if (statusA === "PENDING" && statusB !== "PENDING") return -1;
+            if (statusA !== "PENDING" && statusB === "PENDING") return 1;
+            
+            // Trong cùng trạng thái, sắp xếp theo thời gian tạo mới nhất lên đầu
+            const dateA = new Date(a?.createdAt || 0);
+            const dateB = new Date(b?.createdAt || 0);
+            return dateB - dateA;
         });
     }, [ots, otFilters.statusGroup, otFilters.otType, otSearchQuery]);
 

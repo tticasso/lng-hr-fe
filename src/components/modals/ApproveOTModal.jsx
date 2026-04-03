@@ -30,12 +30,6 @@ const ApproveOTModal = ({ isOpen, onClose, otData, onConfirm }) => {
       alert("Vui lòng nhập đầy đủ giờ bắt đầu và kết thúc!");
       return;
     }
-    
-    // Kiểm tra giờ kết thúc phải sau giờ bắt đầu
-    if (dayjs(approvedEndTime).isSameOrBefore(dayjs(approvedStartTime))) {
-      alert("Giờ kết thúc phải sau giờ bắt đầu!");
-      return;
-    }
 
     const payload = {
       status: "APPROVED",
@@ -121,12 +115,7 @@ const ApproveOTModal = ({ isOpen, onClose, otData, onConfirm }) => {
                 placeholder="Chọn giờ kết thúc"
                 minuteStep={5}
                 size="large"
-                status={
-                  !approvedEndTime ||
-                  (approvedEndTime && approvedStartTime && dayjs(approvedEndTime).isSameOrBefore(dayjs(approvedStartTime)))
-                    ? "error"
-                    : ""
-                }
+                status={!approvedEndTime ? "error" : ""}
               />
             </div>
             

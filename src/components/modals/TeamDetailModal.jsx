@@ -1,18 +1,8 @@
 import { useState, useEffect } from "react";
-import { X, Users, Building2, Crown, Calendar, Clock, User, Tag, Loader2, Plus, UserPlus, CalendarSync } from "lucide-react";
+import { X, Users, Building2, Crown, User, Loader2, Plus, UserPlus, CalendarSync, Trash2, RotateCcw } from "lucide-react";
 import { teamAPI } from "../../apis/teamAPI";
 import { employeeApi } from "../../apis/employeeApi";
-
-const formatDateTime = (isoString) => {
-    if (!isoString) return "--";
-    return new Date(isoString).toLocaleString("vi-VN", {
-        hour: "2-digit",
-        minute: "2-digit",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-    });
-};
+import { saturdayRotations } from "../../apis/saturday-rotations";
 
 const StatusBadge = ({ status }) => {
     const statusConfig = {
@@ -63,11 +53,10 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
 
         try {
             const now = new Date();
-
             const month = now.getMonth() + 1; // getMonth() trả 0-11 nên +1
             const year = now.getFullYear();
 
-            const res = await teamAPI.getrotation(teamId, month, year);
+            const res = await saturdayRotations.get(teamId, month, year);
 
             console.log("getRotation res :", res);
             const rotationList = res?.data?.data || [];
@@ -81,20 +70,53 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
     const rotationadd = async () => {
         try {
             const now = new Date();
-
             const month = now.getMonth() + 1; // getMonth() trả 0-11 nên +1
             const year = now.getFullYear();
+            
             const payload = {
+                teamId: teamId,
                 month: month,
                 year: year,
-                mminPresent: memBer
+                minPresent: memBer
             }
             console.log("PAYLOAD_CHECK :", payload)
-            const res = await teamAPI.addrotation(teamId, payload);
+            const res = await saturdayRotations.post(payload);
             rotationCall();
             console.log("addrotation res :", res);
         } catch (error) {
             console.log("addrotation error :", error);
+        }
+    }
+
+    const handleDeleteAllRotations = async () => {
+        if (!window.confirm("Bạn có chắc chắn muốn xóa toàn bộ lịch nghỉ luân phiên của team này?")) {
+            return;
+        }
+        
+        try {
+            const res = await saturdayRotations.deleteAll(teamId);
+            console.log("Delete all rotations res:", res);
+            await rotationCall(); // Refresh data
+        } catch (error) {
+            console.log("Delete all rotations error:", error);
+        }
+    }
+
+    const handleDeleteMonthRotations = async () => {
+        if (!window.confirm("Bạn có chắc chắn muốn xóa lịch nghỉ luân phiên của tháng này?")) {
+            return;
+        }
+        
+        try {
+            const now = new Date();
+            const month = now.getMonth() + 1;
+            const year = now.getFullYear();
+            
+            const res = await saturdayRotations.deleteByMonth(teamId, month, year);
+            console.log("Delete month rotations res:", res);
+            await rotationCall(); // Refresh data
+        } catch (error) {
+            console.log("Delete month rotations error:", error);
         }
     }
 
@@ -229,7 +251,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
             console.log("Add to rotation payload:", payload);
             console.log("Rotation ID:", selectedRotationId);
 
-            const res = await teamAPI.updaterotation(teamId, selectedRotationId, payload)
+            const res = await saturdayRotations.patch(selectedRotationId, payload)
             console.log("CHECK_LOG RES", res)
 
             // Sau khi API thành công, refresh data
@@ -385,9 +407,29 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
 
                                 {/* Rotation Schedule */}
                                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <CalendarSync className="text-gray-600" size={16} />
-                                        <h3 className="font-semibold text-sm text-gray-800">Lịch nghỉ luân phiên</h3>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <CalendarSync className="text-gray-600" size={16} />
+                                            <h3 className="font-semibold text-sm text-gray-800">Lịch nghỉ luân phiên</h3>
+                                        </div>
+                                        {rotationData.length > 0 && (
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    onClick={handleDeleteMonthRotations}
+                                                    className="p-1 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-full transition-colors"
+                                                    title="Xóa lịch tháng này"
+                                                >
+                                                    <RotateCcw size={12} />
+                                                </button>
+                                                <button
+                                                    onClick={handleDeleteAllRotations}
+                                                    className="p-1 bg-red-100 hover:bg-red-200 text-red-600 rounded-full transition-colors"
+                                                    title="Xóa toàn bộ lịch"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                     {rotationData.length > 0 ? (
                                         <div className="space-y-3 max-h-80 overflow-y-auto">
