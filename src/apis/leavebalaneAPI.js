@@ -8,7 +8,18 @@ export const leavebalanceAPI = {
     },
 
 
-    put: (id,payload) => {
-        return apiClient.put(`/leave-balances/${id}`,payload);
+    put: (id, payload) => {
+        return apiClient.put(`/leave-balances/${id}`, payload);
     },
+
+
+    //payload :  {
+    //     "amount" : "",
+    //     "reason" : "",
+    //     "action" : ""
+    // }
+    patch: (id, payload) => {
+        return apiClient.patch(`/leave-balances/${id}/adjust`, payload);
+    },
+
 }
