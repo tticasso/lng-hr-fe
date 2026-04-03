@@ -13,6 +13,12 @@ export const useCalendarData = (
   const pad2 = (n) => String(n).padStart(2, "0");
 
   const calendarDays = useMemo(() => {
+    console.log("=== CALENDAR INPUT DEBUG ===");
+    console.log("selectedMonth:", selectedMonth, "(0-based, so March = 2)");
+    console.log("selectedYear:", selectedYear);
+    console.log("Date check:", new Date(selectedYear, selectedMonth + 1, 0));
+    console.log("Days in month calculation:", new Date(selectedYear, selectedMonth + 1, 0).getDate());
+    
     const days = [];
     const firstDayIndex = new Date(selectedYear, selectedMonth, 1).getDay();
     const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
@@ -64,6 +70,15 @@ export const useCalendarData = (
 
       const apiData = attendanceMap[isoDate];
       const holidayInfo = holidayMap[isoDate];
+
+      // Debug log cho ngày 31
+      if (i === 31) {
+        console.log("=== DEBUG DAY 31 ===");
+        console.log("isoDate:", isoDate);
+        console.log("apiData:", apiData);
+        console.log("attendanceMap keys:", Object.keys(attendanceMap));
+        console.log("daysInMonth:", daysInMonth);
+      }
 
       let type = "work";
       let status = [];
@@ -159,6 +174,12 @@ export const useCalendarData = (
         leaveInfo: apiData?.leaveId || null,
       });
     }
+
+    // Debug log tổng số ngày được tạo
+    console.log("=== CALENDAR DEBUG ===");
+    console.log("Total days generated:", days.length);
+    console.log("Days in month:", daysInMonth);
+    console.log("Last few days:", days.slice(-5).map(d => ({ day: d.day, inMonth: d.inMonth, isoDate: d.isoDate })));
 
     return days;
   }, [selectedMonth, selectedYear, todayInfo, attendanceData, holidayData]);

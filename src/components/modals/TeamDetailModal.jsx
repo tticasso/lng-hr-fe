@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Users, Building2, Crown, User, Loader2, Plus, UserPlus, CalendarSync, Trash2, RotateCcw } from "lucide-react";
+import { X, Users, Building2, Crown, User, Loader2, Plus, UserPlus, CalendarSync, Trash2, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
 import { teamAPI } from "../../apis/teamAPI";
 import { employeeApi } from "../../apis/employeeApi";
 import { saturdayRotations } from "../../apis/saturday-rotations";
@@ -34,6 +34,10 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
     const [showAddToRotationModal, setShowAddToRotationModal] = useState(false);
     const [selectedRotationId, setSelectedRotationId] = useState(null);
     const [selectedRotationEmployees, setSelectedRotationEmployees] = useState([]);
+    
+    // State cho việc chọn tháng/năm xem lịch luân phiên
+    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     useEffect(() => {
         if (isOpen && teamId) {
             fetchTeamDetail();
@@ -46,17 +50,13 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
         if (teamId) {
             rotationCall();
         }
-    }, [teamId])
+    }, [teamId, selectedMonth, selectedYear]) // Thêm selectedMonth và selectedYear vào dependency
 
     const rotationCall = async () => {
         if (!teamId) return; // Chỉ gọi khi có teamId
 
         try {
-            const now = new Date();
-            const month = now.getMonth() + 1; // getMonth() trả 0-11 nên +1
-            const year = now.getFullYear();
-
-            const res = await saturdayRotations.get(teamId, month, year);
+            const res = await saturdayRotations.get(teamId, selectedMonth, selectedYear);
 
             console.log("getRotation res :", res);
             const rotationList = res?.data?.data || [];
@@ -69,14 +69,10 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
 
     const rotationadd = async () => {
         try {
-            const now = new Date();
-            const month = now.getMonth() + 1; // getMonth() trả 0-11 nên +1
-            const year = now.getFullYear();
-            
             const payload = {
                 teamId: teamId,
-                month: month,
-                year: year,
+                month: selectedMonth,
+                year: selectedYear,
                 minPresent: memBer
             }
             console.log("PAYLOAD_CHECK :", payload)
@@ -103,22 +99,60 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
     }
 
     const handleDeleteMonthRotations = async () => {
-        if (!window.confirm("Bạn có chắc chắn muốn xóa lịch nghỉ luân phiên của tháng này?")) {
+        if (!window.confirm(`Bạn có chắc chắn muốn xóa lịch nghỉ luân phiên của tháng ${selectedMonth}/${selectedYear}?`)) {
             return;
         }
         
         try {
-            const now = new Date();
-            const month = now.getMonth() + 1;
-            const year = now.getFullYear();
-            
-            const res = await saturdayRotations.deleteByMonth(teamId, month, year);
+            const res = await saturdayRotations.deleteByMonth(teamId, selectedMonth, selectedYear);
             console.log("Delete month rotations res:", res);
             await rotationCall(); // Refresh data
         } catch (error) {
             console.log("Delete month rotations error:", error);
         }
     }
+
+    // Hàm chuyển tháng trước
+    const goToPreviousMonth = () => {
+        if (selectedMonth === 1) {
+            setSelectedMonth(12);
+            setSelectedYear(selectedYear - 1);
+        } else {
+            setSelectedMonth(selectedMonth - 1);
+        }
+    };
+
+    // Hàm chuyển tháng sau
+    const goToNextMonth = () => {
+        if (selectedMonth === 12) {
+            setSelectedMonth(1);
+            setSelectedYear(selectedYear + 1);
+        } else {
+            setSelectedMonth(selectedMonth + 1);
+        }
+    };
+
+    // Hàm về tháng hiện tại
+    const goToCurrentMonth = () => {
+        const now = new Date();
+        setSelectedMonth(now.getMonth() + 1);
+        setSelectedYear(now.getFullYear());
+    };
+
+    // Hàm format tháng/năm hiển thị
+    const formatMonthYear = (month, year) => {
+        const monthNames = [
+            "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6",
+            "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"
+        ];
+        return `${monthNames[month - 1]} ${year}`;
+    };
+
+    // Kiểm tra có phải tháng hiện tại không
+    const isCurrentMonth = () => {
+        const now = new Date();
+        return selectedMonth === (now.getMonth() + 1) && selectedYear === now.getFullYear();
+    };
 
     const dataEmplyee = async () => {
         try {
@@ -306,7 +340,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                             <Users className="text-blue-600" size={20} />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-gray-800">Chi tiết Team</h2>
+                            <h2 className="text-lg font-bold text-gray-800">Chi tiết Team 123</h2>
                             <p className="text-xs text-gray-500">Thông tin đầy đủ về team</p>
                         </div>
                     </div>
@@ -417,19 +451,46 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                                 <button
                                                     onClick={handleDeleteMonthRotations}
                                                     className="p-1 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-full transition-colors"
-                                                    title="Xóa lịch tháng này"
+                                                    title={`Xóa lịch tháng ${selectedMonth}/${selectedYear}`}
                                                 >
                                                     <RotateCcw size={12} />
                                                 </button>
-                                                <button
-                                                    onClick={handleDeleteAllRotations}
-                                                    className="p-1 bg-red-100 hover:bg-red-200 text-red-600 rounded-full transition-colors"
-                                                    title="Xóa toàn bộ lịch"
-                                                >
-                                                    <Trash2 size={12} />
-                                                </button>
                                             </div>
                                         )}
+                                    </div>
+
+                                    {/* Month/Year Selector */}
+                                    <div className="flex items-center justify-between mb-4 p-2 bg-white rounded-lg border border-gray-200">
+                                        <button
+                                            onClick={goToPreviousMonth}
+                                            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                                            title="Tháng trước"
+                                        >
+                                            <ChevronLeft size={16} className="text-gray-600" />
+                                        </button>
+                                        
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-semibold text-gray-800">
+                                                {formatMonthYear(selectedMonth, selectedYear)}
+                                            </span>
+                                            {!isCurrentMonth() && (
+                                                <button
+                                                    onClick={goToCurrentMonth}
+                                                    className="px-2 py-1 text-xs bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors"
+                                                    title="Về tháng hiện tại"
+                                                >
+                                                    Hiện tại
+                                                </button>
+                                            )}
+                                        </div>
+                                        
+                                        <button
+                                            onClick={goToNextMonth}
+                                            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                                            title="Tháng sau"
+                                        >
+                                            <ChevronRight size={16} className="text-gray-600" />
+                                        </button>
                                     </div>
                                     {rotationData.length > 0 ? (
                                         <div className="space-y-3 max-h-80 overflow-y-auto">
@@ -477,8 +538,12 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                     ) : (
                                         <div className="text-center py-8">
                                             <CalendarSync size={32} className="mx-auto mb-3 text-gray-300" />
-                                            <p className="text-xs text-gray-500 italic">Chưa có lịch nghỉ luân phiên</p>
-                                            <p className="text-xs text-gray-400 mt-1">Nhấn "Set lịch làm luân phiên" để tạo</p>
+                                            <p className="text-xs text-gray-500 italic">
+                                                Chưa có lịch nghỉ luân phiên cho {formatMonthYear(selectedMonth, selectedYear)}
+                                            </p>
+                                            {isCurrentMonth() && (
+                                                <p className="text-xs text-gray-400 mt-1">Nhấn "Set lịch làm luân phiên" để tạo</p>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -504,14 +569,16 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                                 <UserPlus size={14} />
                                                 Thêm
                                             </button>
-                                            <button
-                                                onClick={rotationadd}
-                                                className="flex items-center gap-1 px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white text-xs font-semibold rounded-full transition-colors"
-                                                title="Set lịch làm luân phiên"
-                                            >
-                                                <CalendarSync size={14} />
-                                                Set lịch làm luân phiên
-                                            </button>
+                                            {isCurrentMonth() && (
+                                                <button
+                                                    onClick={rotationadd}
+                                                    className="flex items-center gap-1 px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white text-xs font-semibold rounded-full transition-colors"
+                                                    title="Set lịch làm luân phiên"
+                                                >
+                                                    <CalendarSync size={14} />
+                                                    Set lịch làm luân phiên
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
 

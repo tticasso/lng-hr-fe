@@ -46,7 +46,7 @@ export const saturdayRotations = {
     },
     //reset lịch nghỉ của cả team
     deleteAll: (teamid) => {
-        return apiClient.delete(`/team/saturday-rotations/${teamid}`);
+        return apiClient.delete(`/saturday-rotations/team/${teamid}`);
     },
     //reset lịch nghỉ trong tháng
     deleteByMonth: (teamid, month, year) => {
