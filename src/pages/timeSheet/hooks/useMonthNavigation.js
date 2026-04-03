@@ -6,6 +6,10 @@ import { useState, useCallback } from "react";
 export const useMonthNavigation = () => {
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
+    console.log("=== MONTH NAVIGATION INIT ===");
+    console.log("Current date:", now);
+    console.log("Current month (0-based):", now.getMonth());
+    console.log("Current year:", now.getFullYear());
     return now.getMonth(); // 0-11
   });
 

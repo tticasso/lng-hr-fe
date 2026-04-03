@@ -27,7 +27,7 @@ const LeaveBalance = () => {
     const [adjustForm, setAdjustForm] = useState({
         amount: 0,
         reason: "",
-        action: "ADD" // "ADD" | "SUBTRACT"
+        action: "MANUAL_ADJUSTMENT" // "ADD" | "LEAVE_DEDUCTION"
     });
     const [adjustErrors, setAdjustErrors] = useState({});
 
@@ -179,7 +179,7 @@ const LeaveBalance = () => {
         setAdjustForm({
             amount: 0,
             reason: "",
-            action: "ADD"
+            action: "MANUAL_ADJUSTMENT"
         });
         setAdjustErrors({});
         setShowAdjustModal(true);
@@ -188,7 +188,7 @@ const LeaveBalance = () => {
     const closeAdjustModal = () => {
         setShowAdjustModal(false);
         setSelectedLeaveBalance(null);
-        setAdjustForm({ amount: 0, reason: "", action: "ADD" });
+        setAdjustForm({ amount: 0, reason: "", action: "MANUAL_ADJUSTMENT" });
         setAdjustErrors({});
     };
 
@@ -706,8 +706,8 @@ const LeaveBalance = () => {
                                             <input
                                                 type="radio"
                                                 name="action"
-                                                value="ADD"
-                                                checked={adjustForm.action === "ADD"}
+                                                value="MANUAL_ADJUSTMENT"
+                                                checked={adjustForm.action === "MANUAL_ADJUSTMENT"}
                                                 onChange={handleAdjustFormChange}
                                                 className="text-green-600 focus:ring-green-500"
                                             />
@@ -720,8 +720,8 @@ const LeaveBalance = () => {
                                             <input
                                                 type="radio"
                                                 name="action"
-                                                value="SUBTRACT"
-                                                checked={adjustForm.action === "SUBTRACT"}
+                                                value="LEAVE_DEDUCTION"
+                                                checked={adjustForm.action === "LEAVE_DEDUCTION"}
                                                 onChange={handleAdjustFormChange}
                                                 className="text-red-600 focus:ring-red-500"
                                             />
@@ -793,12 +793,12 @@ const LeaveBalance = () => {
 
                                 {/* Preview */}
                                 <div className={`rounded-lg p-3 border ${
-                                    adjustForm.action === "ADD" 
+                                    adjustForm.action === "MANUAL_ADJUSTMENT" 
                                         ? "bg-green-50 border-green-200" 
                                         : "bg-red-50 border-red-200"
                                 }`}>
                                     <h5 className={`font-medium text-sm mb-2 ${
-                                        adjustForm.action === "ADD" ? "text-green-800" : "text-red-800"
+                                        adjustForm.action === "MANUAL_ADJUSTMENT" ? "text-green-800" : "text-red-800"
                                     }`}>
                                         Xem trước thay đổi:
                                     </h5>
@@ -812,21 +812,21 @@ const LeaveBalance = () => {
                                         <div className="flex justify-between">
                                             <span className="text-gray-600">Điều chỉnh:</span>
                                             <span className={`font-medium ${
-                                                adjustForm.action === "ADD" ? "text-green-600" : "text-red-600"
+                                                adjustForm.action === "MANUAL_ADJUSTMENT" ? "text-green-600" : "text-red-600"
                                             }`}>
-                                                {adjustForm.action === "ADD" ? "+" : "-"}{adjustForm.amount} ngày
+                                                {adjustForm.action === "MANUAL_ADJUSTMENT" ? "+" : "-"}{adjustForm.amount} ngày
                                             </span>
                                         </div>
                                         <div className="flex justify-between border-t pt-1">
                                             <span className="text-gray-600">Số dư sau điều chỉnh:</span>
                                             <span className={`font-bold ${
-                                                adjustForm.action === "ADD" 
+                                                adjustForm.action === "MANUAL_ADJUSTMENT" 
                                                     ? "text-green-600" 
                                                     : selectedLeaveBalance.currentBalance - adjustForm.amount >= 0
                                                         ? "text-blue-600"
                                                         : "text-red-600"
                                             }`}>
-                                                {adjustForm.action === "ADD" 
+                                                {adjustForm.action === "MANUAL_ADJUSTMENT" 
                                                     ? selectedLeaveBalance.currentBalance + adjustForm.amount
                                                     : selectedLeaveBalance.currentBalance - adjustForm.amount
                                                 } ngày
@@ -849,19 +849,19 @@ const LeaveBalance = () => {
                             <Button
                                 onClick={handleAdjustLeaveBalance}
                                 className={`flex items-center gap-2 text-white ${
-                                    adjustForm.action === "ADD" 
+                                    adjustForm.action === "MANUAL_ADJUSTMENT" 
                                         ? "bg-green-600 hover:bg-green-700" 
                                         : "bg-red-600 hover:bg-red-700"
                                 }`}
                             >
                                 {adjustLoading ? (
                                     <Loader2 size={16} className="animate-spin" />
-                                ) : adjustForm.action === "ADD" ? (
+                                ) : adjustForm.action === "MANUAL_ADJUSTMENT" ? (
                                     <Plus size={16} />
                                 ) : (
                                     <Minus size={16} />
                                 )}
-                                {adjustForm.action === "ADD" ? "Cộng thêm" : "Trừ bớt"}
+                                {adjustForm.action === "MANUAL_ADJUSTMENT" ? "Cộng thêm" : "Trừ bớt"}
                             </Button>
                         </div>
                     </div>
