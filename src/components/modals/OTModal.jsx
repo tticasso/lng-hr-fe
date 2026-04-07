@@ -84,9 +84,6 @@ const ModalOT = ({
   const canSubmit = useMemo(() => {
     if (!date) return false;
     if (!startTime || !endTime) return false;
-
-    // endTime phải sau startTime
-    if (dayjs(endTime).isSameOrBefore(dayjs(startTime))) return false;
     
     // Validate lý do phải có nội dung
     if (!reason || reason.trim() === "") return false;
@@ -208,21 +205,11 @@ const ModalOT = ({
                 placeholder="Chọn giờ"
                 minuteStep={5}
                 size="large"
-                status={
-                  shouldShowError('endTime', 
-                    !endTime ||
-                    (endTime && startTime && dayjs(endTime).isSameOrBefore(dayjs(startTime)))
-                  ) ? "error" : ""
-                }
+                status={shouldShowError('endTime', !endTime) ? "error" : ""}
               />
               {shouldShowError('endTime', !endTime) && (
                 <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
                   <AlertCircle size={12} /> Vui lòng chọn giờ kết thúc
-                </p>
-              )}
-              {shouldShowError('endTime', endTime && startTime && dayjs(endTime).isSameOrBefore(dayjs(startTime))) && (
-                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                  <AlertCircle size={12} /> Giờ kết thúc phải sau giờ bắt đầu
                 </p>
               )}
             </div>
