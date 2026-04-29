@@ -2,12 +2,13 @@ import apiClient from "./apiClient";
 
 export const OTApi = {
 
-    get: () => {
-        return apiClient.get("/overtimes");
+    get: (page, limit) => {
+        return apiClient.get(`/overtimes?page=${page}&limit=${limit}`);
     },
-    getALL: () => {
-        return apiClient.get("/overtimes");
+    getALL: (page, limit) => {
+        return apiClient.get(`/overtimes?page=${page}&limit=${limit}`);
     },
+    
     // post: (payload) => {
     //     return apiClient.post(`/overtimes`, payload);
     // },

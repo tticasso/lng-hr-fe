@@ -19,11 +19,11 @@ export const leaveAPI = {
         return apiClient.get(`/leaves/${id}`);
     },
 
-    getbyADMIN: () => {
-        return apiClient.get("/leaves");
+    getbyADMIN: (page, limit) => {
+        return apiClient.get(`/leaves?page=${page}&limit=${limit}`);
     },
-    getbyUSER: () => {
-        return apiClient.get("/leaves/my-leaves", { status: "APPROVED" });
+    getbyUSER: (page, limit) => {
+        return apiClient.get(`/leaves/my-leaves?page=${page}&limit=${limit}`);
     },
     APPROVED: (id,payload) => {
         return apiClient.put(`/leaves/${id}/approval`,payload);
