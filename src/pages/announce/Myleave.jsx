@@ -97,8 +97,6 @@ const MyLeave = () => {
     const [pagination, setPagination] = useState({
         page: 1,
         limit: 10,
-        total: 0,
-        totalPages: 1,
     });
 
     const [filters, setFilters] = useState({
@@ -116,6 +114,11 @@ const MyLeave = () => {
         searchName: "",
         statusGroup: "", // "" | "PENDING" | "APPROVED"
         otType: "", // "" | "WEEKDAY" | "WEEKEND" | "HOLIDAY"
+    });
+
+    const [otPagination, setOtPagination] = useState({
+        page: 1,
+        limit: 10,
     });
 
     // ✅ OT Approve Modal
@@ -272,12 +275,7 @@ const MyLeave = () => {
             }));
 
             setLeaves(normalizedRows);
-            setPagination({
-                page: paginationData.page || 1,
-                limit: paginationData.limit || 10,
-                total: paginationData.totalRecords || 0,
-                totalPages: paginationData.totalPages || 1,
-            });
+            setPagination((p) => ({ ...p, page: 1 }));
         } catch (e) {
             console.error("fetchLeaves error:", e);
         } finally {
@@ -376,6 +374,38 @@ const MyLeave = () => {
             return dateB - dateA;
         });
     }, [ots, otFilters.statusGroup, otFilters.otType, otSearchQuery]);
+
+    // ✅ Pagination LOCAL cho LEAVE
+    const leaveTotalPages = Math.max(1, Math.ceil(filteredLeaves.length / pagination.limit));
+    const paginatedLeaves = useMemo(() => {
+        const start = (pagination.page - 1) * pagination.limit;
+        return filteredLeaves.slice(start, start + pagination.limit);
+    }, [filteredLeaves, pagination.page, pagination.limit]);
+
+    // ✅ Pagination LOCAL cho OT
+    const otTotalPages = Math.max(1, Math.ceil(filteredOTs.length / otPagination.limit));
+    const paginatedOTs = useMemo(() => {
+        const start = (otPagination.page - 1) * otPagination.limit;
+        return filteredOTs.slice(start, start + otPagination.limit);
+    }, [filteredOTs, otPagination.page, otPagination.limit]);
+
+    // ✅ Tự động lùi page nếu page hiện tại vượt totalPages (sau khi filter)
+    useEffect(() => {
+        if (pagination.page > leaveTotalPages) {
+            setPagination((p) => ({ ...p, page: leaveTotalPages }));
+        }
+    }, [leaveTotalPages, pagination.page]);
+
+    useEffect(() => {
+        if (otPagination.page > otTotalPages) {
+            setOtPagination((p) => ({ ...p, page: otTotalPages }));
+        }
+    }, [otTotalPages, otPagination.page]);
+
+    // ✅ Reset OT về page 1 khi filter đổi
+    useEffect(() => {
+        setOtPagination((p) => ({ ...p, page: 1 }));
+    }, [otFilters.searchName, otFilters.statusGroup, otFilters.otType]);
 
     const handleApprove = async (leaveId) => {
         try {
@@ -674,7 +704,7 @@ const MyLeave = () => {
                                         </td>
                                     </tr>
                                 ) : (
-                                    filteredLeaves.map((lv) => {
+                                    paginatedLeaves.map((lv) => {
                                         const displayStatus = normalizeStatus(lv.status);
                                         const accountID = localStorage.getItem("employee_ID");
 
@@ -803,7 +833,7 @@ const MyLeave = () => {
 
                     <div className="p-4 border-t bg-white flex items-center justify-between">
                         <p className="text-xs text-gray-500">
-                            Trang {pagination.page}/{pagination.totalPages}
+                            Trang {pagination.page}/{leaveTotalPages} • Tổng {filteredLeaves.length} đơn
                         </p>
                         <div className="flex gap-2">
                             <Button
@@ -817,7 +847,7 @@ const MyLeave = () => {
                             <Button
                                 variant="secondary"
                                 type="button"
-                                disabled={pagination.page >= pagination.totalPages}
+                                disabled={pagination.page >= leaveTotalPages}
                                 onClick={() => setPagination((p) => ({ ...p, page: p.page + 1 }))}
                             >
                                 Sau
@@ -914,7 +944,7 @@ const MyLeave = () => {
                                         </td>
                                     </tr>
                                 ) : (
-                                    filteredOTs.map((ot) => {
+                                    paginatedOTs.map((ot) => {
                                         const st = normalizeStatus(ot?.status);
                                         const canApproveOT = canApprove && st === "PENDING";
 
@@ -1002,6 +1032,30 @@ const MyLeave = () => {
                                 )}
                             </tbody>
                         </table>
+                    </div>
+
+                    <div className="p-4 border-t bg-white flex items-center justify-between">
+                        <p className="text-xs text-gray-500">
+                            Trang {otPagination.page}/{otTotalPages} • Tổng {filteredOTs.length} đơn
+                        </p>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="secondary"
+                                type="button"
+                                disabled={otPagination.page <= 1}
+                                onClick={() => setOtPagination((p) => ({ ...p, page: p.page - 1 }))}
+                            >
+                                Trước
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                type="button"
+                                disabled={otPagination.page >= otTotalPages}
+                                onClick={() => setOtPagination((p) => ({ ...p, page: p.page + 1 }))}
+                            >
+                                Sau
+                            </Button>
+                        </div>
                     </div>
                 </Card>
             )}
