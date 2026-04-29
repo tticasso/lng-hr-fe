@@ -65,6 +65,21 @@ const normalizeStatus = (st) => {
     return st;
 };
 
+// Sinh dãy số trang có dấu "..." khi nhiều trang
+const buildPageList = (current, total) => {
+    if (total <= 7) {
+        return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    const pages = [1];
+    if (current > 3) pages.push("...");
+    const start = Math.max(2, current - 1);
+    const end = Math.min(total - 1, current + 1);
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (current < total - 2) pages.push("...");
+    pages.push(total);
+    return pages;
+};
+
 const StatusBadge = ({ statusKey, statusText }) => {
     const cls = (() => {
         switch (statusKey) {
@@ -231,10 +246,13 @@ const MyLeave = () => {
                 res = await leaveAPI.getbyUSER(page, limit);
             }
 
-            // ✅ Xử lý cấu trúc response: { data: [...], pagination: {...} }
+            // ✅ Response LEAVE: { data: [...], pagination: { page, limit, totalRecords, totalPages } }
             const responseData = res?.data;
             const rows = responseData?.data || [];
             const paginationData = responseData?.pagination || {};
+            const total = paginationData.totalRecords ?? paginationData.total ?? rows.length;
+            const totalPages =
+                paginationData.totalPages ?? Math.max(1, Math.ceil(total / (paginationData.limit ?? limit)));
 
             // ✅ Lấy employee_ID từ localStorage
             const accountID = localStorage.getItem("employee_ID");
@@ -277,13 +295,7 @@ const MyLeave = () => {
             }));
 
             setLeaves(normalizedRows);
-            setPagination((p) => ({
-                ...p,
-                total: paginationData.total ?? normalizedRows.length,
-                totalPages:
-                    paginationData.totalPages ??
-                    Math.max(1, Math.ceil((paginationData.total ?? normalizedRows.length) / (paginationData.limit ?? p.limit))),
-            }));
+            setPagination((p) => ({ ...p, total, totalPages }));
         } catch (e) {
             console.error("fetchLeaves error:", e);
         } finally {
@@ -304,19 +316,15 @@ const MyLeave = () => {
                 res = await OTApi.get(page, limit);
             }
 
-            const root = res?.data?.data?.data ? res.data.data : res?.data;
-            const rows = root?.data || root || [];
-            const paginationData = root?.pagination || res?.data?.pagination || {};
+            // ✅ Response OT: { data: [...], total, currentPage, results }
+            const responseData = res?.data;
+            const rows = responseData?.data || [];
             const safeRows = Array.isArray(rows) ? rows : [];
+            const total = responseData?.total ?? safeRows.length;
+            const totalPages = Math.max(1, Math.ceil(total / limit));
 
             setOts(safeRows);
-            setOtPagination((p) => ({
-                ...p,
-                total: paginationData.total ?? safeRows.length,
-                totalPages:
-                    paginationData.totalPages ??
-                    Math.max(1, Math.ceil((paginationData.total ?? safeRows.length) / (paginationData.limit ?? p.limit))),
-            }));
+            setOtPagination((p) => ({ ...p, total, totalPages }));
         } catch (error) {
             console.log("DỮ LIỆU OT Lỗi :", error);
             setOts([]);
@@ -820,9 +828,9 @@ const MyLeave = () => {
                         <p className="text-xs text-gray-500">
                             Trang {pagination.page}/{leaveTotalPages} • Tổng {pagination.total} đơn
                         </p>
-                        <div className="flex gap-2 items-center">
+                        <div className="flex gap-1 items-center">
                             <select
-                                className="border rounded-lg px-2 py-1 text-xs outline-none"
+                                className="border rounded-lg px-2 py-1 text-xs outline-none mr-2"
                                 value={pagination.limit}
                                 onChange={(e) =>
                                     setPagination((p) => ({ ...p, page: 1, limit: Number(e.target.value) }))
@@ -834,22 +842,42 @@ const MyLeave = () => {
                                     </option>
                                 ))}
                             </select>
-                            <Button
-                                variant="secondary"
+                            <button
                                 type="button"
                                 disabled={pagination.page <= 1}
                                 onClick={() => setPagination((p) => ({ ...p, page: p.page - 1 }))}
+                                className="px-3 py-1 text-sm border rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50"
                             >
                                 Trước
-                            </Button>
-                            <Button
-                                variant="secondary"
+                            </button>
+                            {buildPageList(pagination.page, leaveTotalPages).map((p, idx) =>
+                                p === "..." ? (
+                                    <span key={`dots-${idx}`} className="px-2 text-gray-400 text-sm">
+                                        ...
+                                    </span>
+                                ) : (
+                                    <button
+                                        key={p}
+                                        type="button"
+                                        onClick={() => setPagination((prev) => ({ ...prev, page: p }))}
+                                        className={`px-3 py-1 text-sm border rounded-md ${
+                                            p === pagination.page
+                                                ? "bg-blue-600 text-white border-blue-600"
+                                                : "hover:bg-gray-50"
+                                        }`}
+                                    >
+                                        {p}
+                                    </button>
+                                )
+                            )}
+                            <button
                                 type="button"
                                 disabled={pagination.page >= leaveTotalPages}
                                 onClick={() => setPagination((p) => ({ ...p, page: p.page + 1 }))}
+                                className="px-3 py-1 text-sm border rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50"
                             >
                                 Sau
-                            </Button>
+                            </button>
                         </div>
                     </div>
                 </Card>
@@ -1036,9 +1064,9 @@ const MyLeave = () => {
                         <p className="text-xs text-gray-500">
                             Trang {otPagination.page}/{otTotalPages} • Tổng {otPagination.total} đơn
                         </p>
-                        <div className="flex gap-2 items-center">
+                        <div className="flex gap-1 items-center">
                             <select
-                                className="border rounded-lg px-2 py-1 text-xs outline-none"
+                                className="border rounded-lg px-2 py-1 text-xs outline-none mr-2"
                                 value={otPagination.limit}
                                 onChange={(e) =>
                                     setOtPagination((p) => ({ ...p, page: 1, limit: Number(e.target.value) }))
@@ -1050,22 +1078,42 @@ const MyLeave = () => {
                                     </option>
                                 ))}
                             </select>
-                            <Button
-                                variant="secondary"
+                            <button
                                 type="button"
                                 disabled={otPagination.page <= 1}
                                 onClick={() => setOtPagination((p) => ({ ...p, page: p.page - 1 }))}
+                                className="px-3 py-1 text-sm border rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50"
                             >
                                 Trước
-                            </Button>
-                            <Button
-                                variant="secondary"
+                            </button>
+                            {buildPageList(otPagination.page, otTotalPages).map((p, idx) =>
+                                p === "..." ? (
+                                    <span key={`ot-dots-${idx}`} className="px-2 text-gray-400 text-sm">
+                                        ...
+                                    </span>
+                                ) : (
+                                    <button
+                                        key={p}
+                                        type="button"
+                                        onClick={() => setOtPagination((prev) => ({ ...prev, page: p }))}
+                                        className={`px-3 py-1 text-sm border rounded-md ${
+                                            p === otPagination.page
+                                                ? "bg-blue-600 text-white border-blue-600"
+                                                : "hover:bg-gray-50"
+                                        }`}
+                                    >
+                                        {p}
+                                    </button>
+                                )
+                            )}
+                            <button
                                 type="button"
                                 disabled={otPagination.page >= otTotalPages}
                                 onClick={() => setOtPagination((p) => ({ ...p, page: p.page + 1 }))}
+                                className="px-3 py-1 text-sm border rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50"
                             >
                                 Sau
-                            </Button>
+                            </button>
                         </div>
                     </div>
                 </Card>
