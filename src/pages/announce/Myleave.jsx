@@ -97,6 +97,8 @@ const MyLeave = () => {
     const [pagination, setPagination] = useState({
         page: 1,
         limit: 10,
+        total: 0,
+        totalPages: 1,
     });
 
     const [filters, setFilters] = useState({
@@ -119,6 +121,8 @@ const MyLeave = () => {
     const [otPagination, setOtPagination] = useState({
         page: 1,
         limit: 10,
+        total: 0,
+        totalPages: 1,
     });
 
     // ✅ OT Approve Modal
@@ -140,27 +144,27 @@ const MyLeave = () => {
     const hasFetchedLeaves = useRef(false);
     const hasFetchedOTs = useRef(false);
 
-    // ✅ Gộp useEffect để fetch data dựa trên activeTab và pagination (chỉ cho LEAVE tab)
+    // ✅ Refetch LEAVE khi đổi tab / page / limit
     useEffect(() => {
-        console.log("🔄 useEffect triggered:", { activeTab, page: pagination.page });
-        
-        if (activeTab === "LEAVE") {
-            console.log("📞 Calling fetchLeaves...");
-            const t = setTimeout(() => {
-                fetchLeaves();
-                hasFetchedLeaves.current = true;
-            }, 300);
-            return () => clearTimeout(t);
-        } else if (activeTab === "OT") {
-            console.log("📞 Calling fetchOTs...");
-            const t = setTimeout(() => {
-                fetchOTs();
-                hasFetchedOTs.current = true;
-            }, 200);
-            return () => clearTimeout(t);
-        }
+        if (activeTab !== "LEAVE") return;
+        const t = setTimeout(() => {
+            fetchLeaves(pagination.page, pagination.limit);
+            hasFetchedLeaves.current = true;
+        }, 300);
+        return () => clearTimeout(t);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeTab]); // Chỉ cần page, không cần limit
+    }, [activeTab, pagination.page, pagination.limit]);
+
+    // ✅ Refetch OT khi đổi tab / page / limit
+    useEffect(() => {
+        if (activeTab !== "OT") return;
+        const t = setTimeout(() => {
+            fetchOTs(otPagination.page, otPagination.limit);
+            hasFetchedOTs.current = true;
+        }, 200);
+        return () => clearTimeout(t);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab, otPagination.page, otPagination.limit]);
 
     const pendingOTCount = useMemo(() => {
         return ots.filter((ot) => normalizeStatus(ot?.status) === "PENDING").length;
@@ -214,25 +218,23 @@ const MyLeave = () => {
         [otFilters.searchName]
     );
 
-    const fetchLeaves = async () => {
+    const fetchLeaves = async (page = pagination.page, limit = pagination.limit) => {
         setLoading(true);
         try {
             const raw = localStorage.getItem("role");
             let res;
 
-            // ADMIN, HR, MANAGER gọi API getbyADMIN, còn lại gọi getbyUSER
+            // ADMIN, HR, MANAGER, LEADER gọi API getbyADMIN, còn lại gọi getbyUSER
             if (raw === "ADMIN" || raw === "HR" || raw === "MANAGER" || raw === "LEADER") {
-                res = await leaveAPI.getbyADMIN();
+                res = await leaveAPI.getbyADMIN(page, limit);
             } else {
-                res = await leaveAPI.getbyUSER();
+                res = await leaveAPI.getbyUSER(page, limit);
             }
 
-            // ✅ Xử lý cấu trúc response mới từ backend
+            // ✅ Xử lý cấu trúc response: { data: [...], pagination: {...} }
             const responseData = res?.data;
-            console.log("FULL RESPONSE DATA:", responseData); // ✅ Log toàn bộ response
             const rows = responseData?.data || [];
             const paginationData = responseData?.pagination || {};
-            console.log("PAGINATION INFO:", paginationData);
 
             // ✅ Lấy employee_ID từ localStorage
             const accountID = localStorage.getItem("employee_ID");
@@ -275,7 +277,13 @@ const MyLeave = () => {
             }));
 
             setLeaves(normalizedRows);
-            setPagination((p) => ({ ...p, page: 1 }));
+            setPagination((p) => ({
+                ...p,
+                total: paginationData.total ?? normalizedRows.length,
+                totalPages:
+                    paginationData.totalPages ??
+                    Math.max(1, Math.ceil((paginationData.total ?? normalizedRows.length) / (paginationData.limit ?? p.limit))),
+            }));
         } catch (e) {
             console.error("fetchLeaves error:", e);
         } finally {
@@ -283,7 +291,7 @@ const MyLeave = () => {
         }
     };
 
-    const fetchOTs = async () => {
+    const fetchOTs = async (page = otPagination.page, limit = otPagination.limit) => {
         setOtLoading(true);
         try {
             const raw = localStorage.getItem("role");
@@ -291,14 +299,24 @@ const MyLeave = () => {
 
             // ADMIN, HR, MANAGER gọi API getALL, còn lại gọi get
             if (raw === "ADMIN" || raw === "HR" || raw === "MANAGER") {
-                res = await OTApi.getALL();
+                res = await OTApi.getALL(page, limit);
             } else {
-                res = await OTApi.get();
+                res = await OTApi.get(page, limit);
             }
 
             const root = res?.data?.data?.data ? res.data.data : res?.data;
             const rows = root?.data || root || [];
-            setOts(Array.isArray(rows) ? rows : []);
+            const paginationData = root?.pagination || res?.data?.pagination || {};
+            const safeRows = Array.isArray(rows) ? rows : [];
+
+            setOts(safeRows);
+            setOtPagination((p) => ({
+                ...p,
+                total: paginationData.total ?? safeRows.length,
+                totalPages:
+                    paginationData.totalPages ??
+                    Math.max(1, Math.ceil((paginationData.total ?? safeRows.length) / (paginationData.limit ?? p.limit))),
+            }));
         } catch (error) {
             console.log("DỮ LIỆU OT Lỗi :", error);
             setOts([]);
@@ -375,37 +393,9 @@ const MyLeave = () => {
         });
     }, [ots, otFilters.statusGroup, otFilters.otType, otSearchQuery]);
 
-    // ✅ Pagination LOCAL cho LEAVE
-    const leaveTotalPages = Math.max(1, Math.ceil(filteredLeaves.length / pagination.limit));
-    const paginatedLeaves = useMemo(() => {
-        const start = (pagination.page - 1) * pagination.limit;
-        return filteredLeaves.slice(start, start + pagination.limit);
-    }, [filteredLeaves, pagination.page, pagination.limit]);
-
-    // ✅ Pagination LOCAL cho OT
-    const otTotalPages = Math.max(1, Math.ceil(filteredOTs.length / otPagination.limit));
-    const paginatedOTs = useMemo(() => {
-        const start = (otPagination.page - 1) * otPagination.limit;
-        return filteredOTs.slice(start, start + otPagination.limit);
-    }, [filteredOTs, otPagination.page, otPagination.limit]);
-
-    // ✅ Tự động lùi page nếu page hiện tại vượt totalPages (sau khi filter)
-    useEffect(() => {
-        if (pagination.page > leaveTotalPages) {
-            setPagination((p) => ({ ...p, page: leaveTotalPages }));
-        }
-    }, [leaveTotalPages, pagination.page]);
-
-    useEffect(() => {
-        if (otPagination.page > otTotalPages) {
-            setOtPagination((p) => ({ ...p, page: otTotalPages }));
-        }
-    }, [otTotalPages, otPagination.page]);
-
-    // ✅ Reset OT về page 1 khi filter đổi
-    useEffect(() => {
-        setOtPagination((p) => ({ ...p, page: 1 }));
-    }, [otFilters.searchName, otFilters.statusGroup, otFilters.otType]);
+    // ✅ Pagination từ server
+    const leaveTotalPages = pagination.totalPages || 1;
+    const otTotalPages = otPagination.totalPages || 1;
 
     const handleApprove = async (leaveId) => {
         try {
@@ -607,7 +597,11 @@ const MyLeave = () => {
                 <Button
                     variant="secondary"
                     className="flex gap-2 items-center"
-                    onClick={activeTab === "LEAVE" ? fetchLeaves : fetchOTs}
+                    onClick={() =>
+                        activeTab === "LEAVE"
+                            ? fetchLeaves(pagination.page, pagination.limit)
+                            : fetchOTs(otPagination.page, otPagination.limit)
+                    }
                 >
                     {(activeTab === "LEAVE" ? loading : otLoading) ? (
                         <Loader2 size={16} className="animate-spin" />
@@ -631,20 +625,14 @@ const MyLeave = () => {
                                 className="pl-9 pr-4 py-2 w-full border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                                 placeholder="Tìm theo lý do / tên nhân sự..."
                                 value={filters.search}
-                                onChange={(e) => {
-                                    setPagination((p) => ({ ...p, page: 1 }));
-                                    setFilters((p) => ({ ...p, search: e.target.value }));
-                                }}
+                                onChange={(e) => setFilters((p) => ({ ...p, search: e.target.value }))}
                             />
                         </div>
 
                         <select
                             className="border rounded-lg px-3 py-2 text-sm outline-none"
                             value={filters.leaveType}
-                            onChange={(e) => {
-                                setPagination((p) => ({ ...p, page: 1 }));
-                                setFilters((p) => ({ ...p, leaveType: e.target.value }));
-                            }}
+                            onChange={(e) => setFilters((p) => ({ ...p, leaveType: e.target.value }))}
                         >
                             <option value="">Tất cả loại nghỉ</option>
                             <option value="ANNUAL">Nghỉ phép năm</option>
@@ -656,10 +644,7 @@ const MyLeave = () => {
                         <select
                             className="border rounded-lg px-3 py-2 text-sm outline-none"
                             value={filters.status}
-                            onChange={(e) => {
-                                setPagination((p) => ({ ...p, page: 1 }));
-                                setFilters((p) => ({ ...p, status: e.target.value }));
-                            }}
+                            onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))}
                         >
                             <option value="">Tất cả trạng thái</option>
                             <option value="PENDING">Chờ duyệt</option>
@@ -704,7 +689,7 @@ const MyLeave = () => {
                                         </td>
                                     </tr>
                                 ) : (
-                                    paginatedLeaves.map((lv) => {
+                                    filteredLeaves.map((lv) => {
                                         const displayStatus = normalizeStatus(lv.status);
                                         const accountID = localStorage.getItem("employee_ID");
 
@@ -833,9 +818,22 @@ const MyLeave = () => {
 
                     <div className="p-4 border-t bg-white flex items-center justify-between">
                         <p className="text-xs text-gray-500">
-                            Trang {pagination.page}/{leaveTotalPages} • Tổng {filteredLeaves.length} đơn
+                            Trang {pagination.page}/{leaveTotalPages} • Tổng {pagination.total} đơn
                         </p>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
+                            <select
+                                className="border rounded-lg px-2 py-1 text-xs outline-none"
+                                value={pagination.limit}
+                                onChange={(e) =>
+                                    setPagination((p) => ({ ...p, page: 1, limit: Number(e.target.value) }))
+                                }
+                            >
+                                {[10, 20, 50, 100].map((n) => (
+                                    <option key={n} value={n}>
+                                        {n} / trang
+                                    </option>
+                                ))}
+                            </select>
                             <Button
                                 variant="secondary"
                                 type="button"
@@ -944,7 +942,7 @@ const MyLeave = () => {
                                         </td>
                                     </tr>
                                 ) : (
-                                    paginatedOTs.map((ot) => {
+                                    filteredOTs.map((ot) => {
                                         const st = normalizeStatus(ot?.status);
                                         const canApproveOT = canApprove && st === "PENDING";
 
@@ -1036,9 +1034,22 @@ const MyLeave = () => {
 
                     <div className="p-4 border-t bg-white flex items-center justify-between">
                         <p className="text-xs text-gray-500">
-                            Trang {otPagination.page}/{otTotalPages} • Tổng {filteredOTs.length} đơn
+                            Trang {otPagination.page}/{otTotalPages} • Tổng {otPagination.total} đơn
                         </p>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
+                            <select
+                                className="border rounded-lg px-2 py-1 text-xs outline-none"
+                                value={otPagination.limit}
+                                onChange={(e) =>
+                                    setOtPagination((p) => ({ ...p, page: 1, limit: Number(e.target.value) }))
+                                }
+                            >
+                                {[10, 20, 50, 100].map((n) => (
+                                    <option key={n} value={n}>
+                                        {n} / trang
+                                    </option>
+                                ))}
+                            </select>
                             <Button
                                 variant="secondary"
                                 type="button"
