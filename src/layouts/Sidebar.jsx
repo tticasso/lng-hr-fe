@@ -214,7 +214,6 @@ const Sidebar = () => {
   const { logout } = useAuth();
 
   const handleLogout = () => {
-    localStorage.removeItem("role");
     logout();
     navigate("/login");
     console.log("logout");

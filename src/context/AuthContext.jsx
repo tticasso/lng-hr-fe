@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import { setAuthToken } from "../apis/apiClient";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { AUTH_UNAUTHORIZED_EVENT, setAuthToken } from "../apis/apiClient";
 import { employeeApi } from "../apis/employeeApi";
 import { disconnectSocket, reconnectSocket } from "../pages/notification/useSocket";
 
@@ -22,6 +22,17 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const clearAuth = useCallback(() => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem("role");
+    localStorage.removeItem("accountID");
+    localStorage.removeItem("employee_ID");
+    setAuthToken(null);
+    disconnectSocket();
+  }, []);
+
   // 1. Load từ LocalStorage khi F5
   useEffect(() => {
     const initAuth = async () => {
@@ -31,40 +42,51 @@ export function AuthProvider({ children }) {
           const parsed = JSON.parse(saved);
           const savedToken = parsed.token || parsed.accessToken;
 
-          if (savedToken) {
-            setAuthToken(savedToken);
-            setToken(savedToken);
-            // Chuẩn hóa user từ cache ngay lập tức
-            setUser(normalizeUser(parsed.user));
+          if (!savedToken) {
+            clearAuth();
+            return;
+          }
 
-            // Gọi API refresh ngầm
-            try {
-              const res = await employeeApi.getMe();
-              console.log("GET ME :",res)
-              // Lấy đúng data từ cấu trúc JSON của bạn
-              const rawData = res.data?.data?.employee || res.data?.employee;
-              if (rawData) {
-                const cleanUser = normalizeUser(rawData);
-                console.log("DỮ LIỆU USER : ",cleanUser)
-                setUser(cleanUser);
-                localStorage.setItem(
-                  STORAGE_KEY,
-                  JSON.stringify({ ...parsed, user: cleanUser }),
-                );
-              }
-            } catch (err) {
-              console.warn("Background refresh failed", err);
+          setAuthToken(savedToken);
+          setToken(savedToken);
+
+          // Xác thực token bằng profile mới nhất trước khi cho vào app
+          try {
+            const res = await employeeApi.getMe();
+            console.log("GET ME :",res)
+            // Lấy đúng data từ cấu trúc JSON của bạn
+            const rawData = res.data?.data?.employee || res.data?.employee;
+            if (rawData) {
+              const cleanUser = normalizeUser(rawData);
+              console.log("DỮ LIỆU USER : ",cleanUser)
+              setUser(cleanUser);
+              localStorage.setItem(
+                STORAGE_KEY,
+                JSON.stringify({ ...parsed, token: savedToken, user: cleanUser }),
+              );
+            } else {
+              clearAuth();
             }
+          } catch (err) {
+            console.warn("Auth validation failed", err);
+            clearAuth();
           }
         }
-      } catch (e) {
-        localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        clearAuth();
       } finally {
         setLoading(false);
       }
     };
     initAuth();
-  }, []);
+  }, [clearAuth]);
+
+  useEffect(() => {
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, clearAuth);
+    return () => {
+      window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, clearAuth);
+    };
+  }, [clearAuth]);
 
   // 2. Login
   const loginUser = (authData) => {
@@ -107,13 +129,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem(STORAGE_KEY);
-    setAuthToken(null);
-    
-    // Disconnect socket khi logout
-    disconnectSocket();
+    clearAuth();
   };
 
   return (

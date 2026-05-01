@@ -9,6 +9,8 @@ const apiClient = axios.create({
   timeout: 15000,
 });
 
+export const AUTH_UNAUTHORIZED_EVENT = "auth:unauthorized";
+
 export function setAuthToken(token) {
   if (token) {
     apiClient.defaults.headers.common["Authorization"] = `Bearer ${token}`;
@@ -17,9 +19,24 @@ export function setAuthToken(token) {
   }
 }
 
+function clearStoredAuth() {
+  localStorage.removeItem("auth");
+  localStorage.removeItem("role");
+  localStorage.removeItem("accountID");
+  localStorage.removeItem("employee_ID");
+  setAuthToken(null);
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    const status = error?.response?.status;
+
+    if (status === 401) {
+      clearStoredAuth();
+      window.dispatchEvent(new Event(AUTH_UNAUTHORIZED_EVENT));
+    }
+
     // Chuẩn hoá message nhưng KHÔNG bọc new Error()
     const errors = error?.response?.data?.errors;
     const normalizedMessage =
