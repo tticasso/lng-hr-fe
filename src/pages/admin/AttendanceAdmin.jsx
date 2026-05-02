@@ -887,7 +887,13 @@ const AttendanceAdmin = () => {
         "Họ và tên": emp.fullName || "",
         "Phòng ban": emp.department || "",
         "Ngày công": emp.totalWorkDays?.toFixed(2) || "0.00",
-        "Giờ OT": emp.totalOTHours?.toFixed(2) || "0.00",
+        "Tổng giờ OT": emp.totalOTHours?.toFixed(2) || "0.00",
+        "OT Ngày thường": Number(emp.otHours?.weekday || 0).toFixed(2),
+        "OT Cuối tuần": Number(emp.otHours?.weekend || 0).toFixed(2),
+        "OT Ngày lễ": Number(emp.otHours?.holiday || 0).toFixed(2),
+        "OT Đêm ngày thường": Number(emp.otHours?.weekday_night || 0).toFixed(2),
+        "OT Đêm cuối tuần": Number(emp.otHours?.weekend_night || 0).toFixed(2),
+        "OT Đêm ngày lễ": Number(emp.otHours?.holiday_night || 0).toFixed(2),
         "Nghỉ phép": emp.paidLeaveDays || 0,
         "Đi muộn": emp.lateCount || 0,
         "Trạng thái": (emp.hasError || emp.totalWorkDays === 0) ? "Error" : "Valid",
@@ -915,9 +921,9 @@ const AttendanceAdmin = () => {
 
       // Merge cells cho header
       ws["!merges"] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }, // Merge dòng 1
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } }, // Merge dòng 2
-        { s: { r: 2, c: 0 }, e: { r: 2, c: 8 } }, // Merge dòng 3
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 14 } }, // Merge dòng 1
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 14 } }, // Merge dòng 2
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 14 } }, // Merge dòng 3
       ];
 
       // Style cho header (3 dòng đầu)
@@ -945,8 +951,11 @@ const AttendanceAdmin = () => {
         },
       };
 
-      // Áp dụng style cho tiêu đề cột (row 4, từ A4 đến I4)
-      const columnHeaders = ["A4", "B4", "C4", "D4", "E4", "F4", "G4", "H4", "I4"];
+      // Áp dụng style cho tiêu đề cột (row 4, từ A4 đến O4)
+      const columnHeaders = [
+        "A4", "B4", "C4", "D4", "E4", "F4", "G4", "H4",
+        "I4", "J4", "K4", "L4", "M4", "N4", "O4",
+      ];
       columnHeaders.forEach((cell) => {
         if (ws[cell]) {
           ws[cell].s = columnHeaderStyle;
@@ -967,7 +976,7 @@ const AttendanceAdmin = () => {
       // Áp dụng style cho data (từ row 5 trở đi)
       const range = XLSX.utils.decode_range(ws["!ref"]);
       for (let R = 4; R <= range.e.r; R++) {
-        for (let C = 0; C <= 8; C++) {
+        for (let C = 0; C <= 14; C++) {
           const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
           if (ws[cellAddress]) {
             ws[cellAddress].s = dataCellStyle;
@@ -982,7 +991,13 @@ const AttendanceAdmin = () => {
         { wch: 25 }, // Họ tên
         { wch: 20 }, // Phòng ban
         { wch: 12 }, // Ngày công
-        { wch: 10 }, // Giờ OT
+        { wch: 12 }, // Tổng giờ OT
+        { wch: 14 }, // OT Ngày thường
+        { wch: 14 }, // OT Cuối tuần
+        { wch: 14 }, // OT Ngày lễ
+        { wch: 18 }, // OT Đêm ngày thường
+        { wch: 18 }, // OT Đêm cuối tuần
+        { wch: 16 }, // OT Đêm ngày lễ
         { wch: 12 }, // Nghỉ phép
         { wch: 10 }, // Đi muộn
         { wch: 12 }, // Trạng thái
