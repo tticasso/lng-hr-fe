@@ -1,10 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { X, Save, Paperclip, Trash2 } from "lucide-react";
+import { X, Save, Paperclip, Trash2, Zap } from "lucide-react";
 import { TimePicker } from "antd";
 import Button from "../common/Button";
 import { toast } from "react-toastify";
 import dayjs from "../../untils/dayjs";
 import { attendancesAPI } from "../../apis/attendancesAPI";
+
+const OT_TYPE_LABELS = {
+  weekday: "Ngày thường",
+  weekend: "Cuối tuần",
+  holiday: "Ngày lễ",
+  weekday_night: "Đêm ngày thường",
+  weekend_night: "Đêm cuối tuần",
+  holiday_night: "Đêm ngày lễ",
+};
 
 const EditAttendanceModal = ({ isOpen, onClose, attendanceLog, employee, onSave, onDelete }) => {
   const [formData, setFormData] = useState({
@@ -96,6 +105,15 @@ const EditAttendanceModal = ({ isOpen, onClose, attendanceLog, employee, onSave,
 
   if (!isOpen) return null;
 
+  const finalOtHours = attendanceLog?.finalOtHours;
+  const otBreakdown = finalOtHours
+    ? Object.entries(finalOtHours).filter(([, h]) => h > 0)
+    : [];
+  const totalOT = otBreakdown.reduce((sum, [, h]) => sum + h, 0);
+  const overtimeRanges = Array.isArray(attendanceLog?.overtimeId)
+    ? attendanceLog.overtimeId
+    : [];
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95">
@@ -144,6 +162,77 @@ const EditAttendanceModal = ({ isOpen, onClose, attendanceLog, employee, onSave,
               />
             </div>
           </div>
+          {(otBreakdown.length > 0 || overtimeRanges.length > 0) && (
+            <div className="p-3 bg-orange-50 border border-orange-100 rounded-lg">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-bold text-orange-700 flex items-center gap-1">
+                  <Zap size={14} /> Thông tin OT
+                </span>
+                <span className="text-sm font-bold text-orange-700">
+                  {totalOT.toFixed(2)} giờ
+                </span>
+              </div>
+
+              {overtimeRanges.length > 0 && (
+                <div className="space-y-1 mb-2">
+                  {overtimeRanges.map((ot, i) => (
+                    <div
+                      key={ot._id || i}
+                      className="flex items-center justify-between text-xs bg-white px-2 py-1.5 rounded"
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-mono font-bold text-orange-600">
+                          {ot.approvedStartTime} - {ot.approvedEndTime}
+                        </span>
+                        {ot.status && (
+                          <span
+                            className={`text-[10px] font-bold ${
+                              ot.status === "APPROVED"
+                                ? "text-green-600"
+                                : ot.status === "PENDING"
+                                  ? "text-yellow-600"
+                                  : "text-red-600"
+                            }`}
+                          >
+                            {ot.status}
+                          </span>
+                        )}
+                      </div>
+                      {ot.approvedHours && (
+                        <span className="text-[11px] text-gray-500 font-medium">
+                          {Number(ot.approvedHours).toFixed(2)}h duyệt
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {otBreakdown.length > 0 && (
+                <div className="pt-2 border-t border-orange-200">
+                  <p className="text-[11px] font-bold text-orange-700 mb-1">
+                    Phân loại OT:
+                  </p>
+                  <div className="grid grid-cols-2 gap-1">
+                    {otBreakdown.map(([key, hours]) => (
+                      <div
+                        key={key}
+                        className="flex items-center justify-between text-[11px] bg-white px-2 py-1 rounded"
+                      >
+                        <span className="text-gray-600">
+                          {OT_TYPE_LABELS[key] || key}
+                        </span>
+                        <span className="font-mono font-bold text-orange-600">
+                          {Number(hours).toFixed(2)}h
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Lý do điều chỉnh <span className="text-red-500">*</span>

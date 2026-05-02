@@ -85,6 +85,8 @@ const DayDetailPanel = memo(
                 selectedDate={selectedDate}
                 statusMap={statusMap}
               />
+            ) : selectedDate.type === "holiday" ? (
+              <HolidayDayContent selectedDate={selectedDate} />
             ) : (
               <OtherDayContent selectedDate={selectedDate} />
             )}
@@ -290,76 +292,252 @@ const LeaveDayContent = memo(({ selectedDate, statusMap }) => (
 ));
 
 // Other Day Content Component
-const OtherDayContent = memo(({ selectedDate }) => (
-  <div className="min-h-28 py-4 text-center text-gray-500 italic bg-gray-50 rounded-lg">
-    {selectedDate.type === "weekend"
+const OtherDayContent = memo(({ selectedDate }) => {
+  const hasOT =
+    selectedDate.status?.includes("ot") &&
+    selectedDate.otTimeRanges &&
+    selectedDate.otTimeRanges.length > 0;
+  const hasCheckInOut = selectedDate.checkIn || selectedDate.checkOut;
+
+  const bannerLabel =
+    selectedDate.type === "weekend"
       ? "Cuối tuần - Không có lịch làm việc"
       : selectedDate.type === "holiday"
         ? `Nghỉ lễ: ${selectedDate.holidayName}`
         : selectedDate.type === "substitute_work"
           ? `Ngày làm việc bù: ${selectedDate.holidayName}`
-          : "Không có thông tin"}
+          : selectedDate.type === "rotation_off"
+            ? `Nghỉ luân phiên${selectedDate.apiData?.note ? ` - ${selectedDate.apiData.note}` : ""}`
+            : "Không có thông tin";
+
+  if (!hasOT && !hasCheckInOut) {
+    return (
+      <div className="min-h-28 py-4 text-center text-gray-500 italic bg-gray-50 rounded-lg">
+        {bannerLabel}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="p-3 bg-gray-50 border border-gray-100 rounded-lg text-center text-gray-600 italic text-sm">
+        {bannerLabel}
+      </div>
+
+      {hasCheckInOut && (
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium text-gray-700">
+            Thông tin chấm công:
+          </h4>
+          {selectedDate.checkIn && (
+            <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+              <span className="text-xs text-gray-600">Check In:</span>
+              <span
+                className={`font-mono text-sm font-bold ${
+                  selectedDate.status?.includes("late")
+                    ? "text-red-600"
+                    : "text-gray-800"
+                }`}
+              >
+                {selectedDate.checkIn}
+                {selectedDate.lateMinutes > 0 && (
+                  <span className="text-xs text-red-500 ml-2">
+                    (+{selectedDate.lateMinutes}p)
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
+          {selectedDate.checkOut && (
+            <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+              <span className="text-xs text-gray-600">Check Out:</span>
+              <span
+                className={`font-mono text-sm font-bold ${
+                  selectedDate.status?.includes("early")
+                    ? "text-blue-600"
+                    : "text-gray-800"
+                }`}
+              >
+                {selectedDate.checkOut}
+                {selectedDate.earlyMinutes > 0 && (
+                  <span className="text-xs text-blue-500 ml-2">
+                    (-{selectedDate.earlyMinutes}p)
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {hasOT && <OTInfo selectedDate={selectedDate} />}
+    </div>
+  );
+});
+
+// Holiday Day Content Component
+const HolidayDayContent = memo(({ selectedDate }) => (
+  <div className="space-y-4">
+    <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-center">
+      <span className="text-sm font-bold text-red-700">
+        🎄 Nghỉ lễ: {selectedDate.holidayName}
+      </span>
+    </div>
+
+    {(selectedDate.checkIn || selectedDate.checkOut) && (
+      <div className="space-y-2">
+        <h4 className="text-sm font-medium text-gray-700">
+          Thông tin chấm công:
+        </h4>
+        {selectedDate.checkIn && (
+          <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+            <span className="text-xs text-gray-600">Check In:</span>
+            <span
+              className={`font-mono text-sm font-bold ${
+                selectedDate.status.includes("late")
+                  ? "text-red-600"
+                  : "text-gray-800"
+              }`}
+            >
+              {selectedDate.checkIn}
+              {selectedDate.lateMinutes > 0 && (
+                <span className="text-xs text-red-500 ml-2">
+                  (+{selectedDate.lateMinutes}p)
+                </span>
+              )}
+            </span>
+          </div>
+        )}
+        {selectedDate.checkOut && (
+          <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+            <span className="text-xs text-gray-600">Check Out:</span>
+            <span
+              className={`font-mono text-sm font-bold ${
+                selectedDate.status.includes("early")
+                  ? "text-blue-600"
+                  : "text-gray-800"
+              }`}
+            >
+              {selectedDate.checkOut}
+              {selectedDate.earlyMinutes > 0 && (
+                <span className="text-xs text-blue-500 ml-2">
+                  (-{selectedDate.earlyMinutes}p)
+                </span>
+              )}
+            </span>
+          </div>
+        )}
+      </div>
+    )}
+
+    {selectedDate.status.includes("ot") &&
+      selectedDate.otTimeRanges &&
+      selectedDate.otTimeRanges.length > 0 && (
+        <OTInfo selectedDate={selectedDate} />
+      )}
   </div>
 ));
 
+// OT Type Labels
+const OT_TYPE_LABELS = {
+  weekday: "Ngày thường",
+  weekend: "Cuối tuần",
+  holiday: "Ngày lễ",
+  weekday_night: "Đêm ngày thường",
+  weekend_night: "Đêm cuối tuần",
+  holiday_night: "Đêm ngày lễ",
+};
+
 // OT Info Component
-const OTInfo = memo(({ selectedDate }) => (
-  <div className="p-3 bg-orange-50 border border-orange-100 rounded-lg">
-    <div className="flex justify-between items-center mb-2">
-      <span className="text-sm font-bold text-orange-700 flex items-center gap-1">
-        <Zap size={14} /> Overtime
-      </span>
-      <span className="text-sm font-bold text-orange-700">
-        {selectedDate.otHours} giờ
-      </span>
-    </div>
-    <div className="space-y-1">
-      {selectedDate.otTimeRanges.map((ot, idx) => (
-        <div
-          key={idx}
-          className="flex items-center justify-between text-xs bg-white px-2 py-1.5 rounded"
-        >
-          <div className="flex flex-col">
-            <span className="text-gray-600">{ot.otType}</span>
-            {ot.status && (
-              <span
-                className={`text-[10px] font-bold ${
-                  ot.status === "APPROVED"
-                    ? "text-green-600"
-                    : ot.status === "PENDING"
-                      ? "text-yellow-600"
-                      : "text-red-600"
-                }`}
-              >
-                {ot.status}
-              </span>
-            )}
-          </div>
-          <div className="text-right">
-            <div className="font-mono font-bold text-orange-600">
-              {ot.startTime} - {ot.endTime}
+const OTInfo = memo(({ selectedDate }) => {
+  const finalOtHours = selectedDate.apiData?.finalOtHours;
+  const otBreakdown = finalOtHours
+    ? Object.entries(finalOtHours).filter(([, hours]) => hours > 0)
+    : [];
+
+  return (
+    <div className="p-3 bg-orange-50 border border-orange-100 rounded-lg">
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-sm font-bold text-orange-700 flex items-center gap-1">
+          <Zap size={14} /> Overtime
+        </span>
+        <span className="text-sm font-bold text-orange-700">
+          {Number(selectedDate.otHours).toFixed(2)} giờ
+        </span>
+      </div>
+      <div className="space-y-1">
+        {selectedDate.otTimeRanges.map((ot, idx) => (
+          <div
+            key={idx}
+            className="flex items-center justify-between text-xs bg-white px-2 py-1.5 rounded"
+          >
+            <div className="flex flex-col">
+              <span className="text-gray-600">{ot.otType}</span>
+              {ot.status && (
+                <span
+                  className={`text-[10px] font-bold ${
+                    ot.status === "APPROVED"
+                      ? "text-green-600"
+                      : ot.status === "PENDING"
+                        ? "text-yellow-600"
+                        : "text-red-600"
+                  }`}
+                >
+                  {ot.status}
+                </span>
+              )}
             </div>
-            {ot.approvedHours && (
-              <div className="text-[10px] text-gray-500">
-                {ot.approvedHours}h duyệt
+            <div className="text-right">
+              <div className="font-mono font-bold text-orange-600">
+                {ot.startTime} - {ot.endTime}
               </div>
-            )}
+              {ot.approvedHours && (
+                <div className="text-[10px] text-gray-500">
+                  {ot.approvedHours}h duyệt
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {otBreakdown.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-orange-200">
+          <p className="text-[11px] font-bold text-orange-700 mb-1">
+            Phân loại OT:
+          </p>
+          <div className="grid grid-cols-2 gap-1">
+            {otBreakdown.map(([key, hours]) => (
+              <div
+                key={key}
+                className="flex items-center justify-between text-[11px] bg-white px-2 py-1 rounded"
+              >
+                <span className="text-gray-600">
+                  {OT_TYPE_LABELS[key] || key}
+                </span>
+                <span className="font-mono font-bold text-orange-600">
+                  {Number(hours).toFixed(2)}h
+                </span>
+              </div>
+            ))}
           </div>
         </div>
-      ))}
+      )}
+
+      {selectedDate.apiData?.note && (
+        <p className="text-xs text-orange-600/80 mt-2">
+          {selectedDate.apiData.note}
+        </p>
+      )}
     </div>
-    {selectedDate.apiData?.note && (
-      <p className="text-xs text-orange-600/80 mt-2">
-        {selectedDate.apiData.note}
-      </p>
-    )}
-  </div>
-));
+  );
+});
 
 // Set display names
 WorkDayContent.displayName = "WorkDayContent";
 LeaveDayContent.displayName = "LeaveDayContent";
 OtherDayContent.displayName = "OtherDayContent";
+HolidayDayContent.displayName = "HolidayDayContent";
 OTInfo.displayName = "OTInfo";
 DayDetailPanel.displayName = "DayDetailPanel";
 
