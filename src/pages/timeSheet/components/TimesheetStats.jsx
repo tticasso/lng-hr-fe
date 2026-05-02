@@ -57,7 +57,7 @@ const TimesheetStats = memo(({ timesheetData }) => {
         icon={<Briefcase size={20} />}
         label="Tổng giờ làm"
         value={`${timesheetData?.work?.totalHours || 0}h`}
-        sub={`${timesheetData?.work?.totalDays}/ ${timesheetData?.work?.standardWorkDays} công`}
+        sub={`${timesheetData?.work?.actualWorkDays}/ ${timesheetData?.work?.standardWorkDays} công`}
         color="blue"
       />
 

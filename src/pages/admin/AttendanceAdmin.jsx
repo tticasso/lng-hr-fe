@@ -16,6 +16,7 @@ import {
   Lock,
   Unlock,
   RefreshCcw,
+  HelpCircle,
 } from "lucide-react";
 
 import * as XLSX from "xlsx";
@@ -48,6 +49,7 @@ const AttendanceAdmin = () => {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [employeeDetail, setEmployeeDetail] = useState(null); // Chi tiết chấm công theo ngày
   const [selectedAttendanceLog, setSelectedAttendanceLog] = useState(null); // Dòng chấm công đang chỉnh sửa
+  const [openOTDetailId, setOpenOTDetailId] = useState(null); // employeeId đang mở popover OT
 
   // Filter State
   const [filters, setFilters] = useState({
@@ -55,6 +57,16 @@ const AttendanceAdmin = () => {
     department: "",
     status: "",
   });
+
+  // OT type labels
+  const OT_TYPE_LABELS = {
+    weekday: "Ngày thường",
+    weekend: "Cuối tuần",
+    holiday: "Ngày lễ",
+    weekday_night: "Đêm ngày thường",
+    weekend_night: "Đêm cuối tuần",
+    holiday_night: "Đêm ngày lễ",
+  };
 
   // =========================
   // IMPORT EXCEL: UI HOOKS
@@ -221,6 +233,18 @@ const AttendanceAdmin = () => {
 
     setFilteredAttendanceData(result);
   }, [allAttendanceData, filters]);
+
+  // Close OT detail popover khi click ra ngoài
+  useEffect(() => {
+    if (!openOTDetailId) return;
+    const handleClickOutside = (e) => {
+      if (!e.target.closest("[data-ot-popover]")) {
+        setOpenOTDetailId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [openOTDetailId]);
 
   // --- HANDLERS ---
   const handleFilterChange = (e) => {
@@ -1217,8 +1241,64 @@ const AttendanceAdmin = () => {
                       <td className="p-4 text-center font-medium">
                         {emp.totalWorkDays?.toFixed(2) || 0}
                       </td>
-                      <td className="p-4 text-center text-orange-600 font-medium">
-                        {emp.totalOTHours?.toFixed(2) || 0}
+                      <td className="p-4 text-center">
+                        <div className="inline-flex items-center justify-center gap-1.5 relative">
+                          <span className="text-orange-600 font-bold">
+                            {emp.totalOTHours?.toFixed(2) || 0}h
+                          </span>
+                          {emp.otHours &&
+                            Object.values(emp.otHours).some((h) => h > 0) && (
+                              <div data-ot-popover className="relative">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenOTDetailId(
+                                      openOTDetailId === emp.employeeId
+                                        ? null
+                                        : emp.employeeId,
+                                    );
+                                  }}
+                                  className="p-0.5 text-gray-400 hover:text-orange-600 transition-colors"
+                                  title="Xem chi tiết OT"
+                                >
+                                  <HelpCircle size={14} />
+                                </button>
+                                {openOTDetailId === emp.employeeId && (
+                                  <div
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="absolute z-30 right-0 top-full mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl p-3 text-left"
+                                  >
+                                    <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-100">
+                                      <span className="text-xs font-bold text-gray-700 uppercase">
+                                        Chi tiết OT
+                                      </span>
+                                      <span className="text-xs font-bold text-orange-600">
+                                        {emp.totalOTHours?.toFixed(2) || 0}h
+                                      </span>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                      {Object.entries(emp.otHours)
+                                        .filter(([, h]) => h > 0)
+                                        .map(([key, hours]) => (
+                                          <div
+                                            key={key}
+                                            className="flex justify-between text-xs"
+                                          >
+                                            <span className="text-gray-600">
+                                              {OT_TYPE_LABELS[key] || key}
+                                            </span>
+                                            <span className="font-mono font-bold text-orange-600">
+                                              {Number(hours).toFixed(2)}h
+                                            </span>
+                                          </div>
+                                        ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                        </div>
                       </td>
                       <td className="p-4 text-center text-purple-600 font-medium">
                         {emp.paidLeaveDays || 0}
@@ -1412,8 +1492,95 @@ const AttendanceAdmin = () => {
                             >
                               {log.checkOut || "--:--"}
                             </td>
-                            <td className="p-4 text-center font-mono font-bold text-orange-600">
-                              {totalOTHours > 0 ? totalOTHours.toFixed(1) : "--"}
+                            <td className="p-4 text-center">
+                              {totalOTHours > 0 ? (
+                                <div className="inline-flex items-center justify-center gap-1.5 relative">
+                                  <span className="font-mono font-bold text-orange-600">
+                                    {totalOTHours.toFixed(2)}
+                                  </span>
+                                  {log.finalOtHours &&
+                                    Object.values(log.finalOtHours).some(
+                                      (h) => h > 0,
+                                    ) && (
+                                      <div data-ot-popover className="relative">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            const key = `log-${log._id || idx}`;
+                                            setOpenOTDetailId(
+                                              openOTDetailId === key
+                                                ? null
+                                                : key,
+                                            );
+                                          }}
+                                          className="p-0.5 text-gray-400 hover:text-orange-600 transition-colors"
+                                          title="Xem chi tiết OT"
+                                        >
+                                          <HelpCircle size={14} />
+                                        </button>
+                                        {openOTDetailId ===
+                                          `log-${log._id || idx}` && (
+                                          <div
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="absolute z-30 right-0 top-full mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl p-3 text-left"
+                                          >
+                                            <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-100">
+                                              <span className="text-xs font-bold text-gray-700 uppercase">
+                                                Chi tiết OT
+                                              </span>
+                                              <span className="text-xs font-bold text-orange-600">
+                                                {totalOTHours.toFixed(2)}h
+                                              </span>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                              {Object.entries(log.finalOtHours)
+                                                .filter(([, h]) => h > 0)
+                                                .map(([key, hours]) => (
+                                                  <div
+                                                    key={key}
+                                                    className="flex justify-between text-xs"
+                                                  >
+                                                    <span className="text-gray-600">
+                                                      {OT_TYPE_LABELS[key] ||
+                                                        key}
+                                                    </span>
+                                                    <span className="font-mono font-bold text-orange-600">
+                                                      {Number(hours).toFixed(2)}
+                                                      h
+                                                    </span>
+                                                  </div>
+                                                ))}
+                                            </div>
+                                            {log.overtimeId &&
+                                              log.overtimeId.length > 0 && (
+                                                <div className="mt-2 pt-2 border-t border-gray-100 space-y-1">
+                                                  <p className="text-[11px] font-bold text-gray-600">
+                                                    Khung giờ OT:
+                                                  </p>
+                                                  {log.overtimeId.map(
+                                                    (ot, i) => (
+                                                      <div
+                                                        key={ot._id || i}
+                                                        className="text-center font-mono text-[11px] font-bold text-orange-600"
+                                                      >
+                                                        {ot.approvedStartTime} -{" "}
+                                                        {ot.approvedEndTime}
+                                                      </div>
+                                                    ),
+                                                  )}
+                                                </div>
+                                              )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                </div>
+                              ) : (
+                                <span className="font-mono font-bold text-gray-400">
+                                  --
+                                </span>
+                              )}
                             </td>
                             <td className="p-4">
                               {statusBadge}

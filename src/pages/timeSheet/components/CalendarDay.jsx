@@ -93,6 +93,8 @@ const CalendarDay = memo(({
                   <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded text-center leading-tight">
                     🎄 {day.holidayName}
                   </span>
+                  {renderCheckInOut(day)}
+                  {renderOTInfo(day)}
                 </div>
               )}
 
