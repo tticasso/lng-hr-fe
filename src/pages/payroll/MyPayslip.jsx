@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+﻿import React, { useState, useRef, useEffect } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import {
@@ -24,6 +24,22 @@ import { employeeApi } from "../../apis/employeeApi";
 import { toast } from "react-toastify";
 import { message } from "antd";
 
+const OT_TYPE_LABELS = {
+  weekday: "OT ngày thường",
+  weekend: "OT cuối tuần",
+  holiday: "OT ngày lễ",
+  weekday_night: "OT đêm ngày thường",
+  weekend_night: "OT đêm cuối tuần",
+  holiday_night: "OT đêm ngày lễ",
+};
+
+const ALLOWANCE_TYPE_LABELS = {
+  lunch: "Phụ cấp ăn trưa",
+  fuel: "Phụ cấp xăng xe",
+  other: "Phụ cấp khác",
+  responsibility: "Phụ cấp trách nhiệm",
+};
+
 const MyPayslip = () => {
   const contentRef = useRef(null);
 
@@ -48,7 +64,6 @@ const MyPayslip = () => {
 
           // 2. Fetch employee detail để lấy thông tin thiếu
           const empRes = await employeeApi.getMe();
-           console.log("EMPLOYEE + 3")
           const empData = empRes.data?.data?.employee || empRes.data?.employee;
           setEmployeeDetail(empData);
         }
@@ -230,14 +245,32 @@ const MyPayslip = () => {
     rawData: payroll,
   }));
 
-  // Build payslip data from selected payroll
   const buildPayslipData = () => {
-    if (!selectedPayroll) return null;
+    if (!selectedPayroll) {
+      return null;
+    }
 
-    // Tính lương cơ bản từ dailyRate * standardWorkDays (nếu có)
-    const calculatedBaseSalary = selectedPayroll.dailyRate
-      ? selectedPayroll.dailyRate * selectedPayroll.standardWorkDays
-      : (employeeDetail?.baseSalary || 0);
+    const otBreakdown = Object.entries(selectedPayroll.otHours || {})
+      .map(([key, hours]) => ({
+        key,
+        label: OT_TYPE_LABELS[key] || key,
+        valueText: `${Number(hours || 0).toFixed(2)}h`,
+        sortValue: Number(hours || 0),
+      }))
+      .filter((item) => item.sortValue > 0);
+
+    const allowanceBreakdown = Object.entries(
+      selectedPayroll.allowanceBreakdown || {},
+    )
+      .map(([key, value]) => ({
+        key,
+        label: ALLOWANCE_TYPE_LABELS[key] || key,
+        valueText: formatCurrency(Number(value || 0)),
+        sortValue: Number(value || 0),
+      }))
+      .filter((item) => item.sortValue > 0);
+
+    const totalOtHours = otBreakdown.reduce((sum, item) => sum + item.sortValue, 0);
 
     return {
       employee: {
@@ -247,7 +280,7 @@ const MyPayslip = () => {
         position: selectedPayroll.employeeId?.jobTitle || employeeDetail?.jobTitle || "--",
         taxId: employeeDetail?.taxIdentification || "--",
         bankAccount: employeeDetail?.bankAccount
-          ? `${employeeDetail.bankAccount.accountNumber} (${employeeDetail.bankAccount.bankName})`
+          ?             `${employeeDetail.bankAccount.accountNumber} (${employeeDetail.bankAccount.bankName})`
           : "--",
       },
       workDays: {
@@ -256,12 +289,14 @@ const MyPayslip = () => {
         paidLeave: selectedPayroll.paidLeaveDays || 0,
         dailyRate: selectedPayroll.dailyRate || 0,
       },
-      otHours: selectedPayroll.otHours || { weekday: 0, weekend: 0, holiday: 0 },
+      otHours: selectedPayroll.otHours || {},
+      otBreakdown,
+      allowanceBreakdown,
 
       // Thu nhập
       incomes: [
         {
-          label: "Lương cơ bản ",
+          label: "Lương cơ bản",
           value: selectedPayroll.baseSalary || 0,
         },
         {
@@ -271,13 +306,12 @@ const MyPayslip = () => {
         {
           label: "Phụ cấp (Tổng)",
           value: selectedPayroll.totalAllowance || 0,
+          details: allowanceBreakdown,
         },
         {
-          label: `Làm thêm giờ (OT) - ${typeof selectedPayroll.otHours === 'object'
-              ? ((selectedPayroll.otHours?.weekday || 0) + (selectedPayroll.otHours?.weekend || 0) + (selectedPayroll.otHours?.holiday || 0))
-              : (selectedPayroll.otHours || 0)
-            }h`,
-          value: selectedPayroll.otPay || 0
+          label: `Làm thêm giờ (OT) - ${totalOtHours.toFixed(2)}h`,
+          value: selectedPayroll.otPay || 0,
+          details: otBreakdown,
         },
       ],
 
@@ -326,9 +360,9 @@ const MyPayslip = () => {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-100px)]">
+    <div className="grid min-h-[calc(100dvh-5rem)] grid-cols-1 gap-4 lg:h-[calc(100vh-100px)] lg:grid-cols-12 lg:gap-6">
       {/* --- CỘT TRÁI: DANH SÁCH KỲ LƯƠNG (3/12) --- */}
-      <div className="lg:col-span-3 flex flex-col gap-4 h-full overflow-hidden">
+      <div className="flex flex-col gap-4 overflow-hidden lg:col-span-3 lg:h-full">
         <Card className="h-full flex flex-col p-0 overflow-hidden">
           <div className="p-4 border-b border-gray-100 bg-gray-50">
             <h3 className="font-bold text-gray-700 flex items-center gap-2">
@@ -379,26 +413,26 @@ const MyPayslip = () => {
       </div>
 
       {/* --- CỘT PHẢI: CHI TIẾT PHIẾU LƯƠNG (9/12) --- */}
-      <div className="lg:col-span-9 h-full overflow-y-auto pr-1">
+      <div className="lg:col-span-9 lg:h-full lg:overflow-y-auto lg:pr-1">
         {/* Toolbar Actions */}
-        <div className="flex justify-between items-center mb-4">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">
+            <h1 className="text-xl font-bold text-gray-800 sm:text-2xl">
               Chi tiết phiếu lương
             </h1>
             <p className="text-gray-500 text-sm">
               Kỳ lương: Tháng {selectedPayroll?.month}/{selectedPayroll?.year}
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <Button
               variant="secondary"
-              className="flex items-center gap-2 text-sm"
+              className="flex w-full items-center gap-2 text-sm sm:w-auto"
             >
               <HelpCircle size={16} /> Gửi thắc mắc
             </Button>
             <Button
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-sm shadow-sm"
+              className="flex w-full items-center gap-2 bg-blue-600 text-sm shadow-sm hover:bg-blue-700 sm:w-auto"
               onClick={handleDownloadPdf}
             >
               <Download size={16} /> Tải PDF
@@ -418,7 +452,7 @@ const MyPayslip = () => {
                     Công ty Cổ phần LNG
                   </h2>
                   <p className="text-xs text-gray-500 flex items-center gap-1">
-                    219 Ngô Gia Tự, Phường Kinh Băc, Tỉnh Bắc Ninh
+                    219 Ngô Gia Tự, Phường Kinh Bắc, Tỉnh Bắc Ninh
                   </p>
                 </div>
               </div>
@@ -433,7 +467,7 @@ const MyPayslip = () => {
             </div>
 
             {/* 2. Employee Info Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-lg mb-8 border border-gray-100">
+            <div className="mb-8 grid grid-cols-1 gap-4 rounded-lg border border-gray-100 bg-gray-50 p-4 sm:grid-cols-2 xl:grid-cols-4">
               <InfoBlock
                 label="Họ tên nhân viên"
                 value={payslipData?.employee.name}
@@ -469,29 +503,45 @@ const MyPayslip = () => {
               {/* CỘT THU NHẬP */}
               <div>
                 <h3 className="text-sm font-bold text-gray-700 uppercase border-b-2 border-green-500 pb-2 mb-4 flex items-center justify-between">
-                  <span>I. Các khoản thu nhập</span>
+                  <span>I. CÁC KHOẢN THU NHẬP</span>
                   <DollarSign size={16} className="text-green-500" />
                 </h3>
                 <div className="space-y-3">
                   {payslipData?.incomes.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="flex justify-between items-center text-sm group"
-                      title={item.note || ""}
-                    >
-                      <span className="text-gray-600 group-hover:text-gray-900">
-                        {item.label}
-                      </span>
-                      <span
-                        className={` font-medium ${item.isNote ? "text-gray-400" : "text-gray-800"
-                          }`}
+                    <div key={idx} className="space-y-2">
+                      <div
+                        className="flex justify-between items-center text-sm group"
+                        title={item.note || ""}
                       >
-                        {item.value > 0
-                          ? formatCurrency(item.value)
-                          : item.isNote
-                            ? ""
-                            : "0 ₫"}
-                      </span>
+                        <span className="text-gray-600 group-hover:text-gray-900">
+                          {item.label}
+                        </span>
+                        <span
+                          className={` font-medium ${item.isNote ? "text-gray-400" : "text-gray-800"}`}
+                        >
+                          {item.value > 0
+                            ? formatCurrency(item.value)
+                            : item.isNote
+                              ? ""
+                              : formatCurrency(0)}
+                        </span>
+                      </div>
+
+                      {item.details?.length > 0 && (
+                        <div className="ml-4 rounded-lg bg-gray-50 px-3 py-2">
+                          {item.details.map((detail) => (
+                            <div
+                              key={detail.key}
+                              className="flex items-center justify-between py-1 text-xs text-gray-500"
+                            >
+                              <span>{detail.label}</span>
+                              <span className="font-mono font-semibold text-gray-700">
+                                {detail.valueText}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
 
@@ -510,7 +560,7 @@ const MyPayslip = () => {
               {/* CỘT KHẤU TRỪ */}
               <div>
                 <h3 className="text-sm font-bold text-gray-700 uppercase border-b-2 border-red-500 pb-2 mb-4 flex items-center justify-between">
-                  <span>II. Các khoản khấu trừ</span>
+                  <span>II. CÁC KHOẢN KHẤU TRỪ</span>
                   <FileText size={16} className="text-red-500" />
                 </h3>
                 <div className="space-y-3">
@@ -524,7 +574,7 @@ const MyPayslip = () => {
                         {item.label}
                       </span>
                       <span className=" font-medium text-red-600/80">
-                        {item.value > 0 ? `-${formatCurrency(item.value)}` : "0 ₫"}
+                        {item.value > 0 ? `-${formatCurrency(item.value)}` : formatCurrency(0)}
                       </span>
                     </div>
                   ))}
@@ -564,7 +614,7 @@ const MyPayslip = () => {
                 vòng 3 ngày làm việc.
               </p>
               <p className="mt-1">
-                Generated by LNG System • {new Date().toLocaleString("vi-VN")}
+                Generated by LNG System â€¢ {new Date().toLocaleString("vi-VN")}
               </p>
             </div>
           </Card>

@@ -17,11 +17,14 @@ import {
 } from "lucide-react";
 import { roleApi } from "../../apis/roleApi";
 import { permissionApi } from "../../apis/permissionApi";
+import { auditLogApi } from "../../apis/auditLogApi";
+import { systemSettingApi } from "../../apis/systemSettingApi";
 import { toast } from "react-toastify";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button"; // Đảm bảo component này tồn tại
 
 const SystemAdmin = () => {
+  const [activeAdminTab, setActiveAdminTab] = useState("roles");
   // --- MAPPING TIẾNG VIỆT ---
   const moduleNameMap = {
     "ADMIN": "Quản trị",
@@ -132,6 +135,39 @@ const SystemAdmin = () => {
     return permissionNameMap[permName] || permName;
   };
 
+  const extractAuditLogList = (payload) => {
+    const candidates = [
+      payload?.data,
+      payload?.data?.data,
+      payload?.logs,
+      payload?.items,
+      payload?.results,
+      payload,
+    ];
+
+    return candidates.find(Array.isArray) || [];
+  };
+
+  const getAuditActionName = (log) => {
+    return (
+      log?.action?.actionName ||
+      log?.actionName ||
+      log?.action?.permissionId?.name ||
+      log?.event ||
+      "--"
+    );
+  };
+
+  const getAuditUserName = (log) => {
+    return (
+      log?.userId?.fullName ||
+      log?.userId?.username ||
+      log?.user?.fullName ||
+      log?.user?.username ||
+      "--"
+    );
+  };
+
   // --- STATE ---
   const [roles, setRoles] = useState([]);
   const [permissions, setPermissions] = useState([]);
@@ -153,6 +189,15 @@ const SystemAdmin = () => {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedModules, setExpandedModules] = useState({});
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settings, setSettings] = useState([]);
+  const [settingCategory, setSettingCategory] = useState("");
+  const [settingKey, setSettingKey] = useState("");
+  const [settingPayload, setSettingPayload] = useState("{\n  \n}");
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditLogId, setAuditLogId] = useState("");
+  const [selectedAuditLog, setSelectedAuditLog] = useState(null);
 
   // --- INIT DATA ---
   useEffect(() => {
@@ -329,6 +374,265 @@ const SystemAdmin = () => {
     }));
   };
 
+  const parseJsonPayload = (payload) => {
+    try {
+      return payload.trim() ? JSON.parse(payload) : {};
+    } catch {
+      toast.error("JSON khong hop le");
+      return null;
+    }
+  };
+
+  const renderAdminTabs = () => (
+    <div className="flex flex-wrap gap-2 mb-4">
+      {[
+        { id: "roles", label: "Vai tro & quyen" },
+        { id: "settings", label: "Cau hinh he thong" },
+        { id: "audit", label: "Audit logs" },
+      ].map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          onClick={() => setActiveAdminTab(tab.id)}
+          className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+            activeAdminTab === tab.id
+              ? "bg-blue-600 text-white border-blue-600"
+              : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const fetchSystemSettings = async () => {
+    try {
+      setSettingsLoading(true);
+      const res = settingCategory.trim()
+        ? await systemSettingApi.getByCategory(settingCategory.trim())
+        : await systemSettingApi.getAll();
+      const data = res.data?.data || res.data || [];
+      setSettings(Array.isArray(data) ? data : Object.values(data || {}));
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Khong the tai cau hinh he thong");
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const updateSystemSetting = async () => {
+    const payload = parseJsonPayload(settingPayload);
+    if (!payload || !settingKey.trim()) {
+      if (!settingKey.trim()) toast.warning("Vui long nhap setting key");
+      return;
+    }
+    if (!window.confirm("Cap nhat cau hinh he thong nay?")) return;
+
+    try {
+      setSettingsLoading(true);
+      await systemSettingApi.updateByKey(settingKey.trim(), payload);
+      toast.success("Cap nhat cau hinh thanh cong");
+      await fetchSystemSettings();
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Cap nhat cau hinh that bai");
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const fetchAuditLogs = async () => {
+    try {
+      setAuditLoading(true);
+      setSelectedAuditLog(null);
+      const res = await auditLogApi.getAll({ limit: 100 });
+      setAuditLogs(extractAuditLogList(res.data));
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Khong the tai audit logs");
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
+  const fetchAuditLogDetail = async (id = auditLogId) => {
+    if (!id) {
+      toast.warning("Vui long chon audit log");
+      return;
+    }
+    try {
+      setAuditLoading(true);
+      const res = await auditLogApi.getById(id);
+      setSelectedAuditLog(res.data?.data?.log || res.data?.data || res.data);
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Khong the tai chi tiet audit log");
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
+  const renderSystemSettings = () => (
+    <div className="space-y-4">
+      {renderAdminTabs()}
+      <Card className="p-5">
+        <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-end">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-gray-500 mb-1">Category</label>
+            <input
+              value={settingCategory}
+              onChange={(e) => setSettingCategory(e.target.value)}
+              placeholder="payroll, attendance..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+          <Button type="button" variant="secondary" onClick={fetchSystemSettings} disabled={settingsLoading}>
+            {settingsLoading ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+            Tai cau hinh
+          </Button>
+        </div>
+      </Card>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <Card className="xl:col-span-2 p-0 overflow-hidden">
+          <div className="p-4 border-b bg-gray-50 font-semibold text-gray-800">Danh sach cau hinh</div>
+          <div className="max-h-[520px] overflow-auto">
+            {settings.length === 0 ? (
+              <div className="p-8 text-center text-gray-400">Chua co du lieu. Nhan tai cau hinh de xem.</div>
+            ) : (
+              <table className="w-full min-w-[720px] text-sm">
+                <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
+                  <tr>
+                    <th className="p-3 text-left">Key</th>
+                    <th className="p-3 text-left">Category</th>
+                    <th className="p-3 text-left">Value</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {settings.map((item, index) => (
+                    <tr
+                      key={item._id || item.key || index}
+                      className="hover:bg-blue-50/40 cursor-pointer"
+                      onClick={() => {
+                        setSettingKey(item.key || "");
+                        setSettingPayload(JSON.stringify({ value: item.value }, null, 2));
+                      }}
+                    >
+                      <td className="p-3 font-mono text-xs">{item.key || "--"}</td>
+                      <td className="p-3">{item.category || "--"}</td>
+                      <td className="p-3 max-w-md truncate font-mono text-xs">{JSON.stringify(item.value ?? item)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </Card>
+
+        <Card className="p-5 space-y-3">
+          <h3 className="font-semibold text-gray-800">Cap nhat setting</h3>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Setting key</label>
+            <input
+              value={settingKey}
+              onChange={(e) => setSettingKey(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Payload JSON</label>
+            <textarea
+              value={settingPayload}
+              onChange={(e) => setSettingPayload(e.target.value)}
+              rows={8}
+              spellCheck={false}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+          <Button type="button" onClick={updateSystemSetting} disabled={settingsLoading} className="w-full">
+            Cap nhat
+          </Button>
+        </Card>
+      </div>
+    </div>
+  );
+
+  const renderAuditLogs = () => (
+    <div className="space-y-4">
+      {renderAdminTabs()}
+      <Card className="p-4 flex justify-between items-center">
+        <div>
+          <h2 className="font-bold text-gray-800">Audit logs</h2>
+          <p className="text-sm text-gray-500">Theo doi cac thay doi quan trong trong he thong.</p>
+        </div>
+        <Button type="button" variant="secondary" onClick={fetchAuditLogs} disabled={auditLoading}>
+          {auditLoading ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+          Tai logs
+        </Button>
+      </Card>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <Card className="xl:col-span-2 p-0 overflow-hidden">
+          <div className="max-h-[580px] overflow-auto">
+            {auditLogs.length === 0 ? (
+              <div className="p-8 text-center text-gray-400">Chua co du lieu. Nhan tai logs de xem.</div>
+            ) : (
+              <table className="w-full min-w-[840px] text-sm">
+                <thead className="bg-gray-50 text-xs text-gray-500 uppercase sticky top-0">
+                  <tr>
+                    <th className="p-3 text-left">Action</th>
+                    <th className="p-3 text-left">Module</th>
+                    <th className="p-3 text-left">User</th>
+                    <th className="p-3 text-left">Status</th>
+                    <th className="p-3 text-left">Time</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {auditLogs.map((log, index) => (
+                    <tr
+                      key={log._id || index}
+                      className="hover:bg-blue-50/40 cursor-pointer"
+                      onClick={() => {
+                        setAuditLogId(log._id);
+                        fetchAuditLogDetail(log._id);
+                      }}
+                    >
+                      <td className="p-3 font-medium">{getVietnameseName(getAuditActionName(log))}</td>
+                      <td className="p-3 text-gray-600">{getVietnameseModule(log.module) || "--"}</td>
+                      <td className="p-3 text-gray-600">{getAuditUserName(log)}</td>
+                      <td className="p-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          log.status === "FAILED"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-emerald-100 text-emerald-700"
+                        }`}>
+                          {log.status || "--"}
+                        </span>
+                      </td>
+                      <td className="p-3 text-gray-500">{log.createdAt ? new Date(log.createdAt).toLocaleString("vi-VN") : "--"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </Card>
+        <Card className="p-5">
+          <h3 className="font-semibold text-gray-800 mb-3">Chi tiet log</h3>
+          <input
+            value={auditLogId}
+            onChange={(e) => setAuditLogId(e.target.value)}
+            placeholder="Audit log ID"
+            className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+          <Button type="button" variant="secondary" onClick={() => fetchAuditLogDetail()} disabled={auditLoading} className="w-full mb-4">
+            Xem chi tiet
+          </Button>
+          <pre className="text-xs bg-gray-950 text-gray-100 rounded-lg p-3 max-h-[420px] overflow-auto">
+            {selectedAuditLog ? JSON.stringify(selectedAuditLog, null, 2) : "Chua chon log."}
+          </pre>
+        </Card>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -337,8 +641,18 @@ const SystemAdmin = () => {
     );
   }
 
+  if (activeAdminTab === "settings") {
+    return renderSystemSettings();
+  }
+
+  if (activeAdminTab === "audit") {
+    return renderAuditLogs();
+  }
+
   return (
-    <div className="h-[calc(100vh-100px)] flex gap-6">
+    <>
+    {renderAdminTabs()}
+    <div className="min-h-[calc(100dvh-8rem)] lg:h-[calc(100vh-150px)] flex flex-col xl:flex-row gap-4 lg:gap-6">
       {/* --- MODAL TẠO PERMISSION --- */}
       {isCreatingPerm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -417,7 +731,7 @@ const SystemAdmin = () => {
       )}
 
       {/* --- LEFT SIDEBAR: ROLES --- */}
-      <Card className="w-80 flex-shrink-0 p-6 overflow-y-auto">
+      <Card className="w-full xl:w-80 xl:flex-shrink-0 p-4 sm:p-6 overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
             <Shield size={20} className="text-blue-600" />
@@ -490,10 +804,10 @@ const SystemAdmin = () => {
       </Card>
 
       {/* --- RIGHT CONTENT: PERMISSION TABLE --- */}
-      <Card className="flex-1 p-6 overflow-hidden flex flex-col">
+      <Card className="flex-1 p-4 sm:p-6 overflow-hidden flex flex-col">
         {selectedRole ? (
           <>
-            <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-200">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6 pb-4 border-b border-gray-200">
               <div>
                 <h2 className="text-xl font-bold text-gray-800">
                   Phân quyền: <span className="text-blue-600">{selectedRole.name}</span>
@@ -503,7 +817,7 @@ const SystemAdmin = () => {
                 </p>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
                 <div className="relative">
                   <Search
                     size={16}
@@ -512,7 +826,7 @@ const SystemAdmin = () => {
                   <input
                     type="text"
                     placeholder="Tìm kiếm quyền..."
-                    className="w-64 pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full sm:w-64 pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
@@ -563,7 +877,7 @@ const SystemAdmin = () => {
 
                         {/* Permissions Table */}
                         {expandedModules[moduleName] && (
-                          <table className="w-full">
+                          <table className="w-full min-w-[760px]">
                             <thead className="bg-gray-50 border-b border-gray-200">
                               <tr>
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-12">
@@ -648,6 +962,7 @@ const SystemAdmin = () => {
         )}
       </Card>
     </div>
+    </>
   );
 };
 

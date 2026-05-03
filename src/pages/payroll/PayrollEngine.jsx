@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import {
   Calculator,
   Calendar,
@@ -22,6 +22,11 @@ import MonthYearPicker from "../../components/common/MonthYearPicker";
 import { payrollAPI } from "../../apis/payrollAPI";
 import { toast } from "react-toastify";
 import { employeeApi } from "../../apis/employeeApi";
+import {
+  formatHours,
+  getAllowanceBreakdownItems,
+  getOtBreakdownItems,
+} from "./overview/payrollOverviewUtils";
 
 const PayrollEngine = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -134,7 +139,7 @@ const PayrollEngine = () => {
           const [year, month] = selectedMonth.split("-");
 
           const res = await payrollAPI.getall(month, year);
-          console.log("✅ Payroll data loaded successfully:", res);
+          console.log("Payroll data loaded successfully:", res);
 
           // Extract data từ response
           const apiData = res.data?.data?.data || res.data?.data || [];
@@ -142,9 +147,9 @@ const PayrollEngine = () => {
           setSelectedRows([]); // Reset selected rows khi load data mới
 
           toast.success("Tải dữ liệu lương thành công");
-          console.log("📋 Mapped payroll data:", apiData);
+          console.log("Mapped payroll data:", apiData);
         } catch (error) {
-          console.error("❌ Error fetching payroll data:", error);
+          console.error("Error fetching payroll data:", error);
           toast.error("Không thể tải dữ liệu lương. Vui lòng thử lại.");
           setPayrollData([]);
         } finally {
@@ -174,17 +179,17 @@ const PayrollEngine = () => {
           year: parseInt(year, 10),
         };
 
-        console.log("📤 Gửi payload tính lương:", payload);
+        console.log("Gửi payload tính lương:", payload);
 
         const res = await payrollAPI.calcalculate(payload);
 
-        console.log("✅ API Response:", res);
+        console.log("API Response:", res);
         toast.success("Tính lương thành công!");
 
         // Chỉ chuyển tab khi API thành công
         setCurrentStep((prev) => prev + 1);
       } catch (error) {
-        console.error("❌ Lỗi API:", error);
+        console.error("Lỗi API:", error);
         toast.error(error.response?.data?.message || "Tính lương thất bại. Vui lòng thử lại.");
       } finally {
         setIsProcessing(false);
@@ -207,6 +212,28 @@ const PayrollEngine = () => {
     }
   };
 
+  const handleCalculateBatch = async () => {
+    const [year, month] = selectedMonth.split("-");
+    const payload = {
+      month: parseInt(month, 10),
+      year: parseInt(year, 10),
+    };
+
+    if (!window.confirm(`Tính lương batch cho tháng ${month}/${year}?`)) return;
+
+    try {
+      setIsProcessing(true);
+      const res = await payrollAPI.calculateBatch(payload);
+      console.log("Batch payroll response:", res);
+      toast.success("Tính lương batch thành công");
+      setCurrentStep(2);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Tính lương batch thất bại");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleBack = () => {
     if (currentStep > 1) setCurrentStep((prev) => prev - 1);
   };
@@ -223,17 +250,17 @@ const PayrollEngine = () => {
         year: parseInt(year, 10),
       };
 
-      console.log("📤 Gửi payload finalize:", payload);
+      console.log("Gửi payload finalize:", payload);
 
       const res = await payrollAPI.finalize(payload);
-      console.log("✅ API finalize SUCCESS:", res);
+      console.log("API finalize SUCCESS:", res);
 
       toast.success(`Đã chốt kỳ lương thành công!`);
 
       // TODO: Có thể redirect về trang khác hoặc reset form
       // navigate('/payroll/all');
     } catch (error) {
-      console.error("❌ Lỗi API finalize:", error);
+      console.error("Lỗi API finalize:", error);
       toast.error(error.response?.data?.message || "Chốt kỳ lương thất bại. Vui lòng thử lại.");
     } finally {
       setIsProcessing(false);
@@ -241,7 +268,7 @@ const PayrollEngine = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-100px)] flex flex-col gap-6">
+    <div className="flex min-h-[calc(100dvh-5rem)] flex-col gap-3 lg:h-[calc(100vh-100px)] lg:gap-4">
       {/* Loading Overlay khi call API */}
       {isProcessing && currentStep === 1 && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
@@ -257,8 +284,8 @@ const PayrollEngine = () => {
 
       {/* --- HEADER --- */}
       <div className="shrink-0">
-        {/* <h1 className="text-2xl font-bold text-gray-800">Công cụ tính lương(Not yet active)</h1> */}
-        <h1 className="text-2xl font-bold text-gray-800">
+        {/* <h1 className="text-xl font-bold text-gray-800">Công cụ tính lương (Not yet active)</h1> */}
+        <h1 className="text-xl font-bold text-gray-800 sm:text-2xl">
           Công cụ tính lương
           {/* <span className="text-red-500"> (Not yet active)</span> */}
         </h1>
@@ -268,7 +295,7 @@ const PayrollEngine = () => {
       </div>
 
       {/* --- STEPPER --- */}
-      <div className="flex items-center justify-center mb-4 shrink-0">
+      <div className="mb-4 flex items-center justify-center overflow-x-auto pb-1 shrink-0">
         <div className="flex items-center w-full max-w-3xl">
           <StepIndicator
             step={1}
@@ -308,12 +335,11 @@ const PayrollEngine = () => {
                     Bắt đầu kỳ tính lương mới
                   </h2>
                   <p className="text-gray-500">
-                    Vui lòng chọn thông tin kỳ lương để hệ thống tổng hợp dữ
-                    liệu.
+                    Vui lòng chọn thông tin kỳ lương để hệ thống tổng hợp dữ liệu.
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Tháng / Năm
@@ -336,33 +362,45 @@ const PayrollEngine = () => {
                   </div>
                 </div>
 
-                <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 grid grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 gap-4 rounded-xl border border-blue-100 bg-blue-50 p-4 md:grid-cols-2">
                   <div className="flex items-center gap-4">
-                    <div className="p-3 bg-white rounded-lg shadow-sm text-blue-600">
-                      <Users size={24} />
+                    <div className="rounded-lg bg-white p-2.5 text-blue-600 shadow-sm">
+                      <Users size={20} />
                     </div>
                     <div>
                       <p className="text-sm text-gray-500 font-medium">
                         Nhân sự hiện có
                       </p>
-                      <p className="text-2xl font-bold text-gray-800">
+                      <p className="text-xl font-bold text-gray-800">
                         {totalUser}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className="p-3 bg-white rounded-lg shadow-sm text-green-600">
-                      <Calendar size={24} />
+                    <div className="rounded-lg bg-white p-2.5 text-green-600 shadow-sm">
+                      <Calendar size={20} />
                     </div>
                     <div>
                       <p className="text-sm text-gray-500 font-medium">
                         Ngày chi trả
                       </p>
-                      <p className="text-2xl font-bold text-gray-800">
+                      <p className="text-xl font-bold text-gray-800">
                         {calculatePayDate(selectedMonth)}
                       </p>
                     </div>
                   </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleCalculateBatch}
+                    disabled={isProcessing}
+                    className="border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
+                  >
+                    <Calculator size={18} className="mr-2" />
+                    Tính lương batch
+                  </Button>
                 </div>
               </div>
             </div>
@@ -371,14 +409,14 @@ const PayrollEngine = () => {
           {currentStep === 2 && (
             <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-300">
               {/* Review Toolbar */}
-              <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+              <div className="flex flex-col gap-3 border-b border-gray-200 bg-gray-50 p-4 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <AlertCircle size={16} className="text-blue-500" />
                     Hiển thị <strong>{filteredPayrollData.length}</strong> / {payrollData.length} bản lương
                   </div>
                 </div>
-                <div className="relative">
+                <div className="relative w-full md:w-auto">
                   <Search
                     size={14}
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -388,13 +426,29 @@ const PayrollEngine = () => {
                     placeholder="Tìm nhân viên..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 pr-3 py-1.5 text-sm border border-gray-300 rounded-md outline-none focus:border-blue-500"
+                    className="w-full rounded-md border border-gray-300 py-1.5 pl-9 pr-3 text-sm outline-none focus:border-blue-500 md:w-auto"
                   />
                 </div>
+                <Button
+                  onClick={handleNext}
+                  disabled={isProcessing}
+                  className="bg-blue-600 hover:bg-blue-700 text-white md:self-auto"
+                >
+                  {isProcessing ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 size={18} className="animate-spin" />
+                      <span>Đang xử lý...</span>
+                    </div>
+                  ) : (
+                    <>
+                      Tiếp theo <ArrowRight size={18} className="ml-2" />
+                    </>
+                  )}
+                </Button>
               </div>
 
               {/* Data Table - Giới hạn chiều cao */}
-              <div className="flex-1 overflow-auto max-h-[500px]">
+              <div className="flex-1 overflow-auto">
                 {loadingData ? (
                   <div className="flex items-center justify-center h-64">
                     <div className="flex flex-col items-center gap-3">
@@ -419,7 +473,7 @@ const PayrollEngine = () => {
                     </div>
                   </div>
                 ) : (
-                  <table className="w-full text-left text-xs">
+                  <table className="hidden w-full text-left text-xs md:table">
                     <thead className="bg-white border-b border-gray-200 text-[10px] uppercase text-gray-500 font-semibold sticky top-0 z-10 shadow-sm">
                       <tr>
                         <th className="p-2">Nhân viên</th>
@@ -434,10 +488,12 @@ const PayrollEngine = () => {
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {filteredPayrollData.map((row) => {
+                        const otBreakdown = getOtBreakdownItems(row);
+                        const allowanceBreakdown = getAllowanceBreakdownItems(row);
                         return (
                           <tr
                             key={row._id}
-                            className="hover:bg-gray-50 group transition-colors"
+                            className="align-top hover:bg-gray-50 group transition-colors"
                           >
                             <td className="p-2 font-medium text-gray-800">
                               {row.employeeId?.fullName || "--"} <br />
@@ -451,11 +507,17 @@ const PayrollEngine = () => {
                             <td className="p-2 text-right font-mono text-gray-600">
                               {formatMoney(row.baseSalary || 0)}
                             </td>
-                            <td className="p-2 text-right font-mono text-gray-600">
-                              {formatMoney(row.otPay || 0)}
+                            <td className="p-2">
+                              <div className="text-right font-mono text-gray-600">
+                                {formatMoney(row.otPay || 0)}
+                              </div>
+                              <BreakdownList items={otBreakdown} formatter={formatHours} />
                             </td>
-                            <td className="p-2 text-right font-mono text-gray-600">
-                              {formatMoney(row.totalAllowance || 0)}
+                            <td className="p-2">
+                              <div className="text-right font-mono text-gray-600">
+                                {formatMoney(row.totalAllowance || 0)}
+                              </div>
+                              <BreakdownList items={allowanceBreakdown} formatter={formatMoney} />
                             </td>
                             <td className="p-2 text-right font-mono text-gray-600">
                               -{formatMoney(row.totalDeduction || 0)}
@@ -485,6 +547,58 @@ const PayrollEngine = () => {
                     </tbody>
                   </table>
                 )}
+
+                {!loadingData && filteredPayrollData.length > 0 && (
+                  <div className="space-y-3 p-3 md:hidden">
+                    {filteredPayrollData.map((row) => {
+                      const otBreakdown = getOtBreakdownItems(row);
+                      const allowanceBreakdown = getAllowanceBreakdownItems(row);
+                      return (
+                      <article key={row._id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-gray-800">{row.employeeId?.fullName || "--"}</p>
+                            <p className="text-xs text-gray-500">{row.employeeId?.employeeCode || "--"}</p>
+                            <p className="mt-1 text-sm text-gray-600">{row.departmentId?.name || "--"}</p>
+                          </div>
+                          {row.status === "DRAFT" ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-1 text-[10px] font-bold text-yellow-700">
+                              Xem trước
+                            </span>
+                          ) : row.status === "FINALIZED" ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-[10px] font-bold text-green-700">
+                              Hoàn thành
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <p className="text-xs uppercase text-gray-400">Lương cơ bản</p>
+                            <p className="font-medium text-gray-700">{formatMoney(row.baseSalary || 0)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase text-gray-400">Thực nhận</p>
+                            <p className="font-bold text-blue-700">{formatMoney(row.netIncome || 0)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase text-gray-400">OT</p>
+                            <p className="font-medium text-orange-600">{formatMoney(row.otPay || 0)}</p>
+                            <BreakdownList items={otBreakdown} formatter={formatHours} align="left" />
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase text-gray-400">Khấu trừ</p>
+                            <p className="font-medium text-red-600">-{formatMoney(row.totalDeduction || 0)}</p>
+                          </div>
+                          <div className="col-span-2">
+                            <p className="text-xs uppercase text-gray-400">Phụ cấp</p>
+                            <p className="font-medium text-green-600">{formatMoney(row.totalAllowance || 0)}</p>
+                            <BreakdownList items={allowanceBreakdown} formatter={formatMoney} align="left" />
+                          </div>
+                        </div>
+                      </article>
+                    )})}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -497,7 +611,7 @@ const PayrollEngine = () => {
                   <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
                     <CheckCircle2 size={32} />
                   </div>
-                  <h2 className="text-2xl font-bold text-gray-800">
+                  <h2 className="text-xl font-bold text-gray-800">
                     Sẵn sàng chốt lương
                   </h2>
                   <p className="text-gray-500">
@@ -552,7 +666,7 @@ const PayrollEngine = () => {
           )}
 
           {/* FOOTER: NAVIGATION BUTTONS */}
-          <div className="p-4 border-t border-gray-200 bg-white flex justify-between items-center shrink-0">
+          <div className="flex shrink-0 flex-col gap-3 border-t border-gray-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
             <Button
               variant="secondary"
               onClick={handleBack}
@@ -564,7 +678,7 @@ const PayrollEngine = () => {
               <ArrowLeft size={18} className="mr-2" /> Quay lại
             </Button>
 
-            <div className="flex gap-3">
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
               {currentStep === 3 ? (
                 <>
                   <Button
@@ -594,12 +708,14 @@ const PayrollEngine = () => {
                 <Button
                   onClick={handleNext}
                   disabled={isProcessing}
-                  className="bg-blue-600 hover:bg-blue-700 text-white min-w-[140px] disabled:opacity-70 disabled:cursor-not-allowed"
+                  className={`bg-blue-600 hover:bg-blue-700 text-white min-w-[140px] disabled:opacity-70 disabled:cursor-not-allowed ${
+                    currentStep === 2 ? "hidden" : ""
+                  }`}
                 >
                   {isProcessing ? (
                     <div className="flex items-center gap-2">
                       <Loader2 size={18} className="animate-spin" />
-                      <span>Đang xử lý...</span>
+                        <span>Đang xử lý...</span>
                     </div>
                   ) : (
                     <>
@@ -617,6 +733,25 @@ const PayrollEngine = () => {
 };
 
 // --- SUB COMPONENTS ---
+
+const BreakdownList = ({ items, formatter, align = "right" }) => {
+  if (!items.length) {
+    return <p className={`mt-1 text-[10px] text-gray-400 ${align === "right" ? "text-right" : ""}`}>Không có</p>;
+  }
+
+  return (
+    <div className={`mt-1 space-y-1 text-[10px] text-gray-500 ${align === "right" ? "text-right" : ""}`}>
+      {items.map((item) => (
+        <div key={item.key} className="flex items-start justify-between gap-2">
+          <span className="min-w-0 flex-1 truncate">{item.label}</span>
+          <span className="shrink-0 font-mono font-medium text-gray-700">
+            {formatter(item.value)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const StepIndicator = ({ step, current, label }) => {
   const isActive = current >= step;
@@ -677,3 +812,4 @@ const SummaryStat = ({ label, value, icon, theme }) => {
 };
 
 export default PayrollEngine;
+

@@ -4,45 +4,49 @@ export const employeeApi = {
   getMe: () => {
     return apiClient.get("/employees/me");
   },
-  // GET /api/employees (Thay vì /user)
-  getAll: () => {
-    return apiClient.get("/employees?limit=100",);
+
+  getAll: (params = { limit: 100 }) => {
+    return apiClient.get("/employees", { params });
   },
 
-  // GET /api/employees/:id
   getById: (id) => {
     return apiClient.get(`/employees/${id}`);
   },
 
-  // PATCH /api/employees/update-me
+  downloadTemplate: () => {
+    return apiClient.get("/employees/template", { responseType: "blob" });
+  },
+
   updateMe: (data) => {
     return apiClient.patch("/employees/update-me", data);
   },
 
-  // PATCH /api/employees/update-employee/:id
   updateEmployee: (id, data) => {
     return apiClient.patch(`/employees/update-employee/${id}`, data);
   },
 
-  // POST /api/employees
+  updateStatus: (id, data) => {
+    return apiClient.patch(`/employees/status/${id}`, data);
+  },
+
+  restore: (id, data) => {
+    return apiClient.patch(`/employees/restore/${id}`, data);
+  },
+
   create: (data) => {
     return apiClient.post("/employees", data);
   },
+
   delete: (id) => {
-    return apiClient.delete(`/user/${id}`);
+    return apiClient.delete(`/employees/${id}`);
   },
-
-  // import_profile: (data) => {
-  //   return apiClient.post("/employees/import-profile", data);
-  // },
-
 
   import_profile: (file) => {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
     return apiClient.post("/employees/import-profile", formData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        "Content-Type": "multipart/form-data",
       },
     });
   },

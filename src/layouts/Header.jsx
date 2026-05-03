@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
-import { Bell, Search, X } from "lucide-react";
+﻿import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { Bell, Menu, Search, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import NotificationDetailModal from "../components/modals/NotificationDetailModal";
 import useSocket from "../pages/notification/useSocket";
@@ -12,7 +12,7 @@ import { useAuth } from "../context/AuthContext";
 import AnnouncementDetailModal from "../components/modals/AnnouncementDetailModal";
 import { announcementAPI } from "../apis/announcements";
 
-// ✅ Format thời gian thông báo: rõ ràng + chuyên nghiệp
+// âœ… Format thá»i gian thĂ´ng bĂ¡o: rĂµ rĂ ng + chuyĂªn nghiá»‡p
 const formatNotifyTime = (dateInput) => {
   if (!dateInput) return "--";
 
@@ -44,25 +44,25 @@ const formatNotifyTime = (dateInput) => {
 };
 
 const Header = () => {
-  const { user } = useAuth(); // Lấy user từ AuthContext thay vì gọi API
+  const { user } = useAuth(); // Láº¥y user tá»« AuthContext thay vĂ¬ gá»i API
   const { openNotify, setOpenNotify } = useNotification();
-  const { isCollapsed } = useSidebar();
+  const { isCollapsed, openMobileSidebar } = useSidebar();
 
-  // Lấy thông tin từ user context thay vì gọi API
+  // Láº¥y thĂ´ng tin tá»« user context thay vĂ¬ gá»i API
   const fullName = user?.fullName || "";
   const jobTitle = user?.jobTitle || "";
 
-  // ✅ tab filter: all (thông báo) | unread (chưa đọc)
+  // âœ… tab filter: all (thĂ´ng bĂ¡o) | unread (chÆ°a Ä‘á»c)
   const [notifyTab, setNotifyTab] = useState("all");
 
-  // ✅ State cho modal chi tiết
+  // âœ… State cho modal chi tiáº¿t
   const [selectedNotification, setSelectedNotification] = useState(null);
 
-  // ✅ State cho Announcement Detail Modal
+  // âœ… State cho Announcement Detail Modal
   const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
   const [selectedAnnouncementId, setSelectedAnnouncementId] = useState(null);
 
-  // ✅ State cho search
+  // âœ… State cho search
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
   const navigate = useNavigate();
@@ -74,14 +74,14 @@ const Header = () => {
     return (parts[0][0] + (parts.at(-1)?.[0] || "")).toUpperCase();
   }, [fullName]);
 
-  // ✅ Ảnh logo cho tất cả thông báo
+  // âœ… áº¢nh logo cho táº¥t cáº£ thĂ´ng bĂ¡o
   const NOTIFICATION_AVATAR = "https://res.cloudinary.com/dplhdyxgl/image/upload/v1772177306/logo_j0iody.jpg";
 
-  // ✅ notifications state để thao tác read/unread local
+  // âœ… notifications state Ä‘á»ƒ thao tĂ¡c read/unread local
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Load notifications từ API khi mount
+  // Load notifications tá»« API khi mount
   useEffect(() => {
     const loadNotifications = async () => {
       try {
@@ -89,16 +89,16 @@ const Header = () => {
         const res = await notificationApi.getAll();
         console.log("NOTIFICATION API:", res);
 
-        // Parse data từ API response
+        // Parse data tá»« API response
         const apiNotifications = res.data?.data || [];
 
-        // Transform data từ API sang format của UI
+        // Transform data tá»« API sang format cá»§a UI
         const transformedNotifications = apiNotifications.map((item) => ({
           id: item._id,
           title: item.title,
           content: item.message,
           createdAt: item.createdAt,
-          unread: !item.isRead, // isRead = false → unread = true
+          unread: !item.isRead, // isRead = false â†’ unread = true
           type: item.type,
           relatedId: item.relatedId,
           relatedModel: item.relatedModel,
@@ -115,17 +115,17 @@ const Header = () => {
     loadNotifications();
   }, []);
 
-  // ✅ State để track toast đã hiển thị (tránh duplicate)
+  // âœ… State Ä‘á»ƒ track toast Ä‘Ă£ hiá»ƒn thá»‹ (trĂ¡nh duplicate)
   const [shownToasts, setShownToasts] = useState(new Set());
 
-  // ✅ Lắng nghe socket để nhận thông báo real-time
+  // âœ… Láº¯ng nghe socket Ä‘á»ƒ nháº­n thĂ´ng bĂ¡o real-time
   const handleSocketNotification = useCallback((data) => {
-    console.log("📩 [HEADER] Nhận thông báo từ socket:", data);
+    console.log("đŸ“© [HEADER] Nháº­n thĂ´ng bĂ¡o tá»« socket:", data);
 
-    // Tạo notification object từ data socket
+    // Táº¡o notification object tá»« data socket
     const newNotification = {
       id: data._id || data.id || Date.now(),
-      title: data.title || "Thông báo mới",
+      title: data.title || "ThĂ´ng bĂ¡o má»›i",
       content: data.message || data.content || "",
       createdAt: data.createdAt || new Date().toISOString(),
       unread: true,
@@ -134,31 +134,31 @@ const Header = () => {
       relatedModel: data.relatedModel,
     };
     console.log("data.type :",data.type)
-    // Kiểm tra xem notification đã tồn tại chưa (tránh duplicate)
+    // Kiá»ƒm tra xem notification Ä‘Ă£ tá»“n táº¡i chÆ°a (trĂ¡nh duplicate)
     setNotifications((prev) => {
       const exists = prev.some((n) => n.id === newNotification.id);
       if (exists) {
-        console.log("⚠️ Notification already exists, skipping...");
+        console.log("â ï¸ Notification already exists, skipping...");
         return prev;
       }
 
-      // Kiểm tra xem toast đã hiển thị chưa
+      // Kiá»ƒm tra xem toast Ä‘Ă£ hiá»ƒn thá»‹ chÆ°a
       setShownToasts((prevShown) => {
         if (prevShown.has(newNotification.id)) {
-          console.log("⚠️ Toast already shown, skipping...");
+          console.log("â ï¸ Toast already shown, skipping...");
           return prevShown;
         }
 
-        // Xác định route và tab dựa trên type
+        // XĂ¡c Ä‘á»‹nh route vĂ  tab dá»±a trĂªn type
         const handleToastClick = () => {
           if (data.type === "LEAVE_CREATED") {
-            navigate("/leave", { state: { activeTab: "LEAVE" } });
+            navigate("/leave/my");
           } else if (data.type === "OT_CREATED") {
-            navigate("/leave", { state: { activeTab: "OT" } });
+            navigate("/ot/my");
           }
         };
 
-        // Hiển thị toast notification với onClick handler
+        // Hiá»ƒn thá»‹ toast notification vá»›i onClick handler
         toast.info(
           <div 
             className="flex items-start gap-3 cursor-pointer"
@@ -185,18 +185,18 @@ const Header = () => {
           }
         );
 
-        // Thêm vào set đã hiển thị
+        // ThĂªm vĂ o set Ä‘Ă£ hiá»ƒn thá»‹
         const newSet = new Set(prevShown);
         newSet.add(newNotification.id);
         return newSet;
       });
 
-      // Thêm vào đầu danh sách
+      // ThĂªm vĂ o Ä‘áº§u danh sĂ¡ch
       return [newNotification, ...prev];
     });
   }, [navigate]);
 
-  // Kết nối socket
+  // Káº¿t ná»‘i socket
   useSocket(handleSocketNotification);
 
   const unreadCount = useMemo(
@@ -206,20 +206,20 @@ const Header = () => {
 
   const filteredNotifications = useMemo(() => {
     if (notifyTab === "unread") return notifications.filter((n) => n.unread);
-    // Tab "all" (đã đọc) hiển thị tất cả thông báo
+    // Tab "all" (Ä‘Ă£ Ä‘á»c) hiá»ƒn thá»‹ táº¥t cáº£ thĂ´ng bĂ¡o
     return notifications;
   }, [notifications, notifyTab]);
 
   const handleMarkAllRead = async () => {
     try {
-      // Call API để mark all as read
+      // Call API Ä‘á»ƒ mark all as read
       await notificationApi.markAllAsRead();
 
       // Update local state
       setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
     } catch (error) {
       console.error("Error marking all as read:", error);
-      // Vẫn update local state nếu API fail
+      // Váº«n update local state náº¿u API fail
       setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
     }
   };
@@ -227,7 +227,7 @@ const Header = () => {
   const handleClickNotification = async (notification) => {
     const { relatedModel, relatedId } = notification;
 
-    // ✅ Đánh dấu đã đọc nếu là thông báo chưa đọc
+    // âœ… ÄĂ¡nh dáº¥u Ä‘Ă£ Ä‘á»c náº¿u lĂ  thĂ´ng bĂ¡o chÆ°a Ä‘á»c
     if (notification.unread) {
       try {
         await notificationApi.markAsRead(notification.id);
@@ -242,28 +242,34 @@ const Header = () => {
       }
     }
 
-    // ✅ Xử lý điều hướng theo relatedModel
+    // âœ… Xá»­ lĂ½ Ä‘iá»u hÆ°á»›ng theo relatedModel
     if (relatedModel === "Overtime") {
-      // Điều hướng đến trang Myleave với tab OT
       setOpenNotify(false);
-      navigate("/leave", { state: { activeTab: "OT" } });
+      const role = localStorage.getItem("role");
+      const otPath = ["ADMIN", "HR", "MANAGER", "LEADER"].includes(role)
+        ? "/ot/approvals"
+        : "/ot/my";
+      navigate(otPath);
     }
     else if (relatedModel === "Payroll") {
-      // Điều hướng đến trang Myleave với tab LEAVE
+      // Äiá»u hÆ°á»›ng Ä‘áº¿n trang Myleave vá»›i tab LEAVE
       setOpenNotify(false);
       navigate("/payroll");
     } else if (relatedModel === "Leave") {
-      // Điều hướng đến trang Myleave với tab LEAVE
       setOpenNotify(false);
-      navigate("/leave", { state: { activeTab: "LEAVE" } });
+      const role = localStorage.getItem("role");
+      const leavePath = ["ADMIN", "HR", "MANAGER", "LEADER"].includes(role)
+        ? "/leave/approvals"
+        : "/leave/my";
+      navigate(leavePath);
     } else if (relatedModel === "Announcement") {
-      // // Hiển thị modal chi tiết thông báo
+      // // Hiá»ƒn thá»‹ modal chi tiáº¿t thĂ´ng bĂ¡o
       // setSelectedAnnouncementId(relatedId);
       // setIsAnnouncementModalOpen(true);
-      // Fallback: mở modal chi tiết thông báo cũ
+      // Fallback: má»Ÿ modal chi tiáº¿t thĂ´ng bĂ¡o cÅ©
       setSelectedNotification(notification);
     } else {
-      // Fallback: mở modal chi tiết thông báo cũ
+      // Fallback: má»Ÿ modal chi tiáº¿t thĂ´ng bĂ¡o cÅ©
       setSelectedNotification(notification);
     }
   };
@@ -272,55 +278,60 @@ const Header = () => {
     setSelectedNotification(null);
   };
 
-  // ✅ Danh sách tất cả pages có thể tìm kiếm (lấy từ Sidebar)
+  // âœ… Danh sĂ¡ch táº¥t cáº£ pages cĂ³ thá»ƒ tĂ¬m kiáº¿m (láº¥y tá»« Sidebar)
   const allPages = useMemo(() => {
     const role = localStorage.getItem("role");
     const isAdmin = role === "ADMIN";
     const isHR = role === "HR";
     const isManager = role === "MANAGER";
+    const isLeader = role === "LEADER";
     const isEmployee = role === "EMPLOYEE";
 
     const pages = [
-      { path: "/", label: "Tổng quan", keywords: ["tong quan", "dashboard", "home"] },
-      { path: "/timesheet", label: "Lịch làm việc", keywords: ["lich lam viec", "timesheet", "cham cong"] },
-      { path: "/payroll", label: "Bảng lương", keywords: ["bang luong", "payroll", "luong"] },
+      { path: "/", label: "Tá»•ng quan", keywords: ["tong quan", "dashboard", "home"] },
+      { path: "/timesheet", label: "Lá»‹ch lĂ m viá»‡c", keywords: ["lich lam viec", "timesheet", "cham cong"] },
+      { path: "/payroll", label: "Báº£ng lÆ°Æ¡ng", keywords: ["bang luong", "payroll", "luong"] },
     ];
 
     // Employee pages
     if (isEmployee) {
-      pages.push({ path: "/leave", label: "Yêu cầu của tôi", keywords: ["yeu cau", "nghi phep", "leave", "request"] });
+      pages.push({ path: "/leave/my", label: "ÄÆ¡n nghá»‰ cá»§a tĂ´i", keywords: ["yeu cau", "nghi phep", "leave", "request"] });
+      pages.push({ path: "/ot/my", label: "ÄÆ¡n OT cá»§a tĂ´i", keywords: ["ot", "overtime", "tang ca"] });
     }
 
     // Admin, HR, Manager pages
-    if (isAdmin || isHR || isManager) {
-      pages.push({ path: "/leave", label: "Quản lý yêu cầu", keywords: ["quan ly yeu cau", "duyet don", "leave management"] });
+    if (isAdmin || isHR || isManager || isLeader) {
+      pages.push({ path: "/leave/approvals", label: "PhĂª duyá»‡t Ä‘Æ¡n nghá»‰", keywords: ["quan ly yeu cau", "duyet don", "leave management"] });
+      pages.push({ path: "/leave/my", label: "ÄÆ¡n nghá»‰ cá»§a tĂ´i", keywords: ["don nghi cua toi", "leave request"] });
+      pages.push({ path: "/ot/my", label: "ÄÆ¡n OT cá»§a tĂ´i", keywords: ["ot", "overtime", "tang ca"] });
+      pages.push({ path: "/ot/approvals", label: "PhĂª duyá»‡t Ä‘Æ¡n OT", keywords: ["duyet ot", "overtime approvals", "duyet tang ca"] });
     }
 
-    // Admin và HR pages
+    // Admin vĂ  HR pages
     if (isAdmin || isHR) {
       pages.push(
-        { path: "/hr/employees", label: "Nhân viên", keywords: ["nhan vien", "employee", "staff"] },
-        { path: "/hr/attendance-admin", label: "Quản lý chấm công", keywords: ["quan ly cham cong", "attendance", "checkin"] },
-        { path: "/hr/announcements", label: "Thông báo", keywords: ["thong bao", "announcement", "notice"] },
-        { path: "/hr/recruitment", label: "Tuyển dụng", keywords: ["tuyen dung", "recruitment", "hiring"] },
+        { path: "/hr/employees", label: "NhĂ¢n viĂªn", keywords: ["nhan vien", "employee", "staff"] },
+        { path: "/hr/attendance-admin", label: "Quáº£n lĂ½ cháº¥m cĂ´ng", keywords: ["quan ly cham cong", "attendance", "checkin"] },
+        { path: "/hr/announcements", label: "ThĂ´ng bĂ¡o", keywords: ["thong bao", "announcement", "notice"] },
+        { path: "/hr/recruitment", label: "Tuyá»ƒn dá»¥ng", keywords: ["tuyen dung", "recruitment", "hiring"] },
         { path: "/hr/boarding", label: "On/Off Boarding", keywords: ["onboarding", "offboarding", "nhan vien moi"] },
-        { path: "/hr/reports", label: "Báo cáo", keywords: ["bao cao", "report", "thong ke"] },
-        { path: "/hr/payroll-engine", label: "Công cụ tính lương", keywords: ["cong cu tinh luong", "payroll engine", "tinh luong"] }
+        { path: "/hr/reports", label: "BĂ¡o cĂ¡o", keywords: ["bao cao", "report", "thong ke"] },
+        { path: "/hr/payroll-engine", label: "CĂ´ng cá»¥ tĂ­nh lÆ°Æ¡ng", keywords: ["cong cu tinh luong", "payroll engine", "tinh luong"] }
       );
     }
 
     // Admin only pages
     if (isAdmin) {
       pages.push(
-        { path: "/admin/user-management", label: "Quản lý người dùng", keywords: ["quan ly nguoi dung", "user management", "account"] },
-        { path: "/admin/system-admin", label: "Cài đặt hệ thống", keywords: ["cai dat he thong", "system admin", "settings"] }
+        { path: "/admin/user-management", label: "Quáº£n lĂ½ ngÆ°á»i dĂ¹ng", keywords: ["quan ly nguoi dung", "user management", "account"] },
+        { path: "/admin/system-admin", label: "CĂ i Ä‘áº·t há»‡ thá»‘ng", keywords: ["cai dat he thong", "system admin", "settings"] }
       );
     }
 
     return pages;
   }, []);
 
-  // ✅ Lọc kết quả tìm kiếm
+  // âœ… Lá»c káº¿t quáº£ tĂ¬m kiáº¿m
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
 
@@ -330,7 +341,7 @@ const Header = () => {
       const labelMatch = page.label.toLowerCase().includes(query);
       const keywordMatch = page.keywords.some((keyword) => keyword.includes(query));
       return labelMatch || keywordMatch;
-    }).slice(0, 5); // Giới hạn 5 kết quả
+    }).slice(0, 5); // Giá»›i háº¡n 5 káº¿t quáº£
   }, [searchQuery, allPages]);
 
   const handleSearchChange = (e) => {
@@ -345,16 +356,25 @@ const Header = () => {
   };
 
   const handleSearchBlur = () => {
-    // Delay để click vào kết quả có thời gian xử lý
+    // Delay Ä‘á»ƒ click vĂ o káº¿t quáº£ cĂ³ thá»i gian xá»­ lĂ½
     setTimeout(() => setShowSearchResults(false), 200);
   };
 
   return (
     <>
       {/* HEADER */}
-      <header className={`h-16 bg-white shadow-sm flex items-center justify-between px-6 fixed top-0 right-0 z-30 transition-[left] duration-300 ease-in-out ${isCollapsed ? 'left-20' : 'left-64'}`}>
+      <header className={`h-16 bg-white shadow-sm flex items-center justify-between gap-3 px-3 sm:px-4 lg:px-6 fixed top-0 right-0 left-0 z-30 transition-[left] duration-300 ease-in-out ${isCollapsed ? 'lg:left-20' : 'lg:left-60'}`}>
+        <button
+          type="button"
+          onClick={openMobileSidebar}
+          className="lg:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 shrink-0"
+          aria-label="Mo menu"
+        >
+          <Menu size={22} />
+        </button>
+
         {/* Search */}
-        <div className="relative flex items-center bg-gray-100 rounded-lg px-3 py-2 w-96">
+        <div className="relative hidden sm:flex items-center bg-gray-100 rounded-lg px-3 py-2 flex-1 max-w-md lg:w-96">
           <Search size={18} className="text-gray-400 mr-2" />
           <input
             placeholder="Tìm kiếm trang..."
@@ -401,8 +421,8 @@ const Header = () => {
         </div>
 
         {/* User Info */}
-        <div className="flex items-center gap-4">
-          {/* 🔔 Notification Button */}
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0 ml-auto">
+          {/* đŸ”” Notification Button */}
           <button
             onClick={() => setOpenNotify(true)}
             className="relative p-2 hover:bg-gray-100 rounded-full"
@@ -411,7 +431,7 @@ const Header = () => {
           >
             <Bell size={20} className="text-gray-600" />
 
-            {/* ✅ badge số lượng unread */}
+            {/* âœ… badge sá»‘ lÆ°á»£ng unread */}
             {unreadCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[11px] font-semibold flex items-center justify-center ring-2 ring-white">
                 {unreadCount > 99 ? "99+" : unreadCount}
@@ -421,20 +441,20 @@ const Header = () => {
 
           <Link
             to="/profile"
-            className="flex items-center gap-3 p-2 hover:bg-gray-100 rounded-full"
+            className="flex items-center gap-2 sm:gap-3 p-1.5 sm:p-2 hover:bg-gray-100 rounded-full min-w-0"
           >
             <div
-              className="text-right hidden md:flex flex-col justify-around gap-y-1"
+              className="text-right hidden lg:flex flex-col justify-around gap-y-1 min-w-0"
             >
-              <p className="text-sm font-semibold text-gray-800 m-0">
+              <p className="text-sm font-semibold text-gray-800 m-0 truncate max-w-40">
                 {fullName || "--"}
               </p>
-              <p className="text-xs text-gray-500 m-0">
+              <p className="text-xs text-gray-500 m-0 truncate max-w-40">
                 {jobTitle || "--"}
               </p>
             </div>
 
-            <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
+            <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold shrink-0">
               {initials}
             </div>
           </Link>
@@ -444,29 +464,29 @@ const Header = () => {
       {/* OVERLAY */}
       {openNotify && (
         <div
-          className="fixed inset-0 bg-black/30 z-40"
+          className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px]"
           onClick={() => setOpenNotify(false)}
         />
       )}
 
-      {/* 🔔 NOTIFICATION PANEL */}
+      {/* đŸ”” NOTIFICATION PANEL */}
       <div
-        className={`fixed top-0 right-0 h-full bg-white z-50 shadow-2xl
-          transition-transform duration-300
+        className={`fixed top-0 right-0 z-50 h-full border-l border-gray-200 bg-white shadow-2xl
+          transition-transform duration-300 ease-out
           ${openNotify ? "translate-x-0" : "translate-x-full"}
         `}
-        style={{ width: "30vw", minWidth: 360, maxWidth: 520 }}
+        style={{ width: "min(100vw, 420px)" }}
       >
         {/* Header */}
-        <div className="px-5 py-4 border-b bg-white/80 backdrop-blur">
+        <div className="border-b border-gray-100 bg-white/90 px-5 py-5 backdrop-blur">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Thông báo</h3>
-              <p className="text-xs text-gray-500">{unreadCount} chưa đọc</p>
+              <h3 className="text-[28px] font-semibold tracking-tight text-gray-950">Thông báo</h3>
+              <p className="mt-1 text-sm text-gray-500">{unreadCount} chưa đọc</p>
             </div>
             <button
               onClick={() => setOpenNotify(false)}
-              className="p-2 hover:bg-gray-100 rounded-full"
+              className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-700"
               type="button"
               aria-label="Đóng"
             >
@@ -475,31 +495,31 @@ const Header = () => {
           </div>
 
           {/* Tabs + Mark all */}
-          <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="mt-5 flex items-center justify-between gap-3">
             {/* Tabs */}
-            <div className="inline-flex p-1 bg-gray-100 rounded-xl">
+            <div className="inline-flex rounded-2xl bg-gray-100 p-1">
               <button
                 type="button"
                 onClick={() => {
                   setNotifyTab("all");
                 }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition
+                className={`rounded-xl px-4 py-2 text-sm font-medium transition
                   ${notifyTab === "all"
                     ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-600 hover:text-gray-800"
+                    : "text-gray-500 hover:text-gray-800"
                   }`}
               >
-                Thông báo
+                Tất cả
               </button>
               <button
                 type="button"
                 onClick={() => {
                   setNotifyTab("unread");
                 }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition
+                className={`rounded-xl px-4 py-2 text-sm font-medium transition
                   ${notifyTab === "unread"
                     ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-600 hover:text-gray-800"
+                    : "text-gray-500 hover:text-gray-800"
                   }`}
               >
                 Chưa đọc
@@ -511,36 +531,36 @@ const Header = () => {
               type="button"
               onClick={handleMarkAllRead}
               disabled={unreadCount === 0}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition
+              className={`rounded-full border px-3.5 py-2 text-sm font-medium transition
                 ${unreadCount === 0
                   ? "text-gray-300 border-gray-200 cursor-not-allowed"
                   : "text-blue-600 border-blue-200 hover:bg-blue-50"
                 }`}
             >
-              Đánh dấu tất cả là đã đọc
+              Đọc tất cả
             </button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-4 overflow-y-auto h-[calc(100%-104px)]">
+        <div className="h-[calc(100%-124px)] overflow-y-auto px-3 py-4">
           {loading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
+            <div className="py-16 text-center">
+              <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
               <p className="text-sm text-gray-500">Đang tải thông báo...</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {filteredNotifications.map((n) => {
                 return (
                   <div
                     key={n.id}
                     onClick={() => handleClickNotification(n)}
-                    className={`group flex gap-3 p-3 rounded-xl border transition
-                      hover:bg-gray-50 hover:border-gray-200 cursor-pointer
+                    className={`group flex gap-3 rounded-2xl border px-3 py-3 transition
+                      cursor-pointer hover:border-gray-200 hover:bg-gray-50
                       ${n.unread
-                        ? "bg-blue-50/30 border-blue-100"
-                        : "bg-white border-gray-100"
+                        ? "border-blue-100 bg-blue-50/40"
+                        : "border-gray-100 bg-white"
                       }
                     `}
                   >
@@ -549,10 +569,9 @@ const Header = () => {
                       <img
                         src={NOTIFICATION_AVATAR}
                         alt="notification"
-                        className="h-11 w-11 rounded-full object-cover ring-1 ring-gray-200 bg-white p-1"
+                        className="h-11 w-11 rounded-full border border-gray-200 bg-white object-cover p-1"
                       />
 
-                      {/* ✅ Chấm đỏ cho thông báo chưa đọc */}
                       {n.unread && (
                         <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-red-500 ring-2 ring-white" />
                       )}
@@ -561,29 +580,26 @@ const Header = () => {
                     {/* Text */}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-3">
-                        <p className="text-sm font-semibold text-gray-900 line-clamp-1">
+                        <p className="line-clamp-1 text-[15px] font-semibold text-gray-900">
                           {n.title}
                         </p>
 
-                        {/* ✅ thời gian format rõ ràng */}
-                        <span className="text-[11px] text-gray-500 shrink-0">
+                        <span className="shrink-0 pt-0.5 text-[11px] text-gray-400">
                           {formatNotifyTime(n.createdAt)}
                         </span>
                       </div>
 
-                      {/* ✅ Preview nội dung */}
-                      <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                      <p className="mt-1 line-clamp-3 text-[13px] leading-5 text-gray-600">
                         {n.content}
                       </p>
 
                       <div className="mt-2 flex items-center gap-2">
-                        <span className="text-[11px] text-blue-600 group-hover:text-blue-700 font-medium">
+                        <span className="text-[12px] font-medium text-blue-600 group-hover:text-blue-700">
                           Nhấn để xem chi tiết
                         </span>
 
-                        {/* ✅ Badge "Mới" màu đỏ cho unread */}
                         {n.unread && (
-                          <span className="text-[11px] font-semibold text-red-600">
+                          <span className="text-[12px] font-semibold text-red-500">
                             • Mới
                           </span>
                         )}
@@ -594,7 +610,7 @@ const Header = () => {
               })}
 
               {filteredNotifications.length === 0 && (
-                <div className="text-center text-sm text-gray-500 py-10">
+                <div className="py-14 text-center text-sm text-gray-500">
                   {notifyTab === "unread"
                     ? "Không có thông báo chưa đọc."
                     : "Chưa có thông báo nào."}
@@ -605,7 +621,7 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Modal chi tiết thông báo */}
+      {/* Modal chi tiáº¿t thĂ´ng bĂ¡o */}
       {selectedNotification && (
         <NotificationDetailModal
           notification={selectedNotification}
@@ -627,3 +643,4 @@ const Header = () => {
 };
 
 export default Header;
+

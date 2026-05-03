@@ -111,7 +111,10 @@ const MyTimesheet = () => {
       />
 
       {/* Stats Cards */}
-      <TimesheetStats timesheetData={timesheetData} />
+      <TimesheetStats
+        timesheetData={timesheetData}
+        attendanceData={attendanceData}
+      />
 
       {/* Main Content: Calendar + Detail Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">

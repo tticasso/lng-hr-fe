@@ -11,6 +11,8 @@ import {
   Loader2,
   RefreshCw,
   Filter,
+  Power,
+  RotateCcw,
 } from "lucide-react";
 
 import Card from "../../components/common/Card";
@@ -31,6 +33,7 @@ const EmployeeList = () => {
   const [filteredEmployees, setFilteredEmployees] = useState([]); // Data sau khi filter
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [includeDeleted, setIncludeDeleted] = useState(false);
 
   // State cho Modal Edit
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -81,7 +84,7 @@ const EmployeeList = () => {
   const fetchEmployees = async () => {
     try {
       setLoading(true);
-      const res = await employeeApi.getAll({ limit: 1000 }); // Lấy tất cả
+      const res = await employeeApi.getAll({ limit: 1000, includeDeleted });
 
       const responseBody = res.data || {};
       const listData = Array.isArray(responseBody)
@@ -135,8 +138,11 @@ const EmployeeList = () => {
   // --- INIT DATA ---
   useEffect(() => {
     fetchDepartments();
-    fetchEmployees();
   }, []);
+
+  useEffect(() => {
+    fetchEmployees();
+  }, [includeDeleted]);
 
   // --- HANDLERS ---
   const handleFilterChange = (e) => {
@@ -166,6 +172,56 @@ const EmployeeList = () => {
     setIsEditModalOpen(false);
     setSelectedEmployee(null);
     fetchEmployees(); // Reload data
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await employeeApi.downloadTemplate();
+      const url = URL.createObjectURL(res.data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "employee-template.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Da tai template nhan vien");
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Khong the tai template");
+    }
+  };
+
+  const handleChangeStatus = async (employee, nextStatus) => {
+    const payload = { status: nextStatus };
+    if (["Resigned", "Suspended"].includes(nextStatus)) {
+      payload.endDate = new Date().toISOString();
+    }
+
+    if (!window.confirm(`Cap nhat trang thai ${employee.fullName || employee.employeeCode} sang ${nextStatus}?`)) {
+      return;
+    }
+
+    try {
+      await employeeApi.updateStatus(employee._id || employee.id, payload);
+      toast.success("Cap nhat trang thai thanh cong");
+      fetchEmployees();
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Cap nhat trang thai that bai");
+    }
+  };
+
+  const handleRestoreEmployee = async (employee) => {
+    if (!window.confirm(`Khoi phuc nhan vien ${employee.fullName || employee.employeeCode}?`)) {
+      return;
+    }
+
+    try {
+      await employeeApi.restore(employee._id || employee.id, { status: "Active" });
+      toast.success("Khoi phuc nhan vien thanh cong");
+      fetchEmployees();
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Khoi phuc nhan vien that bai");
+    }
   };
 
   // Helper Render Pagination
@@ -357,7 +413,7 @@ const EmployeeList = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)] relative">
+    <div className="flex flex-col min-h-[calc(100dvh-5rem)] lg:h-[calc(100vh-120px)] relative">
       {/* --- EDIT MODAL (Imported Component) --- */}
       {isEditModalOpen && selectedEmployee && (
         <EditEmployeeModal
@@ -378,10 +434,17 @@ const EmployeeList = () => {
               Quản lý hồ sơ nhân sự ({filteredEmployees.length} bản ghi)
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3 w-full md:w-auto">
             <Button
               variant="secondary"
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 w-full sm:w-auto"
+              onClick={handleDownloadTemplate}
+            >
+              <Download size={18} /> Template
+            </Button>
+            <Button
+              variant="secondary"
+              className="flex items-center gap-2 w-full sm:w-auto"
               onClick={handleExportExcel}
               disabled={filteredEmployees.length === 0}
             >
@@ -409,7 +472,7 @@ const EmployeeList = () => {
             />
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 w-full lg:w-auto">
             {/* Department Filter - Dynamic từ API */}
             <div className="relative">
               <Filter
@@ -446,6 +509,16 @@ const EmployeeList = () => {
               ))}
             </select>
 
+            <label className="flex items-center gap-2 px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={includeDeleted}
+                onChange={(e) => setIncludeDeleted(e.target.checked)}
+                className="w-4 h-4 text-blue-600 rounded"
+              />
+              Bao gom da xoa
+            </label>
+
             <Button
               variant="secondary"
               className="px-3"
@@ -460,7 +533,7 @@ const EmployeeList = () => {
 
       {/* DATA TABLE - Scrollable */}
       <Card className="p-0 overflow-hidden border border-gray-200 flex-1 flex flex-col">
-        <div className="overflow-y-auto flex-1">
+        <div className="overflow-auto flex-1">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-500">
               <Loader2 size={40} className="animate-spin text-blue-500 mb-2" />
@@ -471,7 +544,7 @@ const EmployeeList = () => {
               <p>Không tìm thấy nhân viên nào phù hợp.</p>
             </div>
           ) : (
-            <table className="w-full text-left border-collapse">
+            <table className="w-full min-w-[1040px] text-left border-collapse">
               <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
                 <tr className="text-xs uppercase text-gray-500 font-semibold tracking-wider">
                   <th className="p-4 w-10">#</th>
@@ -575,6 +648,28 @@ const EmployeeList = () => {
                         >
                           <Edit size={18} />
                         </button>
+                        {emp.isDeleted ? (
+                          <button
+                            onClick={() => handleRestoreEmployee(emp)}
+                            className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition"
+                            title="Khoi phuc nhan vien"
+                          >
+                            <RotateCcw size={18} />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() =>
+                              handleChangeStatus(
+                                emp,
+                                emp.status === "Active" ? "Resigned" : "Active",
+                              )
+                            }
+                            className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition"
+                            title={emp.status === "Active" ? "Chuyen nghi viec" : "Kich hoat lai"}
+                          >
+                            <Power size={18} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

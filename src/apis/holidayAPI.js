@@ -1,20 +1,49 @@
 import apiClient from "./apiClient";
 
 export const holidayAPI = {
-    get: (startDate, endDate) => {
-        return apiClient.get(`/holidays/range?startDate=${startDate}&endDate=${endDate}`);
-    },
-    create: (data) => {
-        return apiClient.post("/holidays", data);
-    },
-    update: (id, data) => {
-        return apiClient.put(`/holidays/${id}`, data);
-    },
-    delete: (id) => {
-        return apiClient.delete(`/holidays/${id}`);
-    },
+  getAll: (params) => {
+    return apiClient.get("/holidays", { params });
+  },
 
-    getbyid: (id) => {
-        return apiClient.get(`/holidays/${id}`);
-    },
-}
+  get: (startDate, endDate) => {
+    return apiClient.get("/holidays/range", {
+      params: { startDate, endDate },
+    });
+  },
+
+  getTemplates: () => {
+    return apiClient.get("/holidays/templates");
+  },
+
+  checkDate: (params) => {
+    return apiClient.get("/holidays/check", { params });
+  },
+
+  getYearSummary: (year) => {
+    return apiClient.get(`/holidays/summary/year/${year}`);
+  },
+
+  createAttendance: (id) => {
+    return apiClient.post(`/holidays/${id}/create-attendance`);
+  },
+
+  getbyid: (id) => {
+    return apiClient.get(`/holidays/${id}`);
+  },
+
+  create: (data) => {
+    return apiClient.post("/holidays", data);
+  },
+
+  update: (id, data) => {
+    return apiClient.put(`/holidays/${id}`, data);
+  },
+
+  delete: (id) => {
+    return apiClient.delete(`/holidays/${id}`);
+  },
+
+  bulkImport: (data) => {
+    return apiClient.post("/holidays/bulk-import", data);
+  },
+};

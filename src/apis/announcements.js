@@ -1,28 +1,27 @@
 import apiClient from "./apiClient";
 
 export const announcementAPI = {
-    // Lấy danh sách thông báo
-    get: () => {
-        return apiClient.get("/announcements");
-    },
-    
-    // Lấy chi tiết thông báo theo ID
-    getById: (id) => {
-        return apiClient.get(`/announcements/${id}`);
-    },
+  get: (params) => {
+    return apiClient.get("/announcements", { params });
+  },
 
-      // gửi thông báo
-    post: (payload) => {
-        return apiClient.post(`/announcements/`,payload);
-    },
+  getById: (id) => {
+    return apiClient.get(`/announcements/${id}`);
+  },
 
-    // Cập nhật thông báo theo ID
-    update: (id, payload) => {
-        return apiClient.patch(`/announcements/${id}`, payload);
-    },
+  markAsRead: (id) => {
+    return apiClient.patch(`/announcements/${id}/read`);
+  },
 
-    // Xóa thông báo theo ID
-    delete: (id) => {
-        return apiClient.delete(`/announcements/${id}`);
-    },
+  post: (payload) => {
+    return apiClient.post("/announcements", payload);
+  },
+
+  update: (id, payload) => {
+    return apiClient.patch(`/announcements/${id}`, payload);
+  },
+
+  delete: (id) => {
+    return apiClient.delete(`/announcements/${id}`);
+  },
 };

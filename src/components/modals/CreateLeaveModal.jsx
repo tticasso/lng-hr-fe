@@ -24,29 +24,51 @@ const dateToISO = (date) => {
   return `${y}-${m}-${d}`;
 };
 
-const LeaveRequestModal = ({ onClose, onConfirm, defaultFromDate = "", defaultLeaveType = "ANNUAL" }) => {
-  const [isShortLeave, setIsShortLeave] = useState(false);
+const LeaveRequestModal = ({
+  onClose,
+  onConfirm,
+  defaultFromDate = "",
+  defaultLeaveType = "ANNUAL",
+  initialValues = null,
+  title = "Đơn xin nghỉ",
+  submitLabel = "Xác nhận",
+}) => {
+  const [isShortLeave, setIsShortLeave] = useState(
+    Boolean(initialValues?.leaveScope && initialValues.leaveScope !== "FULL_DAY"),
+  );
 
   // ✅ formData lưu ISO để payload luôn chuẩn
   const [formData, setFormData] = useState({
-    leaveType: defaultLeaveType,
-    fromDate: defaultFromDate, // ISO
-    toDate: "", // ISO
-    reason: "",
-    leaveScope: "",
+    leaveType: initialValues?.leaveType || defaultLeaveType,
+    fromDate: initialValues?.fromDate ? dateToISO(new Date(initialValues.fromDate)) : defaultFromDate,
+    toDate: initialValues?.toDate ? dateToISO(new Date(initialValues.toDate)) : "",
+    reason: initialValues?.reason || "",
+    leaveScope: initialValues?.leaveScope === "FULL_DAY" ? "" : (initialValues?.leaveScope || ""),
   });
 
   const [errors, setErrors] = useState({});
 
   // ✅ Sync ngày và loại nghỉ từ Timesheet mỗi lần mở modal
   useEffect(() => {
+    if (initialValues) {
+      setIsShortLeave(Boolean(initialValues.leaveScope && initialValues.leaveScope !== "FULL_DAY"));
+      setFormData({
+        leaveType: initialValues.leaveType || defaultLeaveType,
+        fromDate: initialValues.fromDate ? dateToISO(new Date(initialValues.fromDate)) : defaultFromDate,
+        toDate: initialValues.toDate ? dateToISO(new Date(initialValues.toDate)) : "",
+        reason: initialValues.reason || "",
+        leaveScope: initialValues.leaveScope === "FULL_DAY" ? "" : (initialValues.leaveScope || ""),
+      });
+      return;
+    }
+
     setFormData((p) => ({
       ...p,
       leaveType: defaultLeaveType,
       fromDate: defaultFromDate || p.fromDate,
       toDate: defaultFromDate ? (p.toDate || defaultFromDate) : p.toDate,
     }));
-  }, [defaultFromDate, defaultLeaveType]);
+  }, [defaultFromDate, defaultLeaveType, initialValues]);
 
   const validate = () => {
     const e = {};
@@ -122,7 +144,7 @@ const LeaveRequestModal = ({ onClose, onConfirm, defaultFromDate = "", defaultLe
           <div>
             <h3 className="text-lg font-bold flex items-center gap-2">
               <FileText size={18} className="text-blue-600" />
-              Đơn xin nghỉ
+              {title}
             </h3>
           </div>
           <button onClick={onClose}>
@@ -258,7 +280,7 @@ const LeaveRequestModal = ({ onClose, onConfirm, defaultFromDate = "", defaultLe
               Hủy
             </Button>
             <Button type="submit" className="bg-blue-600 text-white">
-              Xác nhận
+              {submitLabel}
             </Button>
           </div>
         </form>

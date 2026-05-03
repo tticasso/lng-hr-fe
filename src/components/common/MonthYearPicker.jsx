@@ -1,14 +1,14 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Calendar, ChevronDown } from "lucide-react";
 
 const MonthYearPicker = ({ value, onChange, className = "" }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedYear, setSelectedYear] = useState(() => {
-    if (value) return parseInt(value.split("-")[0]);
+    if (value) return parseInt(value.split("-")[0], 10);
     return new Date().getFullYear();
   });
   const [selectedMonth, setSelectedMonth] = useState(() => {
-    if (value) return parseInt(value.split("-")[1]);
+    if (value) return parseInt(value.split("-")[1], 10);
     return new Date().getMonth() + 1;
   });
 
@@ -62,38 +62,40 @@ const MonthYearPicker = ({ value, onChange, className = "" }) => {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full min-w-[260px] border border-gray-300 rounded-lg p-3 bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 outline-none transition-all flex items-center justify-between group"
+        className="flex w-full min-w-[260px] items-center justify-between rounded-lg border border-gray-300 bg-white p-3 outline-none transition-all hover:border-blue-400 focus:ring-2 focus:ring-blue-500 group"
       >
         <div className="flex items-center gap-3">
-          <Calendar size={20} className="text-gray-400 group-hover:text-blue-500 transition-colors" />
-          <span className="text-gray-700 font-semibold whitespace-nowrap">{displayValue}</span>
+          <Calendar
+            size={20}
+            className="text-gray-400 transition-colors group-hover:text-blue-500"
+          />
+          <span className="whitespace-nowrap font-semibold text-gray-700">
+            {displayValue}
+          </span>
         </div>
         <ChevronDown
           size={20}
-          className={`text-gray-400 transition-transform ${
-            isOpen ? "rotate-180" : ""
-          }`}
+          className={`text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="animate-in fade-in slide-in-from-top-2 absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl duration-200">
           <div className="grid grid-cols-2 divide-x divide-gray-200">
-            {/* Month Selection */}
             <div className="p-3">
-              <div className="text-xs font-semibold text-gray-500 uppercase mb-2 px-2">
+              <div className="mb-2 px-2 text-xs font-semibold uppercase text-gray-500">
                 Chọn tháng
               </div>
-              <div className="grid grid-cols-3 gap-1 max-h-64 overflow-y-auto">
+              <div className="grid max-h-64 grid-cols-3 gap-1 overflow-y-auto">
                 {months.map((month) => (
                   <button
                     key={month.value}
                     type="button"
                     onClick={() => handleMonthSelect(month.value)}
-                    className={`p-2 text-sm rounded-md transition-all ${
+                    className={`rounded-md p-2 text-sm transition-all ${
                       selectedMonth === month.value
-                        ? "bg-blue-600 text-white font-semibold shadow-md"
-                        : "hover:bg-gray-100 text-gray-700"
+                        ? "bg-blue-600 font-semibold text-white shadow-md"
+                        : "text-gray-700 hover:bg-gray-100"
                     }`}
                   >
                     T{month.value}
@@ -102,21 +104,20 @@ const MonthYearPicker = ({ value, onChange, className = "" }) => {
               </div>
             </div>
 
-            {/* Year Selection */}
             <div className="p-3">
-              <div className="text-xs font-semibold text-gray-500 uppercase mb-2 px-2">
+              <div className="mb-2 px-2 text-xs font-semibold uppercase text-gray-500">
                 Chọn năm
               </div>
-              <div className="space-y-1 max-h-64 overflow-y-auto">
+              <div className="max-h-64 space-y-1 overflow-y-auto">
                 {years.map((year) => (
                   <button
                     key={year}
                     type="button"
                     onClick={() => handleYearSelect(year)}
-                    className={`w-full p-2 text-sm rounded-md transition-all text-left ${
+                    className={`w-full rounded-md p-2 text-left text-sm transition-all ${
                       selectedYear === year
-                        ? "bg-blue-600 text-white font-semibold shadow-md"
-                        : "hover:bg-gray-100 text-gray-700"
+                        ? "bg-blue-600 font-semibold text-white shadow-md"
+                        : "text-gray-700 hover:bg-gray-100"
                     }`}
                   >
                     {year}

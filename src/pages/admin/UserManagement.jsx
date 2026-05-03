@@ -293,26 +293,26 @@ const UserManagement = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-100px)] flex flex-col gap-6 relative">
+    <div className="min-h-[calc(100dvh-5rem)] lg:h-[calc(100vh-100px)] flex flex-col gap-4 lg:gap-6 relative">
       {/* Header */}
-      <div className="flex justify-between items-center shrink-0">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Quản lý tài khoản</h1>
           <p className="text-sm text-gray-500">
             Quản lý tài khoản ({pagination.total})
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
           <Button
             variant="secondary"
-            className="flex gap-2 items-center"
+            className="flex gap-2 items-center w-full sm:w-auto"
             onClick={handleDownloadTemplate}
           >
             <Download size={18} /> Tải mẫu Excel
           </Button>
           <Button
             variant="secondary"
-            className="flex gap-2 items-center"
+            className="flex gap-2 items-center w-full sm:w-auto"
             onClick={() => {
               console.log("🔘 Import Excel button clicked");
               console.log("Available roles:", rolesList);
@@ -338,7 +338,7 @@ const UserManagement = () => {
             className="hidden"
           />
           <Button
-            className="bg-blue-600 text-white flex gap-2 items-center"
+            className="bg-blue-600 text-white flex gap-2 items-center w-full sm:w-auto"
             onClick={() => setIsCreateOpen(true)}
           >
             <Plus size={18} /> Tạo tài khoản
@@ -348,8 +348,8 @@ const UserManagement = () => {
 
       {/* Filter & Table */}
       <Card className="flex flex-col h-full p-0 overflow-hidden border border-gray-200">
-        <div className="p-4 bg-gray-50 border-b flex gap-4">
-          <div className="relative flex-1 max-w-md">
+        <div className="p-4 bg-gray-50 border-b flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1 md:max-w-md">
             <Search
               size={16}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -363,7 +363,7 @@ const UserManagement = () => {
             />
           </div>
           <select
-            className="border rounded-lg px-3 text-sm outline-none"
+            className="border rounded-lg px-3 py-2 text-sm outline-none w-full md:w-auto"
             onChange={(e) => setFilters({ ...filters, role: e.target.value })}
           >
             <option value="">Tất cả vai trò</option>
@@ -374,7 +374,7 @@ const UserManagement = () => {
             ))}
           </select>
           <select
-            className="border rounded-lg px-3 text-sm outline-none"
+            className="border rounded-lg px-3 py-2 text-sm outline-none w-full md:w-auto"
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
           >
             <option value="">Tất cả trạng thái</option>
@@ -391,7 +391,7 @@ const UserManagement = () => {
         </div>
 
         <div className="flex-1 overflow-auto">
-          <table className="w-full text-left text-sm border-collapse">
+          <table className="w-full min-w-[980px] text-left text-sm border-collapse">
             <thead className="bg-white border-b text-xs uppercase text-gray-500 font-semibold sticky top-0 z-10">
               <tr>
                 <th className="p-4">Thông tin người dùng</th>
@@ -516,7 +516,7 @@ const UserManagement = () => {
 
         {/* Pagination */}
         {pagination.totalPages > 1 && (
-          <div className="p-4 border-t bg-gray-50 flex justify-between items-center">
+          <div className="p-4 border-t bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-3">
             <div className="text-sm text-gray-600">
               Hiển thị {(pagination.page - 1) * pagination.limit + 1} -{" "}
               {Math.min(pagination.page * pagination.limit, pagination.total)} trong tổng số{" "}
