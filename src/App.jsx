@@ -4,9 +4,13 @@ import {
   Route,
   Navigate,
   Outlet,
+  useLocation,
+  useNavigate,
 } from "react-router-dom";
+import { useEffect } from "react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { AUTH_UNAUTHORIZED_EVENT } from "./apis/apiClient";
 import MainLayout from "./layouts/MainLayout";
 import Dashboard from "./pages/Dashboard";
 import MyProfile from "./pages/profile/MyProfile";
@@ -38,12 +42,36 @@ import Department from "./pages/department/Department";
 import TeamPages from "./pages/teamPages/TeamPages";
 import LeaveBalance from "./pages/leavebalance/LeaveBalance";
 
+function AuthUnauthorizedRedirect() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      if (location.pathname !== "/login") {
+        navigate("/login", {
+          replace: true,
+          state: { from: location, reason: "SESSION_EXPIRED" },
+        });
+      }
+    };
+
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
+    return () => {
+      window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
+    };
+  }, [location, navigate]);
+
+  return null;
+}
+
 function App() {
   return (
     <>
       <SidebarProvider>
         <NotificationProvider>
           <BrowserRouter>
+          <AuthUnauthorizedRedirect />
           <Routes>
             <Route
               path="/login"
