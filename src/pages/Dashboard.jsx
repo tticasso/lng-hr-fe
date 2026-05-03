@@ -78,7 +78,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 lg:space-y-6">
       {/* --- MODALS WITH LAZY LOADING --- */}
       <Suspense fallback={null}>
         {isOTModalOpen && (
@@ -112,7 +112,7 @@ const Dashboard = () => {
         onClose={closeHRSupportModal}
       />
       {/* --- HÀNG TRÊN: WELCOME & STATS --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-12 lg:gap-6">
         {/* 1. Welcome Card (Chiếm 6/12 cột) */}
         <WelcomeCard user={user} onNavigate={() => navigate("/profile")} />
 
@@ -123,9 +123,9 @@ const Dashboard = () => {
         <UpcomingEvents />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
         {/* CỘT TRÁI (8/12) - Announcements & Requests */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className="space-y-4 lg:col-span-8 lg:space-y-6">
           {/* Block Announcements */}
           <AnnouncementList
             announcements={announcements}
@@ -143,7 +143,7 @@ const Dashboard = () => {
         </div>
 
         {/* CỘT PHẢI (4/12) - Quick Actions */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className="space-y-4 lg:col-span-4 lg:space-y-6">
           <QuickActions
             onLeaveClick={openLeaveModal}
             onOTClick={openOTModal}

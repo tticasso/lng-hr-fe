@@ -20,6 +20,11 @@ const Holiday = () => {
   const [editingHoliday, setEditingHoliday] = useState(null);
   const [selectedHoliday, setSelectedHoliday] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [holidayTemplates, setHolidayTemplates] = useState([]);
+  const [holidaySummary, setHolidaySummary] = useState(null);
+  const [checkDate, setCheckDate] = useState("");
+  const [checkResult, setCheckResult] = useState(null);
+  const [bulkPayload, setBulkPayload] = useState('{\n  "holidays": []\n}');
   const [departments, setDepartments] = useState([]);
   const [selectedMonthYear, setSelectedMonthYear] = useState(() => {
     const now = new Date();
@@ -237,6 +242,68 @@ const Holiday = () => {
     }
   };
 
+  const handleLoadTemplates = async () => {
+    try {
+      const res = await holidayAPI.getTemplates();
+      setHolidayTemplates(res.data?.data || res.data || []);
+      toast.success("Da tai template ngay nghi");
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Khong the tai template ngay nghi");
+    }
+  };
+
+  const handleLoadYearSummary = async () => {
+    try {
+      const [year] = selectedMonthYear.split("-");
+      const res = await holidayAPI.getYearSummary(year);
+      setHolidaySummary(res.data?.data || res.data);
+      toast.success("Da tai tong hop nam");
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Khong the tai tong hop nam");
+    }
+  };
+
+  const handleCheckHoliday = async () => {
+    if (!checkDate) {
+      toast.warning("Chon ngay can kiem tra");
+      return;
+    }
+    try {
+      const res = await holidayAPI.checkDate({ date: checkDate });
+      setCheckResult(res.data?.data || res.data);
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Kiem tra ngay nghi that bai");
+    }
+  };
+
+  const handleCreateAttendanceForHoliday = async (holidayId) => {
+    if (!window.confirm("Tao attendance records cho ngay nghi nay?")) return;
+    try {
+      await holidayAPI.createAttendance(holidayId);
+      toast.success("Da tao attendance cho ngay nghi");
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Tao attendance that bai");
+    }
+  };
+
+  const handleBulkImportHolidays = async () => {
+    let payload;
+    try {
+      payload = JSON.parse(bulkPayload);
+    } catch {
+      toast.error("JSON import khong hop le");
+      return;
+    }
+    if (!window.confirm("Import hang loat ngay nghi?")) return;
+    try {
+      await holidayAPI.bulkImport(payload);
+      toast.success("Import ngay nghi thanh cong");
+      fetchHolidays();
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Import ngay nghi that bai");
+    }
+  };
+
   // ===== SHIFTS FUNCTIONS =====
 
   // Open modal thêm shift mới
@@ -359,6 +426,57 @@ const Holiday = () => {
           />
           <Button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2">
             <Plus size={18} /> Thêm ngày lễ
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+          <div className="flex gap-2">
+            <Button type="button" variant="secondary" onClick={handleLoadTemplates}>
+              Templates
+            </Button>
+            <Button type="button" variant="secondary" onClick={handleLoadYearSummary}>
+              Tong hop nam
+            </Button>
+          </div>
+          <div className="mt-3 text-xs text-gray-600 max-h-24 overflow-auto">
+            {holidayTemplates.length > 0 && (
+              <pre>{JSON.stringify(holidayTemplates, null, 2)}</pre>
+            )}
+            {holidaySummary && (
+              <pre>{JSON.stringify(holidaySummary, null, 2)}</pre>
+            )}
+          </div>
+        </div>
+        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+          <label className="block text-xs font-medium text-gray-500 mb-1">Kiem tra ngay nghi</label>
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={checkDate}
+              onChange={(e) => setCheckDate(e.target.value)}
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            />
+            <Button type="button" variant="secondary" onClick={handleCheckHoliday}>
+              Kiem tra
+            </Button>
+          </div>
+          {checkResult && (
+            <pre className="mt-2 text-xs text-gray-600 max-h-20 overflow-auto">{JSON.stringify(checkResult, null, 2)}</pre>
+          )}
+        </div>
+        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+          <label className="block text-xs font-medium text-gray-500 mb-1">Bulk import JSON</label>
+          <textarea
+            value={bulkPayload}
+            onChange={(e) => setBulkPayload(e.target.value)}
+            rows={3}
+            spellCheck={false}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono"
+          />
+          <Button type="button" variant="secondary" onClick={handleBulkImportHolidays} className="mt-2">
+            Import hang loat
           </Button>
         </div>
       </div>
@@ -861,6 +979,12 @@ const Holiday = () => {
 
                 {/* Footer Actions */}
                 <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                  <Button
+                    variant="secondary"
+                    onClick={() => handleCreateAttendanceForHoliday(selectedHoliday._id)}
+                  >
+                    Tao attendance
+                  </Button>
                   <Button
                     variant="secondary"
                     onClick={() => setIsDetailModalOpen(false)}

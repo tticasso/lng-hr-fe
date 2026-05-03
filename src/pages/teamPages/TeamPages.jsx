@@ -1,5 +1,18 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Users, Building2, Crown, RefreshCw, Loader2, Search, Filter, Eye, Plus, Edit, Trash2 } from "lucide-react";
+﻿import React, { useEffect, useMemo, useState } from "react";
+import {
+  Building2,
+  Crown,
+  Edit,
+  Eye,
+  Filter,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  Users,
+} from "lucide-react";
+
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import { teamAPI } from "../../apis/teamAPI";
@@ -10,448 +23,350 @@ import { departmentApi } from "../../apis/departmentApi";
 import { toast } from "react-toastify";
 
 const TeamPages = () => {
-    const [loading, setLoading] = useState(true);
-    const [teams, setTeams] = useState([]);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [departmentFilter, setDepartmentFilter] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [teams, setTeams] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("");
 
-    // Role-based permissions
-    const role = useMemo(() => {
-        const raw = localStorage.getItem("role");
-        try {
-            return JSON.parse(raw);
-        } catch {
-            return raw;
-        }
-    }, []);
+  const role = useMemo(() => {
+    const raw = localStorage.getItem("role");
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return raw;
+    }
+  }, []);
 
-    // Kiểm tra quyền thực hiện actions (thêm, sửa, xóa)
-    const canManage = useMemo(() => {
-        return role === "ADMIN" || role === "HR" || role === "MANAGER";
-    }, [role]);
+  const canManage = useMemo(
+    () => role === "ADMIN" || role === "HR" || role === "MANAGER",
+    [role],
+  );
 
-    // Team Detail Modal
-    const [teamDetailModal, setTeamDetailModal] = useState({
-        isOpen: false,
-        teamId: null,
-    });
+  const [teamDetailModal, setTeamDetailModal] = useState({
+    isOpen: false,
+    teamId: null,
+  });
 
-    // Create Team Modal
-    const [createTeamModal, setCreateTeamModal] = useState({
-        isOpen: false,
-        teamData: null, // null for create, team object for edit
-    });
+  const [createTeamModal, setCreateTeamModal] = useState({
+    isOpen: false,
+    teamData: null,
+  });
 
-    // Delete Confirm Modal
-    const [deleteModal, setDeleteModal] = useState({
-        isOpen: false,
-        teamData: null,
-        loading: false,
-    });
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    teamData: null,
+    loading: false,
+  });
 
-    useEffect(() => {
-        CallAPITeam();
-        CallAPIDepartmen();
-        // CallAPIEmployee(); // ✅ Removed - không sử dụng data và CreateTeamModal sẽ gọi khi cần
-    }, []);
+  const fetchTeams = async () => {
+    setLoading(true);
+    try {
+      const res = await teamAPI.get();
+      setTeams(res?.data?.data || []);
+    } catch (error) {
+      console.error("TEAM_API error:", error);
+      setTeams([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
+    fetchTeams();
+    departmentApi.getAll().catch((error) => console.error("DEPARTMENT_API error:", error));
+  }, []);
 
-    const CallAPIDepartmen = async () => {
-        setLoading(true);
+  const filteredTeams = useMemo(() => {
+    let filtered = teams;
 
-        try {
-            const res = await departmentApi.getAll();
-            console.log("DEPARTMENT_API res:", res);
-
-        } catch (error) {
-            console.log("DEPARTMENT_API error:", error);
-
-        }
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (team) =>
+          team.name?.toLowerCase().includes(search) ||
+          team.teamCode?.toLowerCase().includes(search) ||
+          team.leader?.fullName?.toLowerCase().includes(search),
+      );
     }
 
-    const CallAPITeam = async () => {
-        setLoading(true);
-        try {
-            const res = await teamAPI.get();
-            console.log("TEAM_API res:", res);
+    if (departmentFilter) {
+      filtered = filtered.filter((team) => team.departmentId?._id === departmentFilter);
+    }
 
-            const teamsData = res?.data?.data || [];
-            setTeams(teamsData);
-        } catch (error) {
-            console.log("TEAM_API error:", error);
-            setTeams([]);
-        } finally {
-            setLoading(false);
-        }
+    return filtered;
+  }, [teams, searchTerm, departmentFilter]);
+
+  const departments = useMemo(() => {
+    const depts = teams.map((team) => team.departmentId).filter(Boolean);
+    return depts.filter((dept, index, self) => index === self.findIndex((d) => d._id === dept._id));
+  }, [teams]);
+
+  const stats = useMemo(() => {
+    const totalTeams = teams.length;
+    const teamsWithLeader = teams.filter((team) => team.leader).length;
+    return {
+      totalTeams,
+      teamsWithLeader,
+      teamsWithoutLeader: totalTeams - teamsWithLeader,
+      activeDepartments: departments.length,
     };
+  }, [teams, departments]);
 
-    const filteredTeams = useMemo(() => {
-        let filtered = teams;
+  const openTeamDetailModal = (teamId) => {
+    setTeamDetailModal({ isOpen: true, teamId });
+  };
 
-        // Filter by search term
-        if (searchTerm) {
-            filtered = filtered.filter(team =>
-                team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                team.teamCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                team.leader?.fullName?.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-        }
+  const closeTeamDetailModal = () => {
+    setTeamDetailModal({ isOpen: false, teamId: null });
+  };
 
-        // Filter by department
-        if (departmentFilter) {
-            filtered = filtered.filter(team =>
-                team.departmentId?._id === departmentFilter
-            );
-        }
+  const openCreateTeamModal = () => {
+    setCreateTeamModal({ isOpen: true, teamData: null });
+  };
 
-        return filtered;
-    }, [teams, searchTerm, departmentFilter]);
+  const openEditTeamModal = (team) => {
+    setCreateTeamModal({ isOpen: true, teamData: team });
+  };
 
-    const departments = useMemo(() => {
-        const depts = teams.map(team => team.departmentId).filter(Boolean);
-        const uniqueDepts = depts.filter((dept, index, self) =>
-            index === self.findIndex(d => d._id === dept._id)
-        );
-        return uniqueDepts;
-    }, [teams]);
+  const closeCreateTeamModal = () => {
+    setCreateTeamModal({ isOpen: false, teamData: null });
+  };
 
-    const stats = useMemo(() => {
-        const totalTeams = teams.length;
-        const teamsWithLeader = teams.filter(team => team.leader).length;
-        const teamsWithoutLeader = totalTeams - teamsWithLeader;
-        const activeDepartments = departments.length;
+  const handleCreateSuccess = () => {
+    fetchTeams();
+  };
 
-        return {
-            totalTeams,
-            teamsWithLeader,
-            teamsWithoutLeader,
-            activeDepartments
-        };
-    }, [teams, departments]);
+  const openDeleteModal = (team) => {
+    setDeleteModal({ isOpen: true, teamData: team, loading: false });
+  };
 
-    const openTeamDetailModal = (teamId) => {
-        setTeamDetailModal({
-            isOpen: true,
-            teamId: teamId,
-        });
-    };
+  const closeDeleteModal = () => {
+    setDeleteModal({ isOpen: false, teamData: null, loading: false });
+  };
 
-    const closeTeamDetailModal = () => {
-        setTeamDetailModal({ isOpen: false, teamId: null });
-    };
+  const handleDeleteTeam = async () => {
+    if (!deleteModal.teamData) return;
 
-    const openCreateTeamModal = () => {
-        setCreateTeamModal({
-            isOpen: true,
-            teamData: null, // Create mode
-        });
-    };
+    setDeleteModal((prev) => ({ ...prev, loading: true }));
 
-    const openEditTeamModal = (team) => {
-        setCreateTeamModal({
-            isOpen: true,
-            teamData: team, // Edit mode
-        });
-    };
+    try {
+      await teamAPI.delete(deleteModal.teamData._id);
+      toast.success("Xóa team thành công!");
+      closeDeleteModal();
+      fetchTeams();
+    } catch (error) {
+      console.error("Error deleting team:", error);
+      toast.error(error?.response?.data?.message || "Xóa team thất bại");
+      setDeleteModal((prev) => ({ ...prev, loading: false }));
+    }
+  };
 
-    const closeCreateTeamModal = () => {
-        setCreateTeamModal({
-            isOpen: false,
-            teamData: null,
-        });
-    };
-
-    const handleCreateSuccess = () => {
-        CallAPITeam(); // Refresh team list
-    };
-
-    const openDeleteModal = (team) => {
-        setDeleteModal({
-            isOpen: true,
-            teamData: team,
-            loading: false,
-        });
-    };
-
-    const closeDeleteModal = () => {
-        setDeleteModal({
-            isOpen: false,
-            teamData: null,
-            loading: false,
-        });
-    };
-
-    const handleDeleteTeam = async () => {
-        if (!deleteModal.teamData) return;
-
-        setDeleteModal(prev => ({ ...prev, loading: true }));
-
-        try {
-            await teamAPI.delete(deleteModal.teamData._id);
-            toast.success("Xóa team thành công!");
-            closeDeleteModal();
-            CallAPITeam(); // Refresh team list
-        } catch (error) {
-            console.error("Error deleting team:", error);
-            const errorMessage = error?.response?.data?.message || "Xóa team thất bại";
-            toast.error(errorMessage);
-            setDeleteModal(prev => ({ ...prev, loading: false }));
-        }
-    };
-
-    return (
-        <div className="h-[calc(100vh-100px)] flex flex-col gap-6">
-            {/* Header */}
-            <div className="flex justify-between items-center shrink-0">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Quản lý Team</h1>
-                    <p className="text-sm text-gray-500">
-                        Tổng cộng {stats.totalTeams} team từ {stats.activeDepartments} phòng ban
-                    </p>
-                </div>
-                <div className="flex gap-3">
-                    {canManage && (
-                        <Button
-                            variant="primary"
-                            className="flex gap-2 items-center bg-blue-600 hover:bg-blue-700 text-white"
-                            onClick={openCreateTeamModal}
-                        >
-                            <Plus size={16} />
-                            Tạo Team
-                        </Button>
-                    )}
-                    <Button
-                        variant="secondary"
-                        className="flex gap-2 items-center"
-                        onClick={CallAPITeam}
-                    >
-                        {loading ? (
-                            <Loader2 size={16} className="animate-spin" />
-                        ) : (
-                            <RefreshCw size={16} />
-                        )}
-                        Làm mới
-                    </Button>
-                </div>
-            </div>
-
-            {/* Stats Cards */}
-
-            {/* Filters */}
-            <Card className="p-4 shrink-0">
-                <div className="flex flex-wrap gap-4 items-center">
-                    <div className="relative flex-1 min-w-[300px] max-w-md">
-                        <Search
-                            size={16}
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                        />
-                        <input
-                            className="pl-9 pr-4 py-2 w-full border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Tìm theo tên team, mã team, hoặc team leader..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <Filter size={16} className="text-gray-400" />
-                        <select
-                            className="border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                            value={departmentFilter}
-                            onChange={(e) => setDepartmentFilter(e.target.value)}
-                        >
-                            <option value="">Tất cả phòng ban</option>
-                            {departments.map((dept) => (
-                                <option key={dept._id} value={dept._id}>
-                                    {dept.name} ({dept.deptCode})
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {(searchTerm || departmentFilter) && (
-                        <Button
-                            variant="secondary"
-                            onClick={() => {
-                                setSearchTerm("");
-                                setDepartmentFilter("");
-                            }}
-                            className="text-sm"
-                        >
-                            Xóa bộ lọc
-                        </Button>
-                    )}
-                </div>
-            </Card>
-
-            {/* Team Grid */}
-            <div className="flex-1 overflow-auto">
-                {loading ? (
-                    <div className="flex items-center justify-center h-64">
-                        <div className="text-center">
-                            <Loader2 size={32} className="animate-spin text-blue-600 mx-auto mb-4" />
-                            <p className="text-gray-500">Đang tải dữ liệu team...</p>
-                        </div>
-                    </div>
-                ) : filteredTeams.length === 0 ? (
-                    <Card className="p-8">
-                        <div className="text-center text-gray-500">
-                            <Users size={48} className="mx-auto mb-4 text-gray-300" />
-                            <p className="text-lg font-medium mb-2">Không tìm thấy team nào</p>
-                            <p className="text-sm">
-                                {searchTerm || departmentFilter
-                                    ? "Thử thay đổi bộ lọc để xem thêm kết quả"
-                                    : "Chưa có team nào được tạo"
-                                }
-                            </p>
-                        </div>
-                    </Card>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredTeams.map((team) => (
-                            <Card key={team._id} className="p-6 hover:shadow-lg transition-shadow">
-                                <div className="space-y-4">
-                                    {/* Team Header */}
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                            <h3 className="text-lg font-bold text-gray-800 mb-1">
-                                                {team.name}
-                                            </h3>
-                                            <div className="flex items-center gap-2">
-                                                <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
-                                                    {team.teamCode}
-                                                </span>
-                                                <span className={`px-2 py-1 text-xs font-semibold rounded ${team.isActive
-                                                    ? "bg-green-100 text-green-700"
-                                                    : "bg-red-100 text-red-700"
-                                                    }`}>
-                                                    {team.isActive ? "Hoạt động" : "Không hoạt động"}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Department */}
-                                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                                        <Building2 size={16} className="text-gray-400" />
-                                        <span>
-                                            {team.departmentId?.name || "Chưa có phòng ban"}
-                                            {team.departmentId?.deptCode && (
-                                                <span className="text-gray-400 ml-1">
-                                                    ({team.departmentId.deptCode})
-                                                </span>
-                                            )}
-                                        </span>
-                                    </div>
-
-                                    {/* Team Leader */}
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <Crown size={16} className="text-yellow-500" />
-                                        {team.leader ? (
-                                            <div>
-                                                <span className="font-medium text-gray-800">
-                                                    {team.leader.fullName}
-                                                </span>
-                                                <span className="text-gray-400 ml-2">
-                                                    ({team.leader.employeeCode})
-                                                </span>
-                                            </div>
-                                        ) : (
-                                            <span className="text-gray-500 italic">Chưa có team leader</span>
-                                        )}
-                                    </div>
-
-                                    {/* Description */}
-                                    {team.description && (
-                                        <div className="text-sm text-gray-600">
-                                            <p className="line-clamp-2">{team.description}</p>
-                                        </div>
-                                    )}
-
-                                    {/* Timestamps */}
-                                    <div className="pt-3 border-t border-gray-100">
-                                        <div className="flex justify-between text-xs text-gray-400">
-                                            <span>
-                                                Tạo: {new Date(team.createdAt).toLocaleDateString("vi-VN")}
-                                            </span>
-                                            <span>
-                                                Cập nhật: {new Date(team.updatedAt).toLocaleDateString("vi-VN")}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Action Buttons */}
-                                    <div className="pt-3 flex gap-2">
-                                        <button
-                                            onClick={() => openTeamDetailModal(team._id)}
-                                            className="flex-1 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
-                                            title="Xem chi tiết"
-                                        >
-                                            <Eye size={14} />
-                                            Chi tiết
-                                        </button>
-                                        {canManage && (
-                                            <>
-                                                <button
-                                                    onClick={() => openEditTeamModal(team)}
-                                                    className="flex-1 py-2 px-3 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
-                                                    title="Chỉnh sửa"
-                                                >
-                                                    <Edit size={14} />
-                                                    Sửa
-                                                </button>
-                                                <button
-                                                    onClick={() => openDeleteModal(team)}
-                                                    className="py-2 px-3 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center"
-                                                    title="Xóa team"
-                                                >
-                                                    <Trash2 size={14} />
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                            </Card>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {/* Results Summary */}
-            {!loading && filteredTeams.length > 0 && (
-                <div className="shrink-0 text-center text-sm text-gray-500 py-2">
-                    Hiển thị {filteredTeams.length} / {teams.length} team
-                </div>
-            )}
-
-            {/* Team Detail Modal */}
-            <TeamDetailModal
-                isOpen={teamDetailModal.isOpen}
-                onClose={closeTeamDetailModal}
-                teamId={teamDetailModal.teamId}
-            />
-
-            {/* Create/Edit Team Modal */}
-            <CreateTeamModal
-                isOpen={createTeamModal.isOpen}
-                onClose={closeCreateTeamModal}
-                onSuccess={handleCreateSuccess}
-                teamData={createTeamModal.teamData}
-            />
-
-            {/* Delete Confirm Modal */}
-            <DeleteConfirmModal
-                isOpen={deleteModal.isOpen}
-                onClose={closeDeleteModal}
-                onConfirm={handleDeleteTeam}
-                loading={deleteModal.loading}
-                title="Xác nhận xóa team"
-                message="Bạn có chắc chắn muốn xóa team này?"
-                itemName={deleteModal.teamData ? `${deleteModal.teamData.name} (${deleteModal.teamData.teamCode})` : ""}
-                warningText="Team sẽ bị xóa vĩnh viễn và không thể khôi phục!"
-            />
+  return (
+    <div className="flex h-[calc(100vh-100px)] flex-col gap-6">
+      <div className="flex shrink-0 items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Quản lý team</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Tổng cộng {stats.totalTeams} team từ {stats.activeDepartments} phòng ban
+          </p>
         </div>
-    );
+        <div className="flex items-center gap-2">
+          {canManage && (
+            <Button
+              variant="primary"
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              onClick={openCreateTeamModal}
+              title="Tạo team"
+            >
+              <Plus size={16} />
+            </Button>
+          )}
+          <Button variant="secondary" onClick={fetchTeams} title="Làm mới">
+            {loading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+          </Button>
+        </div>
+      </div>
+
+      <Card className="shrink-0 p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-[280px] flex-1 max-w-xl">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              className="w-full rounded-lg border border-gray-300 py-2.5 pl-9 pr-4 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Tìm theo tên team, mã team hoặc team leader..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Filter size={16} className="text-gray-400" />
+            <select
+              className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              value={departmentFilter}
+              onChange={(e) => setDepartmentFilter(e.target.value)}
+            >
+              <option value="">Tất cả phòng ban</option>
+              {departments.map((dept) => (
+                <option key={dept._id} value={dept._id}>
+                  {dept.name} ({dept.deptCode})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {(searchTerm || departmentFilter) && (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setSearchTerm("");
+                setDepartmentFilter("");
+              }}
+              title="Xóa bộ lọc"
+            >
+              <RefreshCw size={16} />
+            </Button>
+          )}
+        </div>
+      </Card>
+
+      <div className="flex-1 overflow-auto">
+        {loading ? (
+          <div className="flex h-64 items-center justify-center">
+            <div className="text-center">
+              <Loader2 size={32} className="mx-auto mb-4 animate-spin text-blue-600" />
+              <p className="text-gray-500">Đang tải dữ liệu team...</p>
+            </div>
+          </div>
+        ) : filteredTeams.length === 0 ? (
+          <Card className="p-8">
+            <div className="text-center text-gray-500">
+              <Users size={48} className="mx-auto mb-4 text-gray-300" />
+              <p className="mb-2 text-lg font-medium">Không tìm thấy team nào</p>
+              <p className="text-sm">
+                {searchTerm || departmentFilter
+                  ? "Thử thay đổi bộ lọc để xem thêm kết quả"
+                  : "Chưa có team nào được tạo"}
+              </p>
+            </div>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {filteredTeams.map((team) => (
+              <Card key={team._id} className="p-5 transition-shadow hover:shadow-lg">
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-xl bg-blue-50 p-3">
+                      <Users size={22} className="text-blue-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-lg font-bold text-gray-800">{team.name}</h3>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <span className="rounded bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700">
+                          {team.teamCode}
+                        </span>
+                        <span
+                          className={`rounded px-2 py-1 text-xs font-semibold ${
+                            team.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {team.isActive ? "Hoạt động" : "Không hoạt động"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm text-gray-600">
+                    <div className="flex items-center gap-2">
+                      <Building2 size={15} className="text-gray-400" />
+                      <span>
+                        {team.departmentId?.name || "Chưa có phòng ban"}
+                        {team.departmentId?.deptCode ? ` (${team.departmentId.deptCode})` : ""}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <Crown size={15} className="text-yellow-500" />
+                      {team.leader ? (
+                        <span>
+                          <span className="font-medium text-gray-800">{team.leader.fullName}</span>
+                          <span className="ml-2 text-gray-400">({team.leader.employeeCode})</span>
+                        </span>
+                      ) : (
+                        <span className="italic text-gray-500">Chưa có team leader</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {team.description && (
+                    <p className="line-clamp-2 text-sm text-gray-600">{team.description}</p>
+                  )}
+
+                  <div className="border-t border-gray-100 pt-3 text-xs text-gray-400">
+                    <div className="flex justify-between gap-2">
+                      <span>Tạo: {new Date(team.createdAt).toLocaleDateString("vi-VN")}</span>
+                      <span>Cập nhật: {new Date(team.updatedAt).toLocaleDateString("vi-VN")}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => openTeamDetailModal(team._id)}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-blue-600 transition-colors hover:bg-blue-50"
+                      title="Xem chi tiết"
+                    >
+                      <Eye size={16} />
+                    </button>
+                    {canManage && (
+                      <>
+                        <button
+                          onClick={() => openEditTeamModal(team)}
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-emerald-600 transition-colors hover:bg-emerald-50"
+                          title="Chỉnh sửa"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          onClick={() => openDeleteModal(team)}
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-red-600 transition-colors hover:bg-red-50"
+                          title="Xóa team"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <TeamDetailModal
+        isOpen={teamDetailModal.isOpen}
+        onClose={closeTeamDetailModal}
+        teamId={teamDetailModal.teamId}
+      />
+
+      <CreateTeamModal
+        isOpen={createTeamModal.isOpen}
+        onClose={closeCreateTeamModal}
+        onSuccess={handleCreateSuccess}
+        teamData={createTeamModal.teamData}
+      />
+
+      <DeleteConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleDeleteTeam}
+        loading={deleteModal.loading}
+        title="Xác nhận xóa team"
+        message="Bạn có chắc chắn muốn xóa team này?"
+        itemName={deleteModal.teamData ? `${deleteModal.teamData.name} (${deleteModal.teamData.teamCode})` : ""}
+        warningText="Team sẽ bị xóa vĩnh viễn và không thể khôi phục!"
+      />
+    </div>
+  );
 };
 
 export default TeamPages;

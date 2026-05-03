@@ -237,6 +237,29 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
         }
     };
 
+    const handleRemoveMember = async (member) => {
+        if (!window.confirm(`Xoa ${member.fullName || member.employeeCode} khoi team?`)) return;
+
+        try {
+            await teamAPI.removeMembers(teamId, { employeeIds: [member._id] });
+            await fetchTeamDetail();
+            await dataEmplyee();
+        } catch (error) {
+            console.error("Error removing member:", error);
+        }
+    };
+
+    const handleDeleteRotationById = async (rotationId) => {
+        if (!window.confirm("Xoa lich nghi luan phien nay?")) return;
+
+        try {
+            await saturdayRotations.deleteById(rotationId);
+            await rotationCall();
+        } catch (error) {
+            console.error("Error deleting rotation:", error);
+        }
+    };
+
     const openAddMemberModal = () => {
         setShowAddMemberModal(true);
         setSelectedEmployees([]);
@@ -511,6 +534,13 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                                             >
                                                                 <Plus size={12} />
                                                             </button>
+                                                            <button
+                                                                onClick={() => handleDeleteRotationById(rotation._id)}
+                                                                className="p-1 bg-red-100 hover:bg-red-200 text-red-600 rounded-full transition-colors"
+                                                                title="Xoa lich nghi"
+                                                            >
+                                                                <Trash2 size={12} />
+                                                            </button>
                                                         </div>
                                                     </div>
                                                     <div className="space-y-1">
@@ -605,7 +635,16 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <StatusBadge status={member.status} />
+                                                        <div className="flex items-center gap-2">
+                                                            <StatusBadge status={member.status} />
+                                                            <button
+                                                                onClick={() => handleRemoveMember(member)}
+                                                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                                title="Xoa khoi team"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             ))}

@@ -4,9 +4,10 @@ import { X, Clock, AlertCircle } from "lucide-react";
 import { DatePicker, TimePicker } from "antd";
 import dayjs from "../../untils/dayjs";
 
-const makePayload = ({ date, startTime, endTime, reason }) => ({
+const makePayload = ({ date, otType, startTime, endTime, reason }) => ({
   // backend cần "YYYY-MM-DD"
   date: date ? dayjs(date).format("YYYY-MM-DD") : "",
+  otType,
   // backend cần "HH:mm"
   startTime: startTime ? dayjs(startTime).format("HH:mm") : "",
   endTime: endTime ? dayjs(endTime).format("HH:mm") : "",
@@ -26,6 +27,8 @@ const ModalOT = ({
   onClose,
   onSubmit,
   initialValues,
+  title = "Tạo đơn OT",
+  submitLabel = "Gửi đơn",
 }) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [showValidation, setShowValidation] = useState(false);
@@ -65,6 +68,7 @@ const ModalOT = ({
     });
 
     setDate(initialValues?.date ? dayjs(initialValues.date) : null);
+    setOtType(initialValues?.otType || "WEEKDAY");
 
     // cho phép initialValues dạng "20:00" hoặc full datetime
     setStartTime(
@@ -83,13 +87,14 @@ const ModalOT = ({
 
   const canSubmit = useMemo(() => {
     if (!date) return false;
+    if (!otType) return false;
     if (!startTime || !endTime) return false;
     
     // Validate lý do phải có nội dung
     if (!reason || reason.trim() === "") return false;
     
     return true;
-  }, [date, startTime, endTime, reason]);
+  }, [date, otType, startTime, endTime, reason]);
 
   const handleOk = async () => {
     setShowValidation(true);
@@ -99,7 +104,7 @@ const ModalOT = ({
       return; // Dừng lại, không call API
     }
 
-    const payload = makePayload({ date, startTime, endTime, reason });
+    const payload = makePayload({ date, otType, startTime, endTime, reason });
 
     try {
       setConfirmLoading(true);
@@ -138,7 +143,7 @@ const ModalOT = ({
           <div>
             <h3 className="text-lg font-bold flex items-center gap-2">
               <Clock size={18} className="text-orange-600" />
-              Tạo đơn OT
+              {title}
             </h3>
           </div>
           <button onClick={onClose} disabled={confirmLoading}>
@@ -167,6 +172,19 @@ const ModalOT = ({
                 <AlertCircle size={12} /> Vui lòng chọn ngày OT
               </p>
             )}
+          </div>
+
+          <div>
+            <label className={labelClass}>Loai OT *</label>
+            <select
+              value={otType}
+              onChange={(e) => setOtType(e.target.value)}
+              className={inputClass(false)}
+            >
+              <option value="WEEKDAY">Ngay thuong</option>
+              <option value="WEEKEND">Cuoi tuan</option>
+              <option value="HOLIDAY">Ngay le</option>
+            </select>
           </div>
 
           {/* time */}
@@ -257,7 +275,7 @@ const ModalOT = ({
                   Đang gửi...
                 </>
               ) : (
-                "Gửi đơn"
+                submitLabel
               )}
             </button>
           </div>

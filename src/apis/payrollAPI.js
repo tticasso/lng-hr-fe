@@ -1,32 +1,37 @@
 import apiClient from "./apiClient";
 
 export const payrollAPI = {
+  getall: (month, year, params = {}) => {
+    return apiClient.get("/payrolls", {
+      params: { month, year, limit: 50, ...params },
+    });
+  },
 
-    getall: (month, year) => {
-        return apiClient.get(`/payrolls?month=${month}&year=${year}&limit=50`);
-    },
+  getbyme: (params) => {
+    return apiClient.get("/payrolls/my-income", { params });
+  },
 
-    getbyme: () => {
-        return apiClient.get("/payrolls/my-income");
-    },
+  syncdata: (payload) => {
+    return apiClient.post("/payrolls/sync", payload);
+  },
 
-    syncdata: (payload) => {
-        return apiClient.post("/payrolls/sync", payload);
-    },
+  calcalculate: (payload) => {
+    return apiClient.post("/payrolls/calculate", payload);
+  },
 
-    syncHoliday: (payload) => {
-        return apiClient.post("/payrolls/sync-holiday", payload);
-    },
+  calculateBatch: (payload) => {
+    return apiClient.post("/payrolls/calculate-batch", payload);
+  },
 
-    calcalculate: (payload) => {
-        return apiClient.post("/payrolls/calculate", payload);
-    },
+  finalize: (payload) => {
+    return apiClient.patch("/payrolls/finalize", payload);
+  },
 
-    finalize: (payload) => {
-        return apiClient.patch("/payrolls/finalize", payload);
-    },
+  markpaid: (payload) => {
+    return apiClient.patch("/payrolls/mark-paid", payload);
+  },
 
-    markpaid: (payload) => {
-        return apiClient.patch("/payrolls/mark-paid", payload);
-    },
+  sendEmail: (id) => {
+    return apiClient.post(`/payrolls/${id}/send-email`);
+  },
 };

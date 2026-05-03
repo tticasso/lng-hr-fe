@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState, useRef } from "react";
-import { Search, Loader2, RefreshCw, CheckCircle2, XCircle, Eye } from "lucide-react";
+import { Search, Loader2, RefreshCw, CheckCircle2, XCircle, Eye, Plus, Edit, Trash2, Ban, MoreHorizontal } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import { leaveAPI } from "../../apis/leaveAPI";
 import { OTApi } from "../../apis/OTAPI";
 import ApproveOTModal from "../../components/modals/ApproveOTModal";
 import LeaveDetailModal from "../../components/modals/LeaveDetailModal";
+import LeaveRequestModal from "../../components/modals/CreateLeaveModal";
+import ModalOT from "../../components/modals/OTModal";
+import OTDetailModal from "../../components/modals/OTDetailModal";
 import { toast } from "react-toastify";
 
 const leaveTypeLabel = {
@@ -41,6 +45,15 @@ const formatDate = (isoString) => {
         month: "2-digit",
         year: "numeric",
     });
+};
+
+const formatDateRange = (fromDate, toDate) => {
+    const from = formatDate(fromDate);
+    const to = formatDate(toDate);
+    if (from === "--" && to === "--") return "--";
+    if (from === to || to === "--") return from;
+    if (from === "--") return to;
+    return `${from} - ${to}`;
 };
 
 const formatDateTime = (isoString) => {
@@ -96,14 +109,26 @@ const StatusBadge = ({ statusKey, statusText }) => {
     })();
 
     return (
-        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${cls}`}>
+        <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${cls}`}>
             {statusText}
         </span>
     );
 };
 
+const actionButtonClass =
+    "inline-flex h-9 w-9 items-center justify-center rounded-lg border text-xs font-semibold transition-colors";
+
+const menuButtonClass =
+    "inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700";
+
+const tableHeaderClass = "px-3 py-3 text-xs uppercase text-gray-500 font-semibold";
+const tableCellClass = "px-3 py-3";
+
 const MyLeave = () => {
-    const [activeTab, setActiveTab] = useState("LEAVE"); // "LEAVE" | "OT"
+    const location = useLocation();
+    const isOTOnlyPage = location.pathname === "/leave/ot";
+    const initialTab = isOTOnlyPage ? "OT" : location.state?.activeTab || "LEAVE";
+    const [activeTab, setActiveTab] = useState(initialTab); // "LEAVE" | "OT"
 
     // LEAVE
     const [loading, setLoading] = useState(true);
@@ -145,12 +170,33 @@ const MyLeave = () => {
         isOpen: false,
         otData: null,
     });
+    const [otDetailModal, setOtDetailModal] = useState({
+        isOpen: false,
+        otData: null,
+    });
 
     // ✅ Leave Detail Modal
     const [leaveDetailModal, setLeaveDetailModal] = useState({
         isOpen: false,
         leaveId: null,
     });
+    const [leaveFormModal, setLeaveFormModal] = useState({
+        isOpen: false,
+        mode: "create",
+        leave: null,
+    });
+    const [otFormModal, setOtFormModal] = useState({
+        isOpen: false,
+        mode: "create",
+        ot: null,
+    });
+    const [openActionMenu, setOpenActionMenu] = useState(null);
+
+    useEffect(() => {
+        if (isOTOnlyPage && activeTab !== "OT") {
+            setActiveTab("OT");
+        }
+    }, [activeTab, isOTOnlyPage]);
 
     // ✅ Lưu approval level của user hiện tại
     // const [userApprovalLevel, setUserApprovalLevel] = useState(null);
@@ -158,28 +204,64 @@ const MyLeave = () => {
     // ✅ Ref để track đã fetch data chưa
     const hasFetchedLeaves = useRef(false);
     const hasFetchedOTs = useRef(false);
+    const actionMenuRef = useRef(null);
 
-    // ✅ Refetch LEAVE khi đổi tab / page / limit
+    // Fetch LEAVE lần đầu khi mở tab
     useEffect(() => {
         if (activeTab !== "LEAVE") return;
+        if (hasFetchedLeaves.current) return;
         const t = setTimeout(() => {
             fetchLeaves(pagination.page, pagination.limit);
             hasFetchedLeaves.current = true;
         }, 300);
         return () => clearTimeout(t);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeTab, pagination.page, pagination.limit]);
+    }, [activeTab]);
 
-    // ✅ Refetch OT khi đổi tab / page / limit
+    // Fetch lại LEAVE khi đổi phân trang sau lần tải đầu
+    useEffect(() => {
+        if (activeTab !== "LEAVE") return;
+        if (!hasFetchedLeaves.current) return;
+        const t = setTimeout(() => {
+            fetchLeaves(pagination.page, pagination.limit);
+        }, 300);
+        return () => clearTimeout(t);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pagination.page, pagination.limit]);
+
+    // Fetch OT lần đầu khi mở tab
     useEffect(() => {
         if (activeTab !== "OT") return;
+        if (hasFetchedOTs.current) return;
         const t = setTimeout(() => {
             fetchOTs(otPagination.page, otPagination.limit);
             hasFetchedOTs.current = true;
         }, 200);
         return () => clearTimeout(t);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeTab, otPagination.page, otPagination.limit]);
+    }, [activeTab]);
+
+    // Fetch lại OT khi đổi phân trang sau lần tải đầu
+    useEffect(() => {
+        if (activeTab !== "OT") return;
+        if (!hasFetchedOTs.current) return;
+        const t = setTimeout(() => {
+            fetchOTs(otPagination.page, otPagination.limit);
+        }, 200);
+        return () => clearTimeout(t);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [otPagination.page, otPagination.limit]);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (!actionMenuRef.current?.contains(event.target)) {
+                setOpenActionMenu(null);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     const pendingOTCount = useMemo(() => {
         return ots.filter((ot) => normalizeStatus(ot?.status) === "PENDING").length;
@@ -226,6 +308,97 @@ const MyLeave = () => {
     const canApprove = useMemo(() => {
         return isAdmin || isHR || isManager || isLEADER;
     }, [isAdmin, isHR, isManager, isLEADER]);
+
+    const isSuperApprover = useMemo(() => {
+        return isAdmin || isHR;
+    }, [isAdmin, isHR]);
+
+    const getEntityId = (value) => {
+        if (!value) return "";
+        if (typeof value === "string") return value;
+        return value._id || value.id || "";
+    };
+
+    const currentEmployeeId = () => localStorage.getItem("employee_ID") || "";
+
+    const isOwnRequest = (request) => {
+        return getEntityId(request?.employeeId) === currentEmployeeId();
+    };
+
+    const getSuperApprovalLevel = (leave) => {
+        const chain = Array.isArray(leave?.approvalChain) ? leave.approvalChain : [];
+        const pendingStep = chain.find((step) => normalizeStatus(step?.status) === "PENDING");
+        if (pendingStep?.level) return pendingStep.level;
+
+        const maxLevel = chain.reduce((max, step) => Math.max(max, Number(step?.level) || 0), 0);
+        return maxLevel > 0 ? maxLevel + 1 : 1;
+    };
+
+    const getLeaveApprovalContext = (leave) => {
+        const displayStatus = normalizeStatus(leave?.status);
+        if (displayStatus !== "PENDING") {
+            return {
+                canAction: false,
+                approvalLevel: null,
+                userApproval: null,
+                title: "Đơn đã được xử lý",
+            };
+        }
+
+        if (isSuperApprover) {
+            return {
+                canAction: true,
+                approvalLevel: getSuperApprovalLevel(leave),
+                userApproval: null,
+                title: "Duyệt nhanh với quyền Admin/HR",
+            };
+        }
+
+        const accountID = localStorage.getItem("employee_ID");
+        const approvalChain = Array.isArray(leave?.approvalChain) ? leave.approvalChain : [];
+        const userApproval = approvalChain.find((step) => getEntityId(step?.approver) === accountID);
+        const userApprovalLevel = userApproval?.level || null;
+
+        if (!userApprovalLevel || !userApproval) {
+            return {
+                canAction: false,
+                approvalLevel: null,
+                userApproval: null,
+                title: "Bạn không nằm trong cấp duyệt của đơn này",
+            };
+        }
+
+        if (normalizeStatus(userApproval.status) !== "PENDING") {
+            return {
+                canAction: false,
+                approvalLevel: userApprovalLevel,
+                userApproval,
+                title: "Đã xử lý cấp duyệt này",
+            };
+        }
+
+        if (userApprovalLevel > 1) {
+            const lowerLevelsApproved = approvalChain
+                .filter((step) => Number(step?.level) < Number(userApprovalLevel))
+                .every((step) => normalizeStatus(step?.status) === "APPROVED");
+
+            if (!lowerLevelsApproved) {
+                return {
+                    canAction: false,
+                    approvalLevel: userApprovalLevel,
+                    userApproval,
+                    title: "Chưa đến lượt duyệt",
+                };
+            }
+        }
+
+        return {
+            canAction: true,
+            approvalLevel: userApprovalLevel,
+            userApproval,
+            title: "Duyệt",
+        };
+    };
 
     const searchQuery = useMemo(() => filters.search.trim().toLowerCase(), [filters.search]);
     const otSearchQuery = useMemo(
@@ -407,68 +580,28 @@ const MyLeave = () => {
 
     const handleApprove = async (leaveId) => {
         try {
-            // ✅ Lấy employee_ID từ localStorage
-            const accountID = localStorage.getItem("employee_ID");
-
-            // ✅ Tìm đơn nghỉ trong danh sách
-            const leave = leaves.find(lv => lv._id === leaveId);
+            const leave = leaves.find((lv) => lv._id === leaveId);
             if (!leave) {
                 toast.error("Không tìm thấy đơn nghỉ");
                 return;
             }
 
-            // ✅ Tìm level của user trong approvalChain của đơn này
-            let userApprovalLevel = null;
-            let userApproval = null;
-
-            // Kiểm tra level 1
-            const level1 = leave.approvalChain?.find(a => a.level === 1);
-            if (level1?.approver?._id === accountID) {
-                userApprovalLevel = 1;
-                userApproval = level1;
-            }
-
-            // Kiểm tra level 2
-            const level2 = leave.approvalChain?.find(a => a.level === 2);
-            if (level2?.approver?._id === accountID) {
-                userApprovalLevel = 2;
-                userApproval = level2;
-            }
-
-            // ✅ Kiểm tra có quyền duyệt không
-            if (!userApprovalLevel || !userApproval) {
-                toast.error("Bạn không có quyền duyệt đơn này");
+            const approvalContext = getLeaveApprovalContext(leave);
+            if (!approvalContext.canAction || !approvalContext.approvalLevel) {
+                toast.error(approvalContext.title || "Bạn không có quyền duyệt đơn này");
                 return;
             }
 
-            // ✅ Kiểm tra nếu là level 2, level 1 phải đã APPROVED
-            if (userApprovalLevel === 2) {
-                const level1Approval = leave.approvalChain?.find(a => a.level === 1);
-                if (level1Approval?.status !== "APPROVED") {
-                    toast.error("Cấp duyệt 1 chưa duyệt đơn này");
-                    return;
-                }
-            }
-
-            // ✅ Kiểm tra nếu đã duyệt rồi
-            if (userApproval.status === "APPROVED") {
-                toast.info("Bạn đã duyệt đơn này rồi");
-                return;
-            }
-
-            // ✅ Tạo payload với approvalLevel
             const payload = {
-                approvalLevel: userApprovalLevel,
-                status: "APPROVED"
+                approvalLevel: approvalContext.approvalLevel,
+                status: "APPROVED",
             };
 
             console.log("[handleApprove] Payload:", payload);
-
-            // ✅ Gọi API approve với payload
             const res = await leaveAPI.APPROVED(leaveId, payload);
             console.log("[handleApprove] res:", res);
 
-            toast.success(`Đã duyệt đơn nghỉ (Level ${userApprovalLevel})`);
+            toast.success(`Đã duyệt đơn nghỉ (Level ${approvalContext.approvalLevel})`);
             await fetchLeaves();
         } catch (e) {
             console.error("approve error:", e);
@@ -476,18 +609,71 @@ const MyLeave = () => {
             toast.error(errorMsg);
         }
     };
-
     const handleCancel = async (leaveId) => {
         try {
-            if (leaveAPI.editStatus) await leaveAPI.editStatus(leaveId, "CANCELLED");
-            else if (leaveAPI.CANCELLED) await leaveAPI.CANCELLED(leaveId);
-            else return console.warn("Thiếu leaveAPI.editStatus / leaveAPI.CANCELLED");
+            if (!window.confirm("Hủy đơn nghỉ này?")) return;
+            await leaveAPI.CANCELLED(leaveId);
+            toast.success("Đã hủy đơn nghỉ");
             await fetchLeaves();
         } catch (e) {
             console.error("cancel error:", e);
+            toast.error(e.normalizedMessage || e.response?.data?.message || "Hủy đơn nghỉ thất bại");
         }
     };
 
+    const handleRejectLeave = async (leave) => {
+        const approvalContext = getLeaveApprovalContext(leave);
+        if (!approvalContext.canAction || !approvalContext.approvalLevel) {
+            toast.error(approvalContext.title || "Bạn không có quyền từ chối đơn này");
+            return;
+        }
+
+        const rejectionReason = window.prompt("Nhập lý do từ chối đơn nghỉ:");
+        if (!rejectionReason?.trim()) return;
+
+        try {
+            await leaveAPI.APPROVED(leave._id, {
+                approvalLevel: approvalContext.approvalLevel,
+                status: "REJECTED",
+                rejectionReason: rejectionReason.trim(),
+            });
+            toast.success("Đã từ chối đơn nghỉ");
+            await fetchLeaves();
+        } catch (e) {
+            console.error("reject leave error:", e);
+            toast.error(e.normalizedMessage || e.response?.data?.message || "Từ chối đơn nghỉ thất bại");
+        }
+    };
+
+    const handleDeleteLeave = async (leaveId) => {
+        if (!window.confirm("Xóa vĩnh viễn đơn nghỉ đang chờ duyệt này?")) return;
+        try {
+            await leaveAPI.delete(leaveId);
+            toast.success("Đã xóa đơn nghỉ");
+            await fetchLeaves();
+        } catch (e) {
+            console.error("delete leave error:", e);
+            toast.error(e.normalizedMessage || e.response?.data?.message || "Xóa đơn nghỉ thất bại");
+        }
+    };
+
+    const handleSubmitLeaveForm = async (payload) => {
+        try {
+            if (leaveFormModal.mode === "edit" && leaveFormModal.leave?._id) {
+                await leaveAPI.updatePending(leaveFormModal.leave._id, payload);
+                toast.success("Đã cập nhật đơn nghỉ");
+            } else {
+                await leaveAPI.post(payload);
+                toast.success("Đã tạo đơn nghỉ");
+            }
+            setLeaveFormModal({ isOpen: false, mode: "create", leave: null });
+            await fetchLeaves(1, pagination.limit);
+            setPagination((p) => ({ ...p, page: 1 }));
+        } catch (e) {
+            console.error("submit leave error:", e);
+            toast.error(e.normalizedMessage || e.response?.data?.message || "Lưu đơn nghỉ thất bại");
+        }
+    };
     const handleApproveOT = async (otId, payload) => {
         console.log("RES otId: ", otId);
         console.log("RES payload: ", payload);
@@ -507,16 +693,65 @@ const MyLeave = () => {
 
     const handleCancelOT = async (otId) => {
         try {
+            if (!window.confirm("Hủy đơn OT này?")) return;
             await OTApi.cancel(otId);
-            toast.success("Đã từ chối đơn OT");
+            toast.success("Đã hủy đơn OT");
             fetchOTs();
         } catch (e) {
             console.error("cancel OT error:", e);
-            const errorMsg = e.response?.data?.message || "Từ chối đơn OT thất bại";
+            const errorMsg = e.normalizedMessage || e.response?.data?.message || "Hủy đơn OT thất bại";
             toast.error(errorMsg);
         }
     };
 
+    const handleRejectOT = async (ot) => {
+        const rejectionReason = window.prompt("Nhập lý do từ chối đơn OT:");
+        if (!rejectionReason?.trim()) return;
+
+        try {
+            await OTApi.approve(ot._id, {
+                status: "REJECTED",
+                approvedStartTime: ot.startTime,
+                approvedEndTime: ot.endTime,
+                rejectionReason: rejectionReason.trim(),
+            });
+            toast.success("Đã từ chối đơn OT");
+            fetchOTs();
+        } catch (e) {
+            console.error("reject OT error:", e);
+            toast.error(e.normalizedMessage || e.response?.data?.message || "Từ chối đơn OT thất bại");
+        }
+    };
+
+    const handleDeleteOT = async (otId) => {
+        if (!window.confirm("Xóa vĩnh viễn đơn OT đang chờ duyệt này?")) return;
+        try {
+            await OTApi.delete(otId);
+            toast.success("Đã xóa đơn OT");
+            fetchOTs();
+        } catch (e) {
+            console.error("delete OT error:", e);
+            toast.error(e.normalizedMessage || e.response?.data?.message || "Xóa đơn OT thất bại");
+        }
+    };
+
+    const handleSubmitOTForm = async (payload) => {
+        try {
+            if (otFormModal.mode === "edit" && otFormModal.ot?._id) {
+                await OTApi.update(otFormModal.ot._id, payload);
+                toast.success("Đã cập nhật đơn OT");
+            } else {
+                await OTApi.post(payload);
+                toast.success("Đã tạo đơn OT");
+            }
+            setOtFormModal({ isOpen: false, mode: "create", ot: null });
+            await fetchOTs(1, otPagination.limit);
+            setOtPagination((p) => ({ ...p, page: 1 }));
+        } catch (e) {
+            console.error("submit OT error:", e);
+            toast.error(e.normalizedMessage || e.response?.data?.message || "Lưu đơn OT thất bại");
+        }
+    };
     const openApproveOTModal = (ot) => {
         setApproveOTModal({
             isOpen: true,
@@ -539,8 +774,12 @@ const MyLeave = () => {
         setLeaveDetailModal({ isOpen: false, leaveId: null });
     };
 
-    const colSpanCount = canApprove ? 11 : 10;
-    const otColSpanCount = canApprove ? 10 : 9;
+    const toggleActionMenu = (key) => {
+        setOpenActionMenu((prev) => (prev === key ? null : key));
+    };
+
+    const colSpanCount = 6;
+    const otColSpanCount = 6;
 
     return (
         <div className="h-[calc(100vh-100px)] flex flex-col gap-6">
@@ -549,10 +788,13 @@ const MyLeave = () => {
                 <div className="flex items-start gap-4">
                     <div>
                         <div className="flex items-center gap-4 flex-wrap">
-                            <h1 className="text-2xl font-bold text-gray-800">Yêu cầu Nghỉ/OT</h1>
+                            <h1 className="text-2xl font-bold text-gray-800">
+                                {isOTOnlyPage ? "Đơn OT" : "Yêu cầu Nghỉ/OT"}
+                            </h1>
 
                             {/* Tabs */}
                             <div className="flex rounded-lg border bg-gray-100 p-1">
+                                {!isOTOnlyPage && (
                                 <button
                                     onClick={() => setActiveTab("LEAVE")}
                                     className={`px-4 py-1.5 text-sm font-semibold rounded-md transition flex items-center gap-2
@@ -568,6 +810,7 @@ const MyLeave = () => {
                                         </span>
                                     )}
                                 </button>
+                                )}
 
                                 <button
                                     onClick={() => setActiveTab("OT")}
@@ -602,29 +845,43 @@ const MyLeave = () => {
                     </div>
                 </div>
 
-                <Button
-                    variant="secondary"
-                    className="flex gap-2 items-center"
-                    onClick={() =>
-                        activeTab === "LEAVE"
-                            ? fetchLeaves(pagination.page, pagination.limit)
-                            : fetchOTs(otPagination.page, otPagination.limit)
-                    }
-                >
-                    {(activeTab === "LEAVE" ? loading : otLoading) ? (
-                        <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                        <RefreshCw size={16} />
-                    )}
-                    Làm mới
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                    <Button
+                        className="flex gap-2 items-center"
+                        onClick={() =>
+                            activeTab === "LEAVE"
+                                ? setLeaveFormModal({ isOpen: true, mode: "create", leave: null })
+                                : setOtFormModal({ isOpen: true, mode: "create", ot: null })
+                        }
+                    >
+                        <Plus size={16} />
+                        {activeTab === "LEAVE" ? "Tạo đơn nghỉ" : "Tạo đơn OT"}
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        className="flex gap-2 items-center"
+                        onClick={() =>
+                            activeTab === "LEAVE"
+                                ? fetchLeaves(pagination.page, pagination.limit)
+                                : fetchOTs(otPagination.page, otPagination.limit)
+                        }
+                    >
+                        {(activeTab === "LEAVE" ? loading : otLoading) ? (
+                            <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                            <RefreshCw size={16} />
+                        )}
+                        Làm mới
+                    </Button>
+                </div>
             </div>
 
             {/* Tab LEAVE */}
             {activeTab === "LEAVE" && (
                 <Card className="flex flex-col h-full p-0 overflow-hidden border border-gray-200">
-                    <div className="p-4 bg-gray-50 border-b flex gap-4 flex-wrap">
-                        <div className="relative flex-1 min-w-[260px] max-w-md">
+                    <div className="border-b bg-gray-50/80 p-4">
+                        <div className="flex flex-wrap gap-3">
+                            <div className="relative min-w-[260px] flex-[1_1_320px] max-w-xl">
                             <Search
                                 size={16}
                                 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -638,7 +895,7 @@ const MyLeave = () => {
                         </div>
 
                         <select
-                            className="border rounded-lg px-3 py-2 text-sm outline-none"
+                            className="min-w-[190px] border rounded-lg bg-white px-3 py-2 text-sm outline-none"
                             value={filters.leaveType}
                             onChange={(e) => setFilters((p) => ({ ...p, leaveType: e.target.value }))}
                         >
@@ -650,7 +907,7 @@ const MyLeave = () => {
                         </select>
 
                         <select
-                            className="border rounded-lg px-3 py-2 text-sm outline-none"
+                            className="min-w-[190px] border rounded-lg bg-white px-3 py-2 text-sm outline-none"
                             value={filters.status}
                             onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))}
                         >
@@ -660,27 +917,23 @@ const MyLeave = () => {
                             <option value="REJECTED">Từ chối</option>
                             <option value="CANCELLED">Đã hủy</option>
                         </select>
+                        </div>
                     </div>
 
                     <div className="flex-1 overflow-auto">
                         <table className="w-full text-left text-sm border-collapse">
                             <thead className="bg-white border-b text-xs uppercase text-gray-500 font-semibold sticky top-0 z-10">
                                 <tr>
-                                    <th className="p-4">Nhân sự</th>
-                                    <th className="p-4">Loại nghỉ</th>
-                                    <th className="p-4">Hình thức</th>
-                                    <th className="p-4">Từ ngày</th>
-                                    <th className="p-4">Đến ngày</th>
-                                    {/* <th className="p-4">Số ngày</th> */}
-                                    <th className="p-4">Lý do</th>
-                                    <th className="p-4">Trạng thái</th>
-                                    <th className="p-4">Ngày tạo</th>
-                                    <th className="p-4 text-center">Chi tiết</th>
-                                    {canApprove && <th className="p-4 text-center">Hành động</th>}
+                                    <th className="w-[144px] px-2.5 py-3">Nhân sự</th>
+                                    <th className="w-[120px] px-2.5 py-3">Loại nghỉ</th>
+                                    <th className="w-[156px] px-2.5 py-3">Xin nghỉ ngày</th>
+                                    <th className="w-[110px] px-2.5 py-3">Trạng thái</th>
+                                    <th className="w-[52px] px-2.5 py-3 text-center">Chi tiết</th>
+                                    <th className="w-[86px] px-2.5 py-3 text-center">Hành động</th>
                                 </tr>
                             </thead>
 
-                            <tbody className="divide-y bg-white">
+                            <tbody className="divide-y divide-gray-100 bg-white">
                                 {loading ? (
                                     <tr>
                                         <td className="p-6 text-center text-gray-500" colSpan={colSpanCount}>
@@ -699,123 +952,156 @@ const MyLeave = () => {
                                 ) : (
                                     filteredLeaves.map((lv) => {
                                         const displayStatus = normalizeStatus(lv.status);
-                                        const accountID = localStorage.getItem("employee_ID");
-
-                                        // ✅ Kiểm tra user có quyền duyệt đơn này không
-                                        let userApprovalLevel = null;
-                                        let userApproval = null;
-
-                                        // Kiểm tra level 1
-                                        const level1 = lv.approvalChain?.find(a => a.level === 1);
-                                        if (level1?.approver?._id === accountID) {
-                                            userApprovalLevel = 1;
-                                            userApproval = level1;
-                                        }
-
-                                        // Kiểm tra level 2
-                                        const level2 = lv.approvalChain?.find(a => a.level === 2);
-                                        if (level2?.approver?._id === accountID) {
-                                            userApprovalLevel = 2;
-                                            userApproval = level2;
-                                        }
-
-                                        // ✅ Chỉ cho phép duyệt nếu:
-                                        // - Đơn đang PENDING
-                                        // - User có trong approvalChain
-                                        // - Nếu là level 2 thì level 1 phải đã APPROVED
-                                        let canAction = false;
-                                        if (displayStatus === "PENDING" && userApproval) {
-                                            if (userApprovalLevel === 1) {
-                                                canAction = userApproval.status === "PENDING";
-                                            } else if (userApprovalLevel === 2) {
-                                                const level1Approval = lv.approvalChain?.find(a => a.level === 1);
-                                                canAction = level1Approval?.status === "APPROVED" && userApproval.status === "PENDING";
-                                            }
-                                        }
+                                        const approvalContext = getLeaveApprovalContext(lv);
+                                        const canAction = approvalContext.canAction;
+                                        const ownLeave = isOwnRequest(lv);
+                                        const canEditLeave = ownLeave && displayStatus === "PENDING";
+                                        const canDeleteLeave = (ownLeave || isSuperApprover) && displayStatus === "PENDING";
+                                        const canCancelLeave = (ownLeave || canApprove) && ["PENDING", "APPROVED"].includes(displayStatus);
+                                        const leaveMenuKey = `leave-${lv._id}`;
+                                        const showLeavePrimaryApprove = canApprove && canAction;
+                                        const showLeavePrimaryEdit = !showLeavePrimaryApprove && canEditLeave;
 
                                         return (
-                                            <tr key={lv._id} className="hover:bg-blue-50/30">
-                                                <td className="p-4">
+                                            <tr key={lv._id} className="align-top hover:bg-blue-50/30">
+                                                <td className="px-2.5 py-3">
                                                     <p className="font-semibold text-gray-800">
                                                         {lv.employeeId?.fullName || "--"}
                                                     </p>
                                                     <p className="text-xs text-gray-500">{lv.employeeId?.employeeCode || ""}</p>
                                                 </td>
 
-                                                <td className="p-4 text-gray-700">
+                                                <td className="px-2.5 py-3 text-gray-700">
                                                     {leaveTypeLabel[lv.leaveType] || lv.leaveType || "--"}
                                                 </td>
 
-                                                <td className="p-4 text-gray-700">
-                                                    {leaveScopeLabel[lv.leaveScope] || lv.leaveScope || "--"}
+                                                <td className="px-2.5 py-3 text-gray-700 whitespace-nowrap">
+                                                    {formatDateRange(lv.fromDate, lv.toDate)}
                                                 </td>
 
-                                                <td className="p-4 text-gray-700">{formatDate(lv.fromDate)}</td>
-                                                <td className="p-4 text-gray-700">{formatDate(lv.toDate)}</td>
 
-                                                {/* <td className="p-4 text-gray-700 font-semibold">{lv.totalDays ?? "--"}</td> */}
-
-                                                <td className="p-4 text-gray-600 max-w-[360px]">
-                                                    <span className="line-clamp-2">{lv.reason || "--"}</span>
-                                                </td>
-
-                                                <td className="p-4">
+                                                <td className="px-2.5 py-3 align-middle">
                                                     <StatusBadge
                                                         statusKey={displayStatus}
                                                         statusText={statusLabel[displayStatus] || displayStatus}
                                                     />
                                                 </td>
 
-                                                <td className="p-4 text-xs text-gray-500">{formatDateTime(lv.createdAt)}</td>
-
-                                                {/* Cột Chi tiết - Luôn hiển thị */}
-                                                <td className="p-4">
+                                                <td className="px-2.5 py-3 align-middle">
                                                     <div className="flex justify-center">
                                                         <button
                                                             onClick={() => openLeaveDetailModal(lv._id)}
-                                                            className="p-2 rounded border text-xs font-semibold inline-flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50"
+                                                            className={`${actionButtonClass} text-blue-600 border-blue-200 hover:bg-blue-50`}
                                                             title="Xem chi tiết"
                                                         >
                                                             <Eye size={14} />
-                                                            Chi tiết
                                                         </button>
                                                     </div>
                                                 </td>
 
-                                                {/* Cột Hành động - Chỉ hiển thị cho người có quyền */}
-                                                {canApprove && (
-                                                    <td className="p-4">
-                                                        <div className="flex justify-center gap-2">
+                                                <td className="px-2.5 py-3 align-middle">
+                                                    <div className="relative flex items-center justify-center gap-1.5" ref={openActionMenu === leaveMenuKey ? actionMenuRef : null}>
+                                                        {showLeavePrimaryApprove && (
                                                             <button
-                                                                disabled={!canAction}
                                                                 onClick={() => handleApprove(lv._id)}
-                                                                className={`p-2 rounded border text-xs font-semibold inline-flex items-center gap-1
-                                                                    ${canAction
-                                                                        ? "text-green-600 border-green-200 hover:bg-green-50"
-                                                                        : "text-gray-300 border-gray-200 cursor-not-allowed"
-                                                                    }`}
-                                                                title={canAction ? "Duyệt" : (userApproval?.status === "APPROVED" ? "Đã duyệt" : "Chưa đến lượt")}
+                                                                className={`${actionButtonClass} border-green-200 text-green-600 hover:bg-green-50`}
+                                                                title={approvalContext.title}
                                                             >
                                                                 <CheckCircle2 size={14} />
-                                                                Duyệt
                                                             </button>
-
+                                                        )}
+                                                        {showLeavePrimaryEdit && (
                                                             <button
-                                                                disabled={!canAction}
-                                                                onClick={() => handleCancel(lv._id)}
-                                                                className={`p-2 rounded border text-xs font-semibold inline-flex items-center gap-1
-                                                                    ${canAction
-                                                                        ? "text-red-500 border-red-200 hover:bg-red-50"
-                                                                        : "text-gray-300 border-gray-200 cursor-not-allowed"
-                                                                    }`}
-                                                                title="Hủy"
+                                                                onClick={() => setLeaveFormModal({ isOpen: true, mode: "edit", leave: lv })}
+                                                                className={`${actionButtonClass} border-blue-200 text-blue-600 hover:bg-blue-50`}
+                                                                title="Sửa đơn nghỉ"
                                                             >
-                                                                <XCircle size={14} />
-                                                                Hủy
+                                                                <Edit size={14} />
                                                             </button>
-                                                        </div>
-                                                    </td>
-                                                )}
+                                                        )}
+                                                        {!showLeavePrimaryApprove && !showLeavePrimaryEdit && (
+                                                            <span className="inline-block h-9 w-9" />
+                                                        )}
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => toggleActionMenu(leaveMenuKey)}
+                                                            className={menuButtonClass}
+                                                            title="Thêm thao tác"
+                                                        >
+                                                            <MoreHorizontal size={16} />
+                                                        </button>
+
+                                                        {openActionMenu === leaveMenuKey && (
+                                                            <div className="absolute right-0 top-11 z-20 min-w-[176px] rounded-xl border border-gray-200 bg-white p-1.5 shadow-lg">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        openLeaveDetailModal(lv._id);
+                                                                        setOpenActionMenu(null);
+                                                                    }}
+                                                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                                                                >
+                                                                    <Eye size={14} />
+                                                                    Xem chi tiết
+                                                                </button>
+                                                                {canApprove && (
+                                                                    <button
+                                                                        type="button"
+                                                                        disabled={!canAction}
+                                                                        onClick={() => {
+                                                                            handleRejectLeave(lv);
+                                                                            setOpenActionMenu(null);
+                                                                        }}
+                                                                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-gray-300 disabled:hover:bg-white"
+                                                                    >
+                                                                        <XCircle size={14} />
+                                                                        Từ chối
+                                                                    </button>
+                                                                )}
+                                                                {canEditLeave && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setLeaveFormModal({ isOpen: true, mode: "edit", leave: lv });
+                                                                            setOpenActionMenu(null);
+                                                                        }}
+                                                                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50"
+                                                                    >
+                                                                        <Edit size={14} />
+                                                                        Sửa
+                                                                    </button>
+                                                                )}
+                                                                {canCancelLeave && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            handleCancel(lv._id);
+                                                                            setOpenActionMenu(null);
+                                                                        }}
+                                                                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-orange-600 hover:bg-orange-50"
+                                                                    >
+                                                                        <Ban size={14} />
+                                                                        Hủy
+                                                                    </button>
+                                                                )}
+                                                                {canDeleteLeave && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            handleDeleteLeave(lv._id);
+                                                                            setOpenActionMenu(null);
+                                                                        }}
+                                                                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                                                                    >
+                                                                        <Trash2 size={14} />
+                                                                        Xóa
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
                                             </tr>
                                         );
                                     })
@@ -887,11 +1173,11 @@ const MyLeave = () => {
             {activeTab === "OT" && (
                 <Card className="flex flex-col h-full p-0 overflow-hidden border border-gray-200">
                     {/* OT Filter Bar - LEFT */}
-                    <div className="p-4 bg-gray-50 border-b flex flex-wrap gap-3 items-center justify-between">
+                    <div className="border-b bg-gray-50/80 p-4">
                         {/* ✅ LEFT: search + filters */}
-                        <div className="flex flex-wrap gap-3 items-center">
+                        <div className="flex flex-wrap gap-3">
                             {/* Search theo tên */}
-                            <div className="relative min-w-[260px] max-w-md">
+                            <div className="relative min-w-[260px] flex-[1_1_320px] max-w-xl">
                                 <Search
                                     size={16}
                                     className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -906,7 +1192,7 @@ const MyLeave = () => {
 
                             {/* Trạng thái: Đã duyệt / Chưa duyệt / Từ chối */}
                             <select
-                                className="border rounded-lg px-3 py-2 text-sm outline-none"
+                                className="min-w-[190px] border rounded-lg bg-white px-3 py-2 text-sm outline-none"
                                 value={otFilters.statusGroup}
                                 onChange={(e) => setOtFilters((p) => ({ ...p, statusGroup: e.target.value }))}
                             >
@@ -918,7 +1204,7 @@ const MyLeave = () => {
 
                             {/* Loại OT */}
                             <select
-                                className="border rounded-lg px-3 py-2 text-sm outline-none"
+                                className="min-w-[190px] border rounded-lg bg-white px-3 py-2 text-sm outline-none"
                                 value={otFilters.otType}
                                 onChange={(e) => setOtFilters((p) => ({ ...p, otType: e.target.value }))}
                             >
@@ -940,20 +1226,16 @@ const MyLeave = () => {
                         <table className="w-full text-left text-sm border-collapse">
                             <thead className="bg-white border-b text-xs uppercase text-gray-500 font-semibold sticky top-0 z-10">
                                 <tr>
-                                    <th className="p-4">Nhân sự</th>
-                                    <th className="p-4">Ngày OT</th>
-                                    <th className="p-4">Loại OT</th>
-                                    <th className="p-4">Giờ đăng ký</th>
-                                    <th className="p-4">Giờ duyệt</th>
-                                    <th className="p-4">Tổng giờ duyệt</th>
-                                    <th className="p-4">Lý do</th>
-                                    <th className="p-4">Trạng thái</th>
-                                    <th className="p-4">Ngày tạo</th>
-                                    {canApprove && <th className="p-4 text-center">Hành Động</th>}
+                                    <th className="w-[144px] px-2.5 py-3">Nhân sự</th>
+                                    <th className="w-[96px] px-2.5 py-3">Ngày OT</th>
+                                    <th className="w-[118px] px-2.5 py-3">Loại OT</th>
+                                    <th className="w-[132px] px-2.5 py-3">Giờ đăng ký</th>
+                                    <th className="w-[110px] px-2.5 py-3">Trạng thái</th>
+                                    <th className="w-[86px] px-2.5 py-3 text-center">Hành động</th>
                                 </tr>
                             </thead>
 
-                            <tbody className="divide-y bg-white">
+                            <tbody className="divide-y divide-gray-100 bg-white">
                                 {otLoading ? (
                                     <tr>
                                         <td className="p-6 text-center text-gray-500" colSpan={otColSpanCount}>
@@ -973,85 +1255,98 @@ const MyLeave = () => {
                                     filteredOTs.map((ot) => {
                                         const st = normalizeStatus(ot?.status);
                                         const canApproveOT = canApprove && st === "PENDING";
-
+                                        const ownOT = isOwnRequest(ot);
+                                        const canEditOT = ownOT && st === "PENDING";
+                                        const canDeleteOT = ownOT && st === "PENDING";
+                                        const canCancelOT = !ownOT && canApprove && ["PENDING", "APPROVED"].includes(st);
                                         return (
                                             <tr
                                                 key={ot?._id || `${ot?.employeeId?._id}-${ot?.date}-${ot?.startTime}`}
-                                                className="hover:bg-blue-50/30"
+                                                className="align-top hover:bg-blue-50/30"
                                             >
-                                                <td className="p-4">
+                                                <td className="px-2.5 py-3">
                                                     <p className="font-semibold text-gray-800">
                                                         {ot?.employeeId?.fullName || "--"}
                                                     </p>
                                                 </td>
 
-                                                <td className="p-4 text-gray-700">{formatDate(ot?.date)}</td>
+                                                <td className="px-2.5 py-3 text-gray-700 whitespace-nowrap">{formatDate(ot?.date)}</td>
 
-                                                <td className="p-4 text-gray-700">
+                                                <td className="px-2.5 py-3 text-gray-700">
                                                     {otTypeLabel[ot?.otType] || ot?.otType || "--"}
                                                 </td>
 
-                                                <td className="p-4 text-gray-700">
+                                                <td className="px-2.5 py-3 text-gray-700 whitespace-nowrap">
                                                     {ot?.startTime && ot?.endTime 
                                                         ? `${ot.startTime} - ${ot.endTime}`
                                                         : "--"}
                                                 </td>
 
-                                                <td className="p-4 text-gray-700">
-                                                    {ot?.approvedStartTime && ot?.approvedEndTime 
-                                                        ? `${ot.approvedStartTime} - ${ot.approvedEndTime}`
-                                                        : "--"}
-                                                </td>
-
-                                                <td className="p-4 text-gray-700 font-semibold">
-                                                    {formatHours(ot?.approvedHours)}
-                                                </td>
-
-                                                <td className="p-4 text-gray-600 max-w-[360px]">
-                                                    <span className="line-clamp-2">{ot?.reason || "--"}</span>
-                                                </td>
-
-                                                <td className="p-4">
+                                                <td className="px-2.5 py-3 align-middle">
                                                     <StatusBadge statusKey={st} statusText={statusLabel[st] || st} />
                                                 </td>
 
-                                                <td className="p-4 text-xs text-gray-500">
-                                                    {formatDateTime(ot?.createdAt)}
-                                                </td>
-
-                                                {canApprove && (
-                                                    <td className="p-4">
-                                                        <div className="flex justify-center gap-2">
+                                                <td className="px-2.5 py-3 align-middle">
+                                                    <div className="flex items-center justify-center gap-1.5">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setOtDetailModal({ isOpen: true, otData: ot })}
+                                                            className={`${actionButtonClass} border-blue-200 text-blue-600 hover:bg-blue-50`}
+                                                            title="Chi tiết đơn OT"
+                                                        >
+                                                            <Eye size={14} />
+                                                        </button>
+                                                        {canApproveOT && (
                                                             <button
-                                                                disabled={!canApproveOT}
                                                                 onClick={() => openApproveOTModal(ot)}
-                                                                className={`p-2 rounded border text-xs font-semibold inline-flex items-center gap-1
-                                  ${canApproveOT
-                                                                        ? "text-green-600 border-green-200 hover:bg-green-50"
-                                                                        : "text-gray-300 border-gray-200 cursor-not-allowed"
-                                                                    }`}
+                                                                className={`${actionButtonClass} border-green-200 text-green-600 hover:bg-green-50`}
                                                                 title="Duyệt OT"
                                                             >
                                                                 <CheckCircle2 size={14} />
-                                                                Duyệt
                                                             </button>
-
+                                                        )}
+                                                        {canApprove && (
                                                             <button
+                                                                type="button"
                                                                 disabled={!canApproveOT}
-                                                                onClick={() => handleCancelOT(ot._id)}
-                                                                className={`p-2 rounded border text-xs font-semibold inline-flex items-center gap-1
-                                  ${canApproveOT
-                                                                        ? "text-red-500 border-red-200 hover:bg-red-50"
-                                                                        : "text-gray-300 border-gray-200 cursor-not-allowed"
-                                                                    }`}
+                                                                onClick={() => handleRejectOT(ot)}
+                                                                className={`${actionButtonClass} border-red-200 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-300`}
                                                                 title="Từ chối OT"
                                                             >
                                                                 <XCircle size={14} />
-                                                                Từ chối
                                                             </button>
-                                                        </div>
-                                                    </td>
-                                                )}
+                                                        )}
+                                                        {canEditOT && (
+                                                            <button
+                                                                onClick={() => setOtFormModal({ isOpen: true, mode: "edit", ot })}
+                                                                className={`${actionButtonClass} border-blue-200 text-blue-600 hover:bg-blue-50`}
+                                                                title="Sửa đơn OT"
+                                                            >
+                                                                <Edit size={14} />
+                                                            </button>
+                                                        )}
+                                                        {canCancelOT && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleCancelOT(ot._id)}
+                                                                className={`${actionButtonClass} border-orange-200 text-orange-600 hover:bg-orange-50`}
+                                                                title="Hủy đơn OT"
+                                                            >
+                                                                <Ban size={14} />
+                                                            </button>
+                                                        )}
+                                                        {canDeleteOT && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleDeleteOT(ot._id)}
+                                                                className={`${actionButtonClass} border-gray-200 text-gray-700 hover:bg-gray-50`}
+                                                                title="Xóa đơn OT"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
                                             </tr>
                                         );
                                     })
@@ -1119,12 +1414,39 @@ const MyLeave = () => {
                 </Card>
             )}
 
+            {leaveFormModal.isOpen && (
+                <LeaveRequestModal
+                    onClose={() => setLeaveFormModal({ isOpen: false, mode: "create", leave: null })}
+                    onConfirm={handleSubmitLeaveForm}
+                    initialValues={leaveFormModal.leave}
+                    title={leaveFormModal.mode === "edit" ? "Sửa đơn nghỉ" : "Tạo đơn nghỉ"}
+                    submitLabel={leaveFormModal.mode === "edit" ? "Cập nhật" : "Gửi đơn"}
+                />
+            )}
+
+            {otFormModal.isOpen && (
+                <ModalOT
+                    open={otFormModal.isOpen}
+                    onClose={() => setOtFormModal({ isOpen: false, mode: "create", ot: null })}
+                    onSubmit={handleSubmitOTForm}
+                    initialValues={otFormModal.ot}
+                    title={otFormModal.mode === "edit" ? "Sửa đơn OT" : "Tạo đơn OT"}
+                    submitLabel={otFormModal.mode === "edit" ? "Cập nhật" : "Gửi đơn"}
+                />
+            )}
+
             {/* Approve OT Modal */}
             <ApproveOTModal
                 isOpen={approveOTModal.isOpen}
                 onClose={closeApproveOTModal}
                 otData={approveOTModal.otData}
                 onConfirm={handleApproveOT}
+            />
+
+            <OTDetailModal
+                isOpen={otDetailModal.isOpen}
+                onClose={() => setOtDetailModal({ isOpen: false, otData: null })}
+                otData={otDetailModal.otData}
             />
 
             {/* Leave Detail Modal */}

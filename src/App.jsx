@@ -32,7 +32,12 @@ import Login from "./pages/auth/Login";
 import RequireAuth from "./components/RequireAuth";
 import Register from "./pages/auth/Register";
 import PublicRoute from "./components/PublicRoute";
-import MyLeave from "./pages/announce/Myleave";
+import LeaveIndex from "./pages/leave/LeaveIndex";
+import MyLeaveRequests from "./pages/leave/MyLeaveRequests";
+import LeaveApprovals from "./pages/leave/LeaveApprovals";
+import OTIndex from "./pages/overtime/OTIndex";
+import MyOTRequests from "./pages/overtime/MyOTRequests";
+import OTApprovals from "./pages/overtime/OTApprovals";
 import AllPayRoll from "./pages/payroll/AllPayRoll";
 import NotificationViewer from "./pages/notification/NotificationViewer";
 import { NotificationProvider } from "./context/NotificationContext";
@@ -101,7 +106,27 @@ function App() {
               <Route path="payroll" element={<MyPayslip />} />
               <Route path="department" element={<Department />} />
               <Route path="requests" element={<MyRequests />} />
-              <Route path="leave" element={<MyLeave />} />
+              <Route path="leave" element={<LeaveIndex />} />
+              <Route path="leave/my" element={<MyLeaveRequests />} />
+              <Route
+                path="leave/approvals"
+                element={
+                  <RequireAuth roles={["ADMIN", "HR", "MANAGER", "LEADER"]}>
+                    <LeaveApprovals />
+                  </RequireAuth>
+                }
+              />
+              <Route path="leave/ot" element={<Navigate to="/ot" replace />} />
+              <Route path="ot" element={<OTIndex />} />
+              <Route path="ot/my" element={<MyOTRequests />} />
+              <Route
+                path="ot/approvals"
+                element={
+                  <RequireAuth roles={["ADMIN", "HR", "MANAGER", "LEADER"]}>
+                    <OTApprovals />
+                  </RequireAuth>
+                }
+              />
               <Route path="holiday" element={<Holiday />} />
               {/* Route xem data WebSocket */}
               <Route path="notifications/viewer" element={<NotificationViewer />} />

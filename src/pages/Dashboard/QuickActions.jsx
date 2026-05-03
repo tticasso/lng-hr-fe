@@ -5,73 +5,65 @@ import { Coffee, Clock, DollarSign, PlusCircle, AlertCircle } from "lucide-react
 const QuickActions = memo(({ onLeaveClick, onOTClick, onPayrollClick, onSupportClick }) => {
   return (
     <Card className="h-full">
-      <h3 className="font-bold text-gray-800 text-lg mb-5">Truy cập nhanh</h3>
+      <h3 className="mb-5 text-base font-bold text-gray-800 sm:text-lg">Truy cập nhanh</h3>
 
-      <div className="grid grid-cols-2 gap-4">
-        {/* Action 1: Xin nghỉ phép */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         <button
-          className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-blue-50 hover:border-blue-200 hover:shadow-sm transition-all group"
+          className="group flex min-h-[120px] flex-col items-center justify-center rounded-xl border border-gray-100 bg-gray-50 p-4 transition-all hover:border-blue-200 hover:bg-blue-50 hover:shadow-sm"
           onClick={onLeaveClick}
         >
-          <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center shadow-sm text-blue-500 group-hover:text-blue-600 mb-3">
+          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-blue-500 shadow-sm group-hover:text-blue-600">
             <Coffee size={20} />
           </div>
-          <span className="text-sm font-semibold text-gray-700 group-hover:text-blue-700">
+          <span className="text-center text-sm font-semibold text-gray-700 group-hover:text-blue-700">
             Xin nghỉ phép
           </span>
         </button>
 
-        {/* Action 2: Gửi OT */}
         <button
-          className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-orange-50 hover:border-orange-200 hover:shadow-sm transition-all group"
+          className="group flex min-h-[120px] flex-col items-center justify-center rounded-xl border border-gray-100 bg-gray-50 p-4 transition-all hover:border-orange-200 hover:bg-orange-50 hover:shadow-sm"
           onClick={onOTClick}
         >
-          <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center shadow-sm text-orange-500 group-hover:text-orange-600 mb-3">
+          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-orange-500 shadow-sm group-hover:text-orange-600">
             <Clock size={20} />
           </div>
-          <span className="text-sm font-semibold text-gray-700 group-hover:text-orange-700">
+          <span className="text-center text-sm font-semibold text-gray-700 group-hover:text-orange-700">
             Đăng ký OT
           </span>
         </button>
 
-        {/* Action 3: Xem phiếu lương */}
         <button
-          className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-green-50 hover:border-green-200 hover:shadow-sm transition-all group"
+          className="group flex min-h-[120px] flex-col items-center justify-center rounded-xl border border-gray-100 bg-gray-50 p-4 transition-all hover:border-green-200 hover:bg-green-50 hover:shadow-sm"
           onClick={onPayrollClick}
         >
-          <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center shadow-sm text-green-500 group-hover:text-green-600 mb-3">
+          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-green-500 shadow-sm group-hover:text-green-600">
             <DollarSign size={20} />
           </div>
-          <span className="text-sm font-semibold text-gray-700 group-hover:text-green-700">
+          <span className="text-center text-sm font-semibold text-gray-700 group-hover:text-green-700">
             Phiếu lương
           </span>
         </button>
 
-        {/* Action 4: Gửi Ticket HR */}
         <button
-          className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-purple-50 hover:border-purple-200 hover:shadow-sm transition-all group"
+          className="group flex min-h-[120px] flex-col items-center justify-center rounded-xl border border-gray-100 bg-gray-50 p-4 transition-all hover:border-purple-200 hover:bg-purple-50 hover:shadow-sm"
           onClick={onSupportClick}
         >
-          <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center shadow-sm text-purple-500 group-hover:text-purple-600 mb-3">
+          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-purple-500 shadow-sm group-hover:text-purple-600">
             <PlusCircle size={20} />
           </div>
-          <span className="text-sm font-semibold text-gray-700 group-hover:text-purple-700">
+          <span className="text-center text-sm font-semibold text-gray-700 group-hover:text-purple-700">
             Hỗ trợ
           </span>
         </button>
       </div>
 
-      <div className="mt-6 pt-6 border-t border-gray-100">
-        <h4 className="text-xs font-semibold text-gray-400 uppercase mb-3">
-          Liên hệ khẩn cấp
-        </h4>
-        <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg border border-red-100">
-          <AlertCircle size={20} className="text-red-500" />
-          <div>
+      <div className="mt-6 border-t border-gray-100 pt-6">
+        <h4 className="mb-3 text-xs font-semibold uppercase text-gray-400">Liên hệ khẩn cấp</h4>
+        <div className="flex items-start gap-3 rounded-lg border border-red-100 bg-red-50 p-3">
+          <AlertCircle size={20} className="shrink-0 text-red-500" />
+          <div className="min-w-0">
             <p className="text-sm font-bold text-gray-800">IT Support</p>
-            <p className="font-bold text-red-500">
-              Không phải lỗi! Đấy là tính năng.
-            </p>
+            <p className="font-bold text-red-500">Không phải lỗi, đấy là tính năng.</p>
             <p className="text-xs text-gray-500">huuluan0511@gmail.com</p>
           </div>
         </div>

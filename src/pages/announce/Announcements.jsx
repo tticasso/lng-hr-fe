@@ -36,6 +36,32 @@ import Button from "../../components/common/Button";
 import { announcementAPI } from "../../apis/announcements";
 import AnnouncementDetailModal from "../../components/modals/AnnouncementDetailModal";
 import { departmentApi } from "../../apis/departmentApi";
+import {
+  ANNOUNCEMENT_SCHEDULE_TYPE,
+  ANNOUNCEMENT_STATUS,
+  buildScheduledDateTime,
+  getAnnouncementStatusLabel,
+  getAnnouncementTag,
+  parseScheduledAt,
+} from "../../shared/announcementSchedule";
+
+const buildPageList = (current, total) => {
+  if (total <= 1) return [1];
+
+  const pages = [1];
+  if (current > 3) pages.push("...");
+
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+
+  for (let i = start; i <= end; i += 1) {
+    pages.push(i);
+  }
+
+  if (current < total - 2) pages.push("...");
+  if (total > 1) pages.push(total);
+  return pages;
+};
 
 const Announcements = () => {
   const [title, setTitle] = useState("");
@@ -76,6 +102,7 @@ const Announcements = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [pagination, setPagination] = useState({ page: 1, limit: 10 });
 
   // State cho modal chi tiết
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -86,7 +113,9 @@ const Announcements = () => {
   const [targetType, setTargetType] = useState("all"); // "all" hoặc "specific"
   const [selectedDepartments, setSelectedDepartments] = useState([]);
   const [validationErrors, setValidationErrors] = useState({});
-  const [scheduleType, setScheduleType] = useState("now"); // "now" hoặc "schedule"
+  const [scheduleType, setScheduleType] = useState(
+    ANNOUNCEMENT_SCHEDULE_TYPE.NOW
+  ); // "now" ho?c "schedule"
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
   const [category, setCategory] = useState("NEWS"); // NEWS, EVENT, SCHEDULED
@@ -124,29 +153,19 @@ const Announcements = () => {
       }
 
       // Xử lý schedule
-      if (data.status === "SCHEDULED" && data.scheduledAt) {
-        setScheduleType("schedule");
-        
-        // ✅ Parse ISO string từ API (UTC time)
-        // scheduledAt format: "2026-03-09T10:30:00.000Z" (UTC)
+      if (data.status === ANNOUNCEMENT_STATUS.SCHEDULED && data.scheduledAt) {
+        setScheduleType(ANNOUNCEMENT_SCHEDULE_TYPE.SCHEDULE);
         const isoString = data.scheduledAt;
-        
-        // ✅ Tách date và time từ ISO string (giữ nguyên UTC, không convert)
-        // Lấy phần trước 'T' là date: "2026-03-09"
-        const datePart = isoString.split('T')[0];
-        
-        // Lấy phần sau 'T' và trước 'Z' hoặc '+' là time: "10:30:00"
-        const timePart = isoString.split('T')[1].split('.')[0]; // "10:30:00"
-        const timeHHMM = timePart.substring(0, 5); // "10:30"
-        
+        const { date: datePart, time: timeHHMM } = parseScheduledAt(isoString);
+
         console.log("[DEBUG] scheduledAt from API:", isoString);
         console.log("[DEBUG] Extracted date:", datePart);
         console.log("[DEBUG] Extracted time:", timeHHMM);
-        
+
         setScheduledDate(datePart);
         setScheduledTime(timeHHMM);
       } else {
-        setScheduleType("now");
+        setScheduleType(ANNOUNCEMENT_SCHEDULE_TYPE.NOW);
         setScheduledDate("");
         setScheduledTime("");
       }
@@ -215,7 +234,7 @@ const Announcements = () => {
     }
     setCategory("NEWS");
     setPriority("LOW");
-    setScheduleType("now");
+    setScheduleType(ANNOUNCEMENT_SCHEDULE_TYPE.NOW);
     setScheduledDate("");
     setScheduledTime("");
     setTargetType("all");
@@ -232,11 +251,11 @@ const Announcements = () => {
       const mappedData = res.data.data.map((item) => ({
         id: item._id,
         title: item.title,
-        tag: mapCategoryToTag(item.category),
+        tag: getAnnouncementTag(item.category),
         author: item.authorId?.username || "Unknown",
         avatar: getAvatarInitials(item.authorId?.username || "Unknown"),
         date: formatDate(item.publishedAt || item.createdAt),
-        status: mapStatus(item.status),
+        status: getAnnouncementStatusLabel(item.status),
         scheduleDate: item.remindAt ? formatDateTime(item.remindAt) : null,
         views: item.readBy?.length || 0,
         totalUsers: 150,
@@ -270,7 +289,7 @@ const Announcements = () => {
       errors.departments = "Vui lòng chọn ít nhất một phòng ban!";
     }
 
-    if (scheduleType === "schedule") {
+    if (scheduleType === ANNOUNCEMENT_SCHEDULE_TYPE.SCHEDULE) {
       if (!scheduledDate) {
         errors.scheduledDate = "Vui lòng chọn ngày lên lịch!";
       }
@@ -290,14 +309,14 @@ const Announcements = () => {
 
     // Tạo ISO datetime từ date và time
     let scheduledDateTime = null;
-    if (scheduleType === "schedule" && scheduledDate && scheduledTime) {
+    if (scheduleType === ANNOUNCEMENT_SCHEDULE_TYPE.SCHEDULE && scheduledDate && scheduledTime) {
       // scheduledDate format: YYYY-MM-DD
       // scheduledTime format: HH:mm (24h)
       
       // ✅ Gửi datetime string KHÔNG có timezone
       // Backend sẽ hiểu đây là giờ local và lưu trực tiếp
       // User chọn 10:30 → Backend lưu 10:30 (không convert)
-      scheduledDateTime = `${scheduledDate}T${scheduledTime}:00`;
+      scheduledDateTime = buildScheduledDateTime(scheduledDate, scheduledTime);
       
       console.log("[DEBUG] Scheduled Date:", scheduledDate);
       console.log("[DEBUG] Scheduled Time:", scheduledTime);
@@ -308,7 +327,7 @@ const Announcements = () => {
     const contentText = editor?.getText() || "";
 
     // Xác định status dựa trên schedule type
-    const status = scheduleType === "now" ? "PUBLISHED" : "SCHEDULED";
+    const status = scheduleType === ANNOUNCEMENT_SCHEDULE_TYPE.NOW ? ANNOUNCEMENT_STATUS.PUBLISHED : ANNOUNCEMENT_STATUS.SCHEDULED;
 
     // Log dữ liệu
     console.log("Publishing announcement with data:");
@@ -325,7 +344,7 @@ const Announcements = () => {
     const sendToAll = selectedDepartments.length === 0;
 
     // Xác định scheduledAt
-    const scheduledAt = status === "SCHEDULED" ? scheduledDateTime : null;
+    const scheduledAt = status === ANNOUNCEMENT_STATUS.SCHEDULED ? scheduledDateTime : null;
 
     // Tạo payload
     const payload = {
@@ -399,11 +418,11 @@ const Announcements = () => {
         const mappedData = res.data.data.map((item) => ({
           id: item._id,
           title: item.title,
-          tag: mapCategoryToTag(item.category),
+          tag: getAnnouncementTag(item.category),
           author: item.authorId?.username || "Unknown",
           avatar: getAvatarInitials(item.authorId?.username || "Unknown"),
           date: formatDate(item.publishedAt || item.createdAt),
-          status: mapStatus(item.status),
+          status: getAnnouncementStatusLabel(item.status),
           scheduleDate: item.remindAt ? formatDateTime(item.remindAt) : null,
           views: item.readBy?.length || 0,
           totalUsers: 150, // Có thể lấy từ API khác hoặc tính toán
@@ -424,27 +443,6 @@ const Announcements = () => {
     };
     callAPIAnnouncement();
   }, []);
-
-  // Helper functions để map dữ liệu
-  const mapCategoryToTag = (category) => {
-    const mapping = {
-      NEWS: "HR Notice",
-      EVENT: "Event",
-      POLICY: "Policy",
-      HOLIDAY: "Holiday",
-    };
-    return mapping[category] || "Others";
-  };
-
-  const mapStatus = (status) => {
-    const mapping = {
-      PUBLISHED: "Published",
-      DRAFT: "Draft",
-      SCHEDULED: "Scheduled",
-      ARCHIVED: "Archived",
-    };
-    return mapping[status] || "Draft";
-  };
 
   const getAvatarInitials = (username) => {
     if (!username) return "??";
@@ -495,6 +493,23 @@ const Announcements = () => {
       return matchesSearch && matchesType && matchesStatus;
     });
   }, [announcements, searchQuery, filterType, filterStatus]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredAnnouncements.length / pagination.limit));
+  const currentPage = Math.min(pagination.page, totalPages);
+  const paginatedAnnouncements = useMemo(() => {
+    const start = (currentPage - 1) * pagination.limit;
+    return filteredAnnouncements.slice(start, start + pagination.limit);
+  }, [currentPage, filteredAnnouncements, pagination.limit]);
+
+  useEffect(() => {
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  }, [searchQuery, filterType, filterStatus]);
+
+  useEffect(() => {
+    if (pagination.page > totalPages) {
+      setPagination((prev) => ({ ...prev, page: totalPages }));
+    }
+  }, [pagination.page, totalPages]);
 
   // Helper render Tag Badge
   const renderTag = (tag) => {
@@ -662,7 +677,7 @@ const Announcements = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
-                {filteredAnnouncements.map((item) => (
+                {paginatedAnnouncements.map((item) => (
                   <tr
                     key={item.id}
                     className="hover:bg-blue-50/50 group transition-colors"
@@ -766,6 +781,82 @@ const Announcements = () => {
             </table>
           )}
         </div>
+
+        {!loading && !error && filteredAnnouncements.length > 0 && (
+          <div className="flex flex-col gap-3 border-t border-gray-200 bg-gray-50 p-4 text-sm text-gray-500 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
+              <span>
+                Hiển thị <strong>{(currentPage - 1) * pagination.limit + 1}</strong>-
+                <strong>{Math.min(currentPage * pagination.limit, filteredAnnouncements.length)}</strong> trong tổng số{" "}
+                <strong>{filteredAnnouncements.length}</strong> thông báo
+              </span>
+              <label className="flex items-center gap-2">
+                <span>Mỗi trang</span>
+                <select
+                  value={pagination.limit}
+                  onChange={(event) =>
+                    setPagination({
+                      page: 1,
+                      limit: Number(event.target.value),
+                    })
+                  }
+                  className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 outline-none"
+                >
+                  {[10, 20, 50].map((limit) => (
+                    <option key={limit} value={limit}>
+                      {limit}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="secondary"
+                className="px-3 py-1.5 text-sm"
+                disabled={currentPage <= 1}
+                onClick={() =>
+                  setPagination((prev) => ({ ...prev, page: prev.page - 1 }))
+                }
+              >
+                Trước
+              </Button>
+
+              {buildPageList(currentPage, totalPages).map((page, idx) =>
+                page === "..." ? (
+                  <span key={`ellipsis-${idx}`} className="px-2 text-gray-400">
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setPagination((prev) => ({ ...prev, page }))}
+                    className={`min-w-9 rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                      page === currentPage
+                        ? "bg-blue-600 text-white"
+                        : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
+
+              <Button
+                variant="secondary"
+                className="px-3 py-1.5 text-sm"
+                disabled={currentPage >= totalPages}
+                onClick={() =>
+                  setPagination((prev) => ({ ...prev, page: prev.page + 1 }))
+                }
+              >
+                Sau
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );
@@ -992,8 +1083,8 @@ const Announcements = () => {
                     <input
                       type="radio"
                       name="schedule"
-                      value="now"
-                      checked={scheduleType === "now"}
+                      value={ANNOUNCEMENT_SCHEDULE_TYPE.NOW}
+                      checked={scheduleType === ANNOUNCEMENT_SCHEDULE_TYPE.NOW}
                       onChange={(e) => {
                         setScheduleType(e.target.value);
                         setScheduledDate("");
@@ -1016,8 +1107,8 @@ const Announcements = () => {
                     <input
                       type="radio"
                       name="schedule"
-                      value="schedule"
-                      checked={scheduleType === "schedule"}
+                      value={ANNOUNCEMENT_SCHEDULE_TYPE.SCHEDULE}
+                      checked={scheduleType === ANNOUNCEMENT_SCHEDULE_TYPE.SCHEDULE}
                       onChange={(e) => setScheduleType(e.target.value)}
                       className="text-blue-600 focus:ring-blue-500"
                     />
@@ -1028,7 +1119,7 @@ const Announcements = () => {
                 </div>
 
                 {/* Date & Time Picker - chỉ hiện khi chọn "Lên lịch" */}
-                {scheduleType === "schedule" && (
+                {scheduleType === ANNOUNCEMENT_SCHEDULE_TYPE.SCHEDULE && (
                   <div className="mt-3 pl-6 space-y-2">
                     {/* Date Picker */}
                     <div>
@@ -1206,3 +1297,8 @@ const Announcements = () => {
 };
 
 export default Announcements;
+
+
+
+
+

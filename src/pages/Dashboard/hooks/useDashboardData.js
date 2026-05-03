@@ -3,6 +3,7 @@ import { attendancesAPI } from "../../../apis/attendancesAPI";
 import { leaveAPI } from "../../../apis/leaveAPI";
 import { OTApi } from "../../../apis/OTAPI";
 import { announcementAPI } from "../../../apis/announcements";
+import { getAnnouncementDashboardMeta } from "../../../shared/announcementSchedule";
 
 /**
  * Custom hook để fetch tất cả data cho Dashboard
@@ -45,26 +46,7 @@ export const useDashboardData = () => {
           const latestAnnouncements = (resAnnouncement.data.data || [])
             .slice(0, 3)
             .map((item) => {
-              let tag = "News";
-              let type = "success";
-
-              if (item.category === "SCHEDULED") {
-                tag = "Scheduled";
-                type = "primary";
-              } else if (item.category === "EVENT") {
-                tag = "Event";
-                type = "primary";
-              } else if (item.category === "NEWS") {
-                tag = "News";
-                type = "success";
-              }
-
-              if (item.priority === "URGENT") {
-                type = "error";
-                tag = "Important";
-              } else if (item.priority === "HIGH") {
-                type = "error";
-              }
+              const { tag, type } = getAnnouncementDashboardMeta(item);
 
               return {
                 id: item._id,

@@ -1,34 +1,44 @@
 import apiClient from "./apiClient";
 
 export const OTApi = {
+  get: (page, limit) => {
+    return apiClient.get("/overtimes", { params: { page, limit } });
+  },
 
-    get: (page, limit) => {
-        return apiClient.get(`/overtimes?page=${page}&limit=${limit}`);
-    },
-    getALL: (page, limit) => {
-        return apiClient.get(`/overtimes?page=${page}&limit=${limit}`);
-    },
-    
-    // post: (payload) => {
-    //     return apiClient.post(`/overtimes`, payload);
-    // },
+  getALL: (page, limit) => {
+    return apiClient.get("/overtimes", { params: { page, limit } });
+  },
 
-    post: async (payload) => {
-        try {
-            const res = await apiClient.post(`/overtimes`, payload);
-            return res.data; // chỉ trả data
-        } catch (error) {
-            // ném lại nguyên bản axios error (giữ response)
-            throw error;
-        }
-    },
+  getMy: (params) => {
+    return apiClient.get("/overtimes/my-ots", { params });
+  },
 
-    put: (id,payload) => {
-        return apiClient.patch(`/overtimes/approve/${id}`,payload
-        );
-    },
+  post: async (payload) => {
+    try {
+      const res = await apiClient.post("/overtimes", payload);
+      return res.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 
-    cancel: (id) => {
-        return apiClient.patch(`/overtimes/cancel/${id}`);
-    },
-}
+  update: (id, payload) => {
+    return apiClient.patch(`/overtimes/${id}`, payload);
+  },
+
+  delete: (id) => {
+    return apiClient.delete(`/overtimes/${id}`);
+  },
+
+  approve: (id, payload) => {
+    return apiClient.patch(`/overtimes/approve/${id}`, payload);
+  },
+
+  put: (id, payload) => {
+    return OTApi.approve(id, payload);
+  },
+
+  cancel: (id) => {
+    return apiClient.patch(`/overtimes/cancel/${id}`);
+  },
+};

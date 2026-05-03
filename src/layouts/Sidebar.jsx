@@ -1,384 +1,448 @@
-import React, { useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
-  Home,
-  CalendarCheck2,
-  Users,
-  Plane,
-  DollarSign,
-  FileText,
-  UserCog,
-  Settings,
-  Presentation,
-  BriefcaseBusiness,
-  Coins,
-  Landmark,
-  SquareStar,
-  LogOut,
-  FileSpreadsheet,
+  Bell,
+  Building2,
   CalendarCheck,
-  Timer,
-  UserSquare,
+  CalendarCheck2,
   CalendarMinus,
   ChevronDown,
   ChevronRight,
-  Building2,
   ClipboardCheck,
-  Network,
-  UserPlus,
-  UserPlus2,
-  Group,
+  DollarSign,
+  FileSpreadsheet,
+  FolderKanban,
   GitBranch,
+  Home,
+  Landmark,
+  LogOut,
+  Network,
+  Plane,
+  Settings,
+  Timer,
   User,
-  Menu,
+  UserCog,
+  Users,
   X,
 } from "lucide-react";
 import logoLNG from "../assets/LNG.png";
 import { useAuth } from "../context/AuthContext";
 import { useSidebar } from "../context/SidebarContext";
-import TeamPages from "../pages/teamPages/TeamPages";
+
+const parseStoredRole = () => {
+  const raw = localStorage.getItem("role");
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === "string") return parsed;
+    return parsed?.name || raw || "";
+  } catch {
+    return raw || "";
+  }
+};
+
+const groupTitleClass =
+  "mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400";
+
+const itemBaseClass =
+  "group relative flex min-h-11 items-center rounded-xl px-3 text-sm font-medium transition-all duration-200";
 
 const Sidebar = () => {
   const navigate = useNavigate();
-  const role = localStorage.getItem("role");
-  console.log("ROLE :", role);
-  const NOTIFICATION_AVATAR = "https://res.cloudinary.com/drnzb64by/image/upload/v1773214517/z7609441220202_ae9c723f392d90214ab47b178bcafdcd_simbbv.jpg";
-  const NOTIFICATION_AVATAR2 = "https://res.cloudinary.com/dplhdyxgl/image/upload/v1772177306/logo_j0iody.jpg";
+  const location = useLocation();
+  const { logout } = useAuth();
+  const { isCollapsed, isMobileSidebarOpen, toggleSidebar, closeMobileSidebar } = useSidebar();
 
-  const [expandedDropdowns, setExpandedDropdowns] = useState({});
-  const { isCollapsed, toggleSidebar } = useSidebar();
+  const role = parseStoredRole();
+  const shouldCollapse = isCollapsed && !isMobileSidebarOpen;
 
   const isAdmin = role === "ADMIN";
   const isHR = role === "HR";
   const isManager = role === "MANAGER";
+  const isLeader = role === "LEADER";
   const isEmployee = role === "EMPLOYEE";
-  const isLEADER = role === "LEADER";
 
-  // Debug log
-  console.log("DEBUG - isEmployee:", isEmployee);
-  console.log("DEBUG - role comparison:", role, "===", "EMPLOYEE", "->", role === "EMPLOYEE");
+  const [expandedDropdowns, setExpandedDropdowns] = useState({});
+
+  const menuGroups = useMemo(
+    () => [
+      {
+        title: "Cá nhân",
+        items: [
+          { path: "/", label: "Tổng quan", icon: Home },
+          { path: "/timesheet", label: "Lịch làm việc", icon: CalendarCheck2 },
+          { path: "/payroll", label: "Phiếu lương", icon: DollarSign },
+        ],
+      },
+      ...(isAdmin || isHR || isManager || isLeader || isEmployee
+        ? [
+            {
+              title: "Nhân sự",
+              items: [
+                {
+                  type: "dropdown",
+                  key: "organization",
+                  label: "Cơ cấu",
+                  icon: Building2,
+                  children: [
+                    {
+                      path: "/department",
+                      label: "Phòng ban",
+                      icon: Network,
+                      roles: ["ADMIN", "HR", "MANAGER", "LEADER", "EMPLOYEE"],
+                    },
+                    {
+                      path: "/hr/teampages",
+                      label: "Team",
+                      icon: GitBranch,
+                      roles: ["ADMIN", "HR", "MANAGER", "LEADER", "EMPLOYEE"],
+                    },
+                  ],
+                },
+                {
+                  type: "dropdown",
+                  key: "workspace",
+                  label: "Nghiệp vụ HR",
+                  icon: Users,
+                  children: [
+                    {
+                      path: "/hr/employees",
+                      label: "Nhân viên",
+                      icon: User,
+                      roles: ["ADMIN", "HR"],
+                    },
+                    {
+                      path: "/hr/leavebalance",
+                      label: "Công phép",
+                      icon: CalendarCheck,
+                      roles: ["ADMIN", "HR"],
+                    },
+                    {
+                      path: "/holiday",
+                      label: "Lịch nghỉ",
+                      icon: Timer,
+                      roles: ["ADMIN", "HR"],
+                    },
+                    {
+                      path: "/hr/announcements",
+                      label: "Thông báo",
+                      icon: Bell,
+                      roles: ["ADMIN", "HR"],
+                    },
+                  ],
+                },
+                {
+                  type: "dropdown",
+                  key: "requests",
+                  label: "Đơn từ",
+                  icon: Plane,
+                  children: [
+                    {
+                      path: "/leave/my",
+                      label: "Đơn nghỉ",
+                      icon: CalendarMinus,
+                      roles: ["ADMIN", "HR", "MANAGER", "LEADER", "EMPLOYEE"],
+                    },
+                    {
+                      path: "/leave/approvals",
+                      label: "Duyệt đơn nghỉ",
+                      icon: ClipboardCheck,
+                      roles: ["ADMIN", "HR", "MANAGER", "LEADER"],
+                    },
+                    {
+                      path: "/ot/my",
+                      label: "Đơn OT",
+                      icon: Timer,
+                      roles: ["ADMIN", "HR", "MANAGER", "LEADER", "EMPLOYEE"],
+                    },
+                    {
+                      path: "/ot/approvals",
+                      label: "Duyệt đơn OT",
+                      icon: ClipboardCheck,
+                      roles: ["ADMIN", "HR", "MANAGER", "LEADER"],
+                    },
+                  ],
+                },
+              ],
+            },
+          ]
+        : []),
+      ...(isAdmin || isHR
+        ? [
+            {
+              title: "Tiền lương",
+              items: [
+                {
+                  type: "dropdown",
+                  key: "payroll",
+                  label: "Vận hành lương",
+                  icon: FolderKanban,
+                  children: [
+                    {
+                      path: "/hr/attendance-admin",
+                      label: "Chấm công",
+                      icon: ClipboardCheck,
+                    },
+                    {
+                      path: "/allpayroll",
+                      label: "Bảng lương",
+                      icon: FileSpreadsheet,
+                    },
+                    {
+                      path: "/hr/payroll-engine",
+                      label: "Tính lương",
+                      icon: Landmark,
+                    },
+                  ],
+                },
+              ],
+            },
+          ]
+        : []),
+      ...(isAdmin
+        ? [
+            {
+              title: "Hệ thống",
+              items: [
+                {
+                  path: "/admin/user-management",
+                  label: "Quản lý tài khoản",
+                  icon: UserCog,
+                },
+                {
+                  path: "/admin/system-admin",
+                  label: "Cài đặt hệ thống",
+                  icon: Settings,
+                },
+              ],
+            },
+          ]
+        : []),
+    ],
+    [isAdmin, isEmployee, isHR, isLeader, isManager]
+  );
+
+  useEffect(() => {
+    if (shouldCollapse) {
+      setExpandedDropdowns({});
+      return;
+    }
+
+    const nextExpanded = {};
+    for (const group of menuGroups) {
+      for (const item of group.items) {
+        if (item.type !== "dropdown") continue;
+        const hasActiveChild = item.children.some((child) =>
+          location.pathname.startsWith(child.path)
+        );
+        if (hasActiveChild) nextExpanded[item.key] = true;
+      }
+    }
+
+    setExpandedDropdowns((prev) => ({ ...prev, ...nextExpanded }));
+  }, [location.pathname, menuGroups, shouldCollapse]);
+
+  useEffect(() => {
+    closeMobileSidebar();
+  }, [location.pathname, closeMobileSidebar]);
 
   const toggleDropdown = (key) => {
-    if (isCollapsed) {
+    if (shouldCollapse) {
       toggleSidebar();
+      return;
     }
-    setExpandedDropdowns(prev => ({
+
+    setExpandedDropdowns((prev) => ({
       ...prev,
-      [key]: !prev[key]
+      [key]: !prev[key],
     }));
   };
-
-  // Đóng tất cả dropdown khi sidebar thu gọn
-  React.useEffect(() => {
-    if (isCollapsed) {
-      setExpandedDropdowns({});
-    }
-  }, [isCollapsed]);
-  const menuGroups = [
-    {
-      title: "KHÔNG GIAN CÁ NHÂN",
-      items: [
-        { path: "/", label: "Tổng quan", icon: <Home size={20} /> },
-        {
-          path: "/timesheet",
-          label: "Lịch làm việc",
-          icon: <CalendarCheck2 size={20} />,
-        },
-      ],
-    },
-    // Hiển thị nhóm QUẢN LÝ NHÂN SỰ cho ADMIN, HR, MANAGER, LEADER, EMPLOYEE
-    ...(isAdmin || isHR || isManager || isLEADER || isEmployee
-      ? [
-        {
-          title: "QUẢN LÝ NHÂN SỰ",
-          items: [
-            // Dropdown Phòng ban
-            {
-              type: "dropdown",
-              key: "department",
-              label: "Bộ phận",
-              icon: <Building2 size={20} />,
-              children: [
-                {
-                  path: "/department",
-                  label: "Phòng ban",
-                  icon: <Network size={20} />,
-                  roles: ["ADMIN", "HR", "MANAGER", "LEADER", "EMPLOYEE"]
-                },
-                {
-                  path: "/hr/teampages",
-                  label: "Team",
-                  icon: <GitBranch size={20} />,
-                  roles: ["ADMIN", "HR", "MANAGER", "LEADER", "EMPLOYEE"],
-                },
-              ]
-            },
-            // Dropdown Nhân sự
-            {
-              type: "dropdown",
-              key: "hr",
-              label: "Nhân sự",
-              icon: <Users size={20} />,
-              children: [
-                {
-                  path: "/hr/employees",
-                  label: "Nhân viên",
-                  icon: <User size={20} />,
-                  roles: ["ADMIN", "HR"]
-                },
-                {
-                  path: "/hr/leavebalance",
-                  label: "Công phép",
-                  icon: <CalendarCheck size={20} />,
-                  roles: ["ADMIN", "HR"]
-                },
-              ]
-            },
-            // Menu đơn
-            {
-              path: "/holiday",
-              label: "Lịch nghỉ",
-              icon: <Timer size={20} />,
-              roles: ["ADMIN", "HR"]
-            },
-            {
-              path: "/hr/announcements",
-              label: "Thông báo",
-              icon: <SquareStar size={20} />,
-              roles: ["ADMIN", "HR"]
-            },
-            {
-              path: "/leave",
-              label: "Đơn Nghỉ/OT",
-              icon: <Plane size={20} />,
-              roles: ["ADMIN", "HR", "MANAGER", "LEADER", "EMPLOYEE"]
-            },
-          ],
-        },
-      ]
-      : []),
-    {
-      title: "TIỀN LƯƠNG & PHÚC LỢI",
-      items: [
-        {
-          path: "/payroll",
-          label: "Phiếu lương",
-          icon: <DollarSign size={20} />
-        },
-        // Menu cho ADMIN và HR
-        ...(isAdmin || isHR
-          ? [
-            {
-              path: "/hr/attendance-admin",
-              label: "Chấm công",
-              icon: <ClipboardCheck size={20} />,
-            },
-            {
-              path: "/allpayroll",
-              label: "Bảng lương",
-              icon: <FileSpreadsheet size={20} />,
-            },
-            {
-              path: "/hr/payroll-engine",
-              label: "Tính lương",
-              icon: <Landmark size={20} />,
-            },
-
-
-          ]
-          : []),
-      ],
-    },
-    // Chỉ hiển thị nhóm QUẢN TRỊ HỆ THỐNG cho ADMIN
-    ...(isAdmin
-      ? [
-        {
-          title: "QUẢN TRỊ HỆ THỐNG",
-          items: [
-            {
-              path: "/admin/user-management",
-              label: "Quản lý tài khoản",
-              icon: <UserCog size={20} />,
-            },
-            {
-              path: "/admin/system-admin",
-              label: "Cài đặt hệ thống",
-              icon: <Settings size={20} />,
-            },
-          ],
-        },
-      ]
-      : []),
-  ];
-
-  const { logout } = useAuth();
 
   const handleLogout = () => {
     logout();
     navigate("/login");
-    console.log("logout");
+  };
+
+  const renderNavItem = (item, isChild = false) => {
+    if (item.roles && !item.roles.includes(role)) return null;
+
+    const Icon = item.icon;
+
+    return (
+      <NavLink
+        key={`${item.path}-${item.label}`}
+        to={item.path}
+        onClick={closeMobileSidebar}
+        title={shouldCollapse ? item.label : ""}
+        className={({ isActive }) =>
+          `${itemBaseClass} ${
+            isActive
+              ? "bg-blue-50 text-blue-700 shadow-sm"
+              : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+          } ${shouldCollapse ? "justify-center px-0" : isChild ? "pl-9 pr-2.5" : "pr-3"}`
+        }
+      >
+        {({ isActive }) => (
+          <>
+            {!shouldCollapse && isActive && (
+              <span className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-blue-600" />
+            )}
+            <span
+              className={`${
+                shouldCollapse ? "" : "mr-3"
+              } flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                isActive ? "bg-white text-blue-700" : "text-slate-500 group-hover:text-slate-800"
+              }`}
+            >
+              <Icon size={18} />
+            </span>
+            {!shouldCollapse && <span className="truncate">{item.label}</span>}
+          </>
+        )}
+      </NavLink>
+    );
+  };
+
+  const renderDropdown = (item) => {
+    const visibleChildren = item.children.filter(
+      (child) => !child.roles || child.roles.includes(role)
+    );
+    if (!visibleChildren.length) return null;
+
+    const Icon = item.icon;
+    const isExpanded = !!expandedDropdowns[item.key];
+    const isActive = visibleChildren.some((child) =>
+      location.pathname.startsWith(child.path)
+    );
+
+    return (
+      <div key={item.key}>
+        <button
+          type="button"
+          onClick={() => toggleDropdown(item.key)}
+          title={shouldCollapse ? item.label : ""}
+          className={`${itemBaseClass} w-full ${
+            isActive
+              ? "bg-blue-50 text-blue-700"
+              : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+          } ${shouldCollapse ? "justify-center px-0" : "justify-between pr-3"}`}
+        >
+          <div className={`flex items-center ${shouldCollapse ? "" : "min-w-0"}`}>
+            <span
+              className={`${
+                shouldCollapse ? "" : "mr-3"
+              } flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                isActive ? "bg-white text-blue-700" : "text-slate-500"
+              }`}
+            >
+              <Icon size={18} />
+            </span>
+            {!shouldCollapse && <span className="truncate text-left">{item.label}</span>}
+          </div>
+          {!shouldCollapse &&
+            (isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
+        </button>
+
+        {!shouldCollapse && isExpanded && (
+          <div className="mt-1 space-y-1">
+            {visibleChildren.map((child) => renderNavItem(child, true))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
-    <div className={`h-screen bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0 transition-[width] duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-64'}`}>
-      {/* Header with Logo */}
-      <div className="h-20 flex items-center justify-center px-4 border-b border-gray-100">
-        {!isCollapsed && (
-          <div className="flex items-center gap-2">
-            <img src={NOTIFICATION_AVATAR} alt="LNG Logo" className="w-36" />
-          </div>
-        )}
-        {isCollapsed && (
-          <div className="w-10 h-10 rounded-lg flex items-center justify-center">
-            <img src={NOTIFICATION_AVATAR2} alt="LNG Logo" className="w-30" />
-          </div>
-        )}
-      </div>
-
-      {/* Toggle Button - Modern circular design */}
-      <button
-        onClick={toggleSidebar}
-        className="absolute -right-5 top-[85%] -translate-y-1/2 z-50 w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-gray-50 transition-all shadow-md hover:shadow-lg hover:scale-110 active:scale-95 group border border-gray-200"
-        title={isCollapsed ? "Mở rộng menu" : "Thu gọn menu"}
-      >
-        <ChevronRight
-          size={20}
-          className={`text-gray-600 transition-transform duration-300 group-hover:text-gray-800 group-hover:scale-110 ${isCollapsed ? '' : 'rotate-180'}`}
-        />
-      </button>
-
-      <nav className="flex-1 overflow-y-auto py-4 px-4 space-y-6">
-        {menuGroups.map((group, index) => (
-          <div key={index}>
-            {!isCollapsed && (
-              <h3 className="px-4 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                {group.title}
-              </h3>
-            )}
-
-            <div className="space-y-1">
-              {group.items.map((item, itemIndex) => {
-                // Kiểm tra quyền truy cập cho item đơn
-                if (item.roles && !item.roles.includes(role)) {
-                  return null;
-                }
-
-                // Render dropdown
-                if (item.type === "dropdown") {
-                  const isExpanded = expandedDropdowns[item.key];
-                  const hasVisibleChildren = item.children.some(child =>
-                    !child.roles || child.roles.includes(role)
-                  );
-
-                  if (!hasVisibleChildren) return null;
-
-                  return (
-                    <div key={`${group.title}-${item.key}`}>
-                      <button
-                        onClick={() => toggleDropdown(item.key)}
-                        className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg transition-all duration-200 font-medium text-sm text-gray-500 hover:text-primary hover:bg-gray-50 ${isCollapsed ? 'justify-center' : ''}`}
-                        title={isCollapsed ? item.label : ''}
-                      >
-                        <div className="flex items-center">
-                          <span className={isCollapsed ? '' : 'mr-3'}>{item.icon}</span>
-                          {!isCollapsed && <span>{item.label}</span>}
-                        </div>
-                        {!isCollapsed && (
-                          isExpanded ? (
-                            <ChevronDown size={16} />
-                          ) : (
-                            <ChevronRight size={16} />
-                          )
-                        )}
-                      </button>
-
-                      {isExpanded && !isCollapsed && (
-                        <div className="ml-4 mt-1 space-y-1">
-                          {item.children.map((child, childIndex) => {
-                            // Kiểm tra quyền truy cập cho child
-                            if (child.roles && !child.roles.includes(role)) {
-                              return null;
-                            }
-
-                            return (
-                              <NavLink
-                                key={`${item.key}-${child.path}-${child.label}`}
-                                to={child.path}
-                                className={({ isActive }) => `
-                                  relative flex items-center px-4 py-2 rounded-lg transition-all duration-200 font-medium text-sm
-                                  ${isActive
-                                    ? "bg-blue-50 text-primary"
-                                    : "text-gray-500 hover:text-primary hover:bg-gray-50"
-                                  }
-                                `}
-                              >
-                                {({ isActive }) => (
-                                  <>
-                                    {isActive && (
-                                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-md" />
-                                    )}
-                                    <span className="mr-3">{child.icon}</span>
-                                    <span>{child.label}</span>
-                                  </>
-                                )}
-                              </NavLink>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
-
-                // Render menu item thường
-                return (
-                  <NavLink
-                    key={`${group.title}-${item.path}-${item.label}`}
-                    to={item.path}
-                    className={({ isActive }) => `
-                      relative flex items-center px-4 py-2.5 rounded-lg transition-all duration-200 font-medium text-sm
-                      ${isActive
-                        ? "bg-blue-50 text-primary"
-                        : "text-gray-500 hover:text-primary hover:bg-gray-50"
-                      }
-                      ${isCollapsed ? 'justify-center' : ''}
-                    `}
-                    title={isCollapsed ? item.label : ''}
-                  >
-                    {({ isActive }) => (
-                      <>
-                        {isActive && !isCollapsed && (
-                          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-md" />
-                        )}
-                        <span className={isCollapsed ? '' : 'mr-3'}>{item.icon}</span>
-                        {!isCollapsed && <span>{item.label}</span>}
-                      </>
-                    )}
-                  </NavLink>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </nav>
-
-      <div className="p-4 border-t border-gray-100 mt-auto">
+    <>
+      {isMobileSidebarOpen && (
         <button
-          onClick={handleLogout}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors font-medium group ${isCollapsed ? 'justify-center' : ''}`}
-          title={isCollapsed ? "Đăng xuất" : ''}
-        >
-          <LogOut size={20} className="group-hover:text-red-600" />
-          {!isCollapsed && <span className="group-hover:text-red-600">Đăng xuất</span>}
-        </button>
-      </div>
-
-      {!isCollapsed && (
-        <div className="p-4 text-xs text-center text-gray-400">
-          © 2026 LNG Inc.
-        </div>
+          type="button"
+          aria-label="Đóng menu"
+          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[1px] lg:hidden"
+          onClick={closeMobileSidebar}
+        />
       )}
-    </div>
+
+      <aside
+        className={`fixed left-0 top-0 z-50 flex h-dvh flex-col border-r border-slate-200 bg-white transition-all duration-300 ease-in-out lg:z-40 ${
+          isCollapsed ? "lg:w-20" : "lg:w-60"
+        } w-60 ${isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
+      >
+        <div className="relative border-b border-slate-100 px-4 py-5">
+          <div className={`flex items-center ${shouldCollapse ? "justify-center" : "gap-3"}`}>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 ring-1 ring-slate-100">
+              <img src={logoLNG} alt="LNG" className="h-8 w-8 object-contain" />
+            </div>
+            {!shouldCollapse && (
+              <div className="min-w-0">
+                <p className="truncate text-base font-semibold text-slate-900">LNG HRM</p>
+                <p className="truncate text-sm text-slate-500">Quản trị nhân sự nội bộ</p>
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden"
+            onClick={closeMobileSidebar}
+            aria-label="Đóng menu"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          className="absolute bottom-24 right-3 z-20 hidden h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 lg:flex"
+          title={shouldCollapse ? "Mở rộng menu" : "Thu gọn menu"}
+        >
+          <ChevronRight size={16} className={shouldCollapse ? "" : "rotate-180"} />
+        </button>
+
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
+          <div className="space-y-5">
+            {menuGroups.map((group) => (
+              <section key={group.title}>
+                {!shouldCollapse && <h3 className={groupTitleClass}>{group.title}</h3>}
+                <div className="space-y-1">
+                  {group.items.map((item) =>
+                    item.type === "dropdown" ? renderDropdown(item) : renderNavItem(item)
+                  )}
+                </div>
+              </section>
+            ))}
+          </div>
+        </nav>
+
+        <div className="border-t border-slate-100 p-3">
+          <button
+            type="button"
+            onClick={handleLogout}
+            title={shouldCollapse ? "Đăng xuất" : ""}
+            className={`${itemBaseClass} w-full ${
+              shouldCollapse ? "justify-center px-0" : "pr-3"
+            } bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700`}
+          >
+            <span
+              className={`${
+                shouldCollapse ? "" : "mr-3"
+              } flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/80`}
+            >
+              <LogOut size={18} />
+            </span>
+            {!shouldCollapse && <span>Đăng xuất</span>}
+          </button>
+
+          {!shouldCollapse && (
+            <div className="mt-3 flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+              <Plane size={14} />
+              <span className="truncate">© 2026 LNG Inc.</span>
+            </div>
+          )}
+        </div>
+      </aside>
+    </>
   );
 };
 
