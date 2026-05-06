@@ -21,7 +21,7 @@ const MainLayout = () => {
         <main
           className={`mt-16 min-h-0 overflow-x-hidden px-3 pt-3 sm:px-4 sm:pt-4 lg:px-6 ${
             lockMainScroll
-              ? "h-[calc(100dvh-4rem)] overflow-y-hidden"
+              ? "overflow-y-auto sm:h-[calc(100dvh-4rem)] sm:overflow-y-hidden"
               : "flex-1 overflow-y-auto"
           }`}
         >

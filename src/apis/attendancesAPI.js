@@ -6,7 +6,22 @@ const multipartHeaders = {
   },
 };
 
+export const isNetworkRestrictedError = (error) => {
+  return (
+    error?.response?.status === 403 &&
+    error?.response?.data?.code === "NETWORK_RESTRICTED"
+  );
+};
+
 export const attendancesAPI = {
+  checkIn: () => {
+    return apiClient.post("/attendances/check-in");
+  },
+
+  checkOut: () => {
+    return apiClient.post("/attendances/check-out");
+  },
+
   getAll: (params) => {
     return apiClient.get("/attendances", { params });
   },

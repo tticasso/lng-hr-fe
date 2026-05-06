@@ -9,6 +9,10 @@ const apiClient = axios.create({
   timeout: 15000,
 });
 
+if (API_BASE_URL.includes("ngrok-free.")) {
+  apiClient.defaults.headers.common["ngrok-skip-browser-warning"] = "true";
+}
+
 export const AUTH_UNAUTHORIZED_EVENT = "auth:unauthorized";
 
 export function setAuthToken(token) {

@@ -63,7 +63,7 @@ const StatusBadge = ({ statusKey, statusText }) => {
     })();
 
     return (
-        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${cls}`}>
+        <span className={`inline-flex whitespace-nowrap px-2.5 py-1 rounded-full text-xs sm:text-sm font-semibold ${cls}`}>
             {statusText}
         </span>
     );
@@ -98,10 +98,10 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
     const displayStatus = normalizeStatus(leaveDetail?.status);
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50 p-0 sm:items-center sm:p-4">
+            <div className="bg-white rounded-t-2xl shadow-xl w-full h-[92dvh] overflow-hidden flex flex-col sm:h-auto sm:max-h-[90vh] sm:max-w-5xl sm:rounded-lg">
                 {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+                <div className="flex items-center justify-between p-3 border-b bg-gradient-to-r from-blue-50 to-indigo-50 sm:p-4">
                     <h2 className="text-xl font-bold text-gray-800">Chi tiết đơn nghỉ</h2>
                     <button
                         onClick={onClose}
@@ -112,7 +112,7 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                 </div>
 
                 {/* Content */}
-                <div className="p-6 overflow-y-auto flex-1">
+                <div className="p-3 overflow-y-auto flex-1 sm:p-6">
                     {loading ? (
                         <div className="flex items-center justify-center py-12">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -123,16 +123,16 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                             <p className="text-gray-500">Không thể tải thông tin đơn nghỉ</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3 lg:gap-4">
                             {/* Left Column - Main Info */}
-                            <div className="col-span-2 space-y-4">
+                            <div className="space-y-3 lg:col-span-2 lg:space-y-4">
                                 {/* Employee Info - Compact */}
-                                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-100">
-                                    <div className="flex items-center gap-3 mb-3">
+                                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-100 sm:p-4">
+                                    <div className="flex items-center gap-2 mb-3 sm:gap-3">
                                         <User className="text-blue-600" size={18} />
                                         <h3 className="font-semibold text-gray-800">Thông tin nhân sự</h3>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                         <div>
                                             <p className="text-xs text-gray-500">Họ tên</p>
                                             <p className="font-semibold text-gray-800">{leaveDetail.employeeId?.fullName || "--"}</p>
@@ -145,12 +145,12 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                                 </div>
 
                                 {/* Leave Info - Compact Grid */}
-                                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                    <div className="flex items-center gap-3 mb-3">
+                                <div className="bg-white rounded-lg p-3 border border-gray-200 sm:p-4">
+                                    <div className="flex items-center gap-2 mb-3 sm:gap-3">
                                         <Calendar className="text-green-600" size={18} />
                                         <h3 className="font-semibold text-gray-800">Thông tin nghỉ phép</h3>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-3">
+                                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                                         <div>
                                             <p className="text-xs text-gray-500">Loại nghỉ</p>
                                             <p className="font-medium text-sm">
@@ -165,7 +165,7 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                                         </div>
                                         <div>
                                             <p className="text-xs text-gray-500">Số ngày</p>
-                                            <p className="font-semibold text-lg text-blue-600">
+                                            <p className="font-semibold text-base text-blue-600 sm:text-lg">
                                                 {leaveDetail.totalDays ?? "--"}
                                             </p>
                                         </div>
@@ -188,8 +188,8 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                                 </div>
 
                                 {/* Reason - Compact */}
-                                <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-100">
-                                    <div className="flex items-center gap-3 mb-2">
+                                <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-100 sm:p-4">
+                                    <div className="flex items-center gap-2 mb-2 sm:gap-3">
                                         <FileText className="text-yellow-600" size={18} />
                                         <h3 className="font-semibold text-gray-800">Lý do nghỉ</h3>
                                     </div>
@@ -199,12 +199,12 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                                 </div>
 
                                 {/* Timestamps - Compact */}
-                                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                    <div className="flex items-center gap-3 mb-2">
+                                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200 sm:p-4">
+                                    <div className="flex items-center gap-2 mb-2 sm:gap-3">
                                         <Clock className="text-gray-600" size={18} />
                                         <h3 className="font-semibold text-gray-800">Thời gian</h3>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                         <div>
                                             <p className="text-xs text-gray-500">Ngày tạo</p>
                                             <p className="font-medium text-sm">{formatDateTime(leaveDetail.createdAt)}</p>
@@ -218,10 +218,10 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                             </div>
 
                             {/* Right Column - Approval Timeline */}
-                            <div className="col-span-1">
+                            <div className="lg:col-span-1">
                                 {leaveDetail.approvalChain && leaveDetail.approvalChain.length > 0 ? (
-                                    <div className="bg-white rounded-lg border border-purple-200 p-4 h-full">
-                                        <div className="flex items-center gap-2 mb-4">
+                                    <div className="bg-white rounded-lg border border-purple-200 p-3 h-full sm:p-4">
+                                        <div className="flex items-center gap-2 mb-3 sm:mb-4">
                                             <Tag className="text-purple-600" size={18} />
                                             <h3 className="font-semibold text-gray-800">Chuỗi phê duyệt</h3>
                                         </div>
@@ -231,7 +231,7 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                                                 const isLast = index === leaveDetail.approvalChain.length - 1;
                                                 
                                                 return (
-                                                    <div key={approval._id || index} className="relative flex gap-3 pb-4">
+                                                    <div key={approval._id || index} className="relative flex gap-3 pb-3 sm:pb-4">
                                                         {/* Timeline line */}
                                                         {!isLast && (
                                                             <div className="absolute left-[13px] top-[28px] bottom-0 w-0.5 bg-gray-200"></div>
@@ -255,8 +255,8 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                                                         </div>
                                                         
                                                         {/* Content */}
-                                                        <div className="flex-1 pt-0.5">
-                                                            <div className="flex items-center gap-1 mb-1">
+                                                        <div className="min-w-0 flex-1 pt-0.5">
+                                                            <div className="flex flex-wrap items-center gap-1 mb-1">
                                                                 <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
                                                                     Cấp {approval.level}
                                                                 </span>
@@ -270,7 +270,7 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                                                                 </span>
                                                             </div>
                                                             
-                                                            <p className="font-semibold text-sm text-gray-800">
+                                                            <p className="truncate font-semibold text-sm text-gray-800">
                                                                 {approval.approver?.fullName || "--"}
                                                             </p>
                                                             <p className="text-xs text-gray-500">
@@ -296,7 +296,7 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 h-full flex items-center justify-center">
+                                    <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 min-h-24 flex items-center justify-center lg:h-full">
                                         <p className="text-sm text-gray-400">Chưa có thông tin phê duyệt</p>
                                     </div>
                                 )}
@@ -306,10 +306,10 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-end gap-3 p-4 border-t bg-gray-50">
+                <div className="flex justify-end gap-3 p-3 border-t bg-gray-50 sm:p-4">
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                        className="w-full px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium sm:w-auto"
                     >
                         Đóng
                     </button>
