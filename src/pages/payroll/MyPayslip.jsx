@@ -22,7 +22,6 @@ import logo from "../../assets/logo.png";
 import { payrollAPI } from "../../apis/payrollAPI";
 import { employeeApi } from "../../apis/employeeApi";
 import { toast } from "react-toastify";
-import { message } from "antd";
 
 const OT_TYPE_LABELS = {
   weekday: "OT ngày thường",
@@ -33,11 +32,32 @@ const OT_TYPE_LABELS = {
   holiday_night: "OT đêm ngày lễ",
 };
 
+const OT_TYPE_MULTIPLIERS = {
+  weekday: 1.5,
+  weekend: 2,
+  holiday: 3,
+  weekday_night: 1.8,
+  weekend_night: 2.4,
+  holiday_night: 3.9,
+};
+
 const ALLOWANCE_TYPE_LABELS = {
   lunch: "Phụ cấp ăn trưa",
   fuel: "Phụ cấp xăng xe",
   other: "Phụ cấp khác",
   responsibility: "Phụ cấp trách nhiệm",
+};
+
+const LEAVE_TYPE_LABELS = {
+  annual: "Nghỉ phép năm",
+  sick: "Nghỉ ốm",
+  maternity: "Nghỉ thai sản",
+  paternity: "Nghỉ vợ sinh",
+  bereavement: "Nghỉ tang",
+  wedding: "Nghỉ kết hôn",
+  unpaid: "Nghỉ không lương",
+  personal_paid: "Nghỉ việc riêng có lương",
+  personal_unpaid: "Nghỉ việc riêng không lương",
 };
 
 const MyPayslip = () => {
@@ -235,7 +255,7 @@ const MyPayslip = () => {
   };
 
   // Generate periods list from payroll data
-  const periods = payrollList.map((payroll, index) => ({
+  const periods = payrollList.map((payroll) => ({
     id: payroll._id,
     month: payroll.month.toString(),
     year: payroll.year.toString(),
@@ -250,14 +270,29 @@ const MyPayslip = () => {
       return null;
     }
 
-    const otBreakdown = Object.entries(selectedPayroll.otHours || {})
-      .map(([key, hours]) => ({
-        key,
-        label: OT_TYPE_LABELS[key] || key,
-        valueText: `${Number(hours || 0).toFixed(2)}h`,
-        sortValue: Number(hours || 0),
-      }))
-      .filter((item) => item.sortValue > 0);
+    const otHoursByType = selectedPayroll.otHours || {};
+    const otPayByType = selectedPayroll.otPayBreakdown || {};
+    const hourlyRate = Number(selectedPayroll.dailyRate || 0) / 8;
+    const otBreakdown = Object.keys(OT_TYPE_LABELS)
+      .map((key) => {
+        const hours = Number(otHoursByType[key] || 0);
+        const multiplier = OT_TYPE_MULTIPLIERS[key] || 0;
+        const savedAmount = otPayByType[key];
+        const fallbackAmount = hours * multiplier * hourlyRate;
+        const amount = savedAmount === undefined || savedAmount === null
+          ? fallbackAmount
+          : Number(savedAmount || 0);
+
+        return {
+          key,
+          label: OT_TYPE_LABELS[key] || key,
+          valueText: formatCurrency(Math.round(amount)),
+          sortValue: Math.round(amount),
+          hours,
+          formulaText: `${hours.toFixed(2)}h x ${multiplier.toFixed(2)} x ${formatCurrency(hourlyRate)}`,
+        };
+      })
+      .filter((item) => item.hours > 0 || item.sortValue > 0);
 
     const allowanceBreakdown = Object.entries(
       selectedPayroll.allowanceBreakdown || {},
@@ -270,7 +305,35 @@ const MyPayslip = () => {
       }))
       .filter((item) => item.sortValue > 0);
 
-    const totalOtHours = otBreakdown.reduce((sum, item) => sum + item.sortValue, 0);
+    const dailyRate = Number(selectedPayroll.dailyRate || 0);
+    const leaveBreakdown = Object.entries(LEAVE_TYPE_LABELS)
+      .map(([key, label]) => {
+        const detail = selectedPayroll.leaveBreakdown?.[key] || {};
+        const days = Number(detail.days || 0);
+        const paidDays = Number(detail.paidDays || 0);
+        const unpaidDays = Number(detail.unpaidDays || 0);
+        const paidAmount = Math.round(Number(detail.paidAmount || paidDays * dailyRate || 0));
+        const unpaidDeduction = Math.round(Number(detail.unpaidDeduction || unpaidDays * dailyRate || 0));
+        const netAmount = Math.round(
+          detail.netAmount !== undefined && detail.netAmount !== null
+            ? Number(detail.netAmount || 0)
+            : paidAmount - unpaidDeduction,
+        );
+
+        return {
+          key,
+          label,
+          valueText: formatCurrency(netAmount),
+          sortValue: days,
+          formulaText: `${days.toFixed(2)} ngày | Có lương ${paidDays.toFixed(2)} ngày x ${formatCurrency(dailyRate)} | Không lương ${unpaidDays.toFixed(2)} ngày x ${formatCurrency(dailyRate)}`,
+        };
+      })
+      .filter((item) => item.sortValue > 0);
+
+    const totalOtHours = Object.values(otHoursByType).reduce(
+      (sum, hours) => sum + Number(hours || 0),
+      0,
+    );
 
     return {
       employee: {
@@ -292,6 +355,7 @@ const MyPayslip = () => {
       otHours: selectedPayroll.otHours || {},
       otBreakdown,
       allowanceBreakdown,
+      leaveBreakdown,
 
       // Thu nhập
       incomes: [
@@ -302,6 +366,7 @@ const MyPayslip = () => {
         {
           label: `Lương theo công (${(selectedPayroll.actualWorkDays || 0).toFixed(2)}/${selectedPayroll.standardWorkDays || 0} ngày)`,
           value: selectedPayroll.salaryFromWork || 0,
+          details: leaveBreakdown,
         },
         {
           label: "Phụ cấp (Tổng)",
@@ -534,7 +599,14 @@ const MyPayslip = () => {
                               key={detail.key}
                               className="flex items-center justify-between py-1 text-xs text-gray-500"
                             >
-                              <span>{detail.label}</span>
+                              <span className="min-w-0">
+                                <span className="block">{detail.label}</span>
+                                {detail.formulaText && (
+                                  <span className="block font-mono text-[11px] text-gray-400">
+                                    {detail.formulaText}
+                                  </span>
+                                )}
+                              </span>
                               <span className="font-mono font-semibold text-gray-700">
                                 {detail.valueText}
                               </span>

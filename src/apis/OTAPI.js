@@ -14,12 +14,8 @@ export const OTApi = {
   },
 
   post: async (payload) => {
-    try {
-      const res = await apiClient.post("/overtimes", payload);
-      return res.data;
-    } catch (error) {
-      throw error;
-    }
+    const res = await apiClient.post("/overtimes", payload);
+    return res.data;
   },
 
   update: (id, payload) => {

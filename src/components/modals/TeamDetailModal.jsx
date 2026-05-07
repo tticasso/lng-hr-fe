@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Users, Building2, Crown, User, Loader2, Plus, UserPlus, CalendarSync, Trash2, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Users, Crown, User, Loader2, Plus, UserPlus, CalendarSync, Trash2, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
 import { teamAPI } from "../../apis/teamAPI";
 import { employeeApi } from "../../apis/employeeApi";
 import { saturdayRotations } from "../../apis/saturday-rotations";
@@ -21,6 +21,14 @@ const StatusBadge = ({ status }) => {
     );
 };
 
+const getCurrentMonthYear = () => {
+    const now = new Date();
+    return {
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
+    };
+};
+
 const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
     const [loading, setLoading] = useState(false);
     const [teamDetail, setTeamDetail] = useState(null);
@@ -32,14 +40,19 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
     const [memBer, setMemBer] = useState(Number);
     const [rotationData, setRotationData] = useState([]);
     const [showAddToRotationModal, setShowAddToRotationModal] = useState(false);
+    const [showManualRotationModal, setShowManualRotationModal] = useState(false);
     const [selectedRotationId, setSelectedRotationId] = useState(null);
     const [selectedRotationEmployees, setSelectedRotationEmployees] = useState([]);
+    const [manualRotationSelections, setManualRotationSelections] = useState({});
     
     // State cho việc chọn tháng/năm xem lịch luân phiên
-    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
-    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [selectedMonth, setSelectedMonth] = useState(() => getCurrentMonthYear().month);
+    const [selectedYear, setSelectedYear] = useState(() => getCurrentMonthYear().year);
     useEffect(() => {
         if (isOpen && teamId) {
+            const { month, year } = getCurrentMonthYear();
+            setSelectedMonth(month);
+            setSelectedYear(year);
             fetchTeamDetail();
         }
     }, [isOpen, teamId]);
@@ -84,19 +97,104 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
         }
     }
 
-    const handleDeleteAllRotations = async () => {
-        if (!window.confirm("Bạn có chắc chắn muốn xóa toàn bộ lịch nghỉ luân phiên của team này?")) {
+    const dateToKey = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    };
+
+    const getSaturdaysForSelectedMonth = () => {
+        const totalDays = new Date(selectedYear, selectedMonth, 0).getDate();
+        const saturdays = [];
+
+        for (let day = 1; day <= totalDays; day += 1) {
+            const date = new Date(selectedYear, selectedMonth - 1, day);
+            if (date.getDay() === 6) {
+                saturdays.push({
+                    date,
+                    key: dateToKey(date),
+                    label: date.toLocaleDateString("vi-VN", {
+                        weekday: "long",
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                    }),
+                });
+            }
+        }
+
+        return saturdays;
+    };
+
+    const getRotationEmployeeIds = (rotation) =>
+        (rotation?.employeesOff || []).map((employee) =>
+            typeof employee === "string" ? employee : employee?._id
+        ).filter(Boolean);
+
+    const openManualRotationModal = () => {
+        const existingSelections = {};
+
+        rotationData.forEach((rotation) => {
+            const date = new Date(rotation.date);
+            existingSelections[dateToKey(date)] = getRotationEmployeeIds(rotation);
+        });
+
+        getSaturdaysForSelectedMonth().forEach((saturday) => {
+            if (!existingSelections[saturday.key]) {
+                existingSelections[saturday.key] = [];
+            }
+        });
+
+        setManualRotationSelections(existingSelections);
+        setSearchTerm("");
+        setShowManualRotationModal(true);
+    };
+
+    const closeManualRotationModal = () => {
+        setShowManualRotationModal(false);
+        setManualRotationSelections({});
+        setSearchTerm("");
+    };
+
+    const toggleManualRotationEmployee = (dateKey, employeeId) => {
+        setManualRotationSelections((prev) => {
+            const current = prev[dateKey] || [];
+            const next = current.includes(employeeId)
+                ? current.filter((id) => id !== employeeId)
+                : [...current, employeeId];
+
+            return { ...prev, [dateKey]: next };
+        });
+    };
+
+    const handleSubmitManualRotations = async () => {
+        const saturdays = getSaturdaysForSelectedMonth();
+        if (saturdays.length === 0) return;
+
+        if (!window.confirm(`Ghi đè lịch nghỉ luân phiên tháng ${selectedMonth}/${selectedYear} bằng cấu hình thủ công?`)) {
             return;
         }
-        
+
         try {
-            const res = await saturdayRotations.deleteAll(teamId);
-            console.log("Delete all rotations res:", res);
-            await rotationCall(); // Refresh data
+            const payload = {
+                teamId,
+                month: selectedMonth,
+                year: selectedYear,
+                minPresent: memBer,
+                customRotations: saturdays.map((saturday) => ({
+                    date: saturday.key,
+                    employeesOff: manualRotationSelections[saturday.key] || [],
+                })),
+            };
+
+            await saturdayRotations.post(payload);
+            await rotationCall();
+            closeManualRotationModal();
         } catch (error) {
-            console.log("Delete all rotations error:", error);
+            console.error("submit manual rotations error:", error);
         }
-    }
+    };
 
     const handleDeleteMonthRotations = async () => {
         if (!window.confirm(`Bạn có chắc chắn muốn xóa lịch nghỉ luân phiên của tháng ${selectedMonth}/${selectedYear}?`)) {
@@ -134,9 +232,9 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
 
     // Hàm về tháng hiện tại
     const goToCurrentMonth = () => {
-        const now = new Date();
-        setSelectedMonth(now.getMonth() + 1);
-        setSelectedYear(now.getFullYear());
+        const { month, year } = getCurrentMonthYear();
+        setSelectedMonth(month);
+        setSelectedYear(year);
     };
 
     // Hàm format tháng/năm hiển thị
@@ -355,28 +453,39 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="bg-white rounded-lg shadow-2xl max-w-7xl w-full max-h-[92vh] overflow-hidden flex flex-col">
                 {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-50 to-purple-50">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                            <Users className="text-blue-600" size={20} />
+                <div className="flex items-center justify-between p-5 border-b bg-slate-50">
+                    <div className="flex items-center gap-4 min-w-0">
+                        <div className="p-3 bg-blue-600 rounded-lg shadow-sm">
+                            <Users className="text-white" size={22} />
                         </div>
-                        <div>
-                            <h2 className="text-lg font-bold text-gray-800">Chi tiết Team 123</h2>
-                            <p className="text-xs text-gray-500">Thông tin đầy đủ về team</p>
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <h2 className="text-xl font-bold text-gray-900 truncate">
+                                    {teamDetail?.name || "Chi tiết team"}
+                                </h2>
+                                {teamDetail?.teamCode && (
+                                    <span className="px-2.5 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-md border border-blue-200">
+                                        {teamDetail.teamCode}
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-sm text-gray-500 mt-1">
+                                Tổng quan team, thành viên và lịch nghỉ luân phiên
+                            </p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-white rounded-full transition-colors"
+                        className="p-2 hover:bg-white rounded-lg transition-colors"
                     >
                         <X size={20} className="text-gray-500" />
                     </button>
                 </div>
 
                 {/* Content */}
-                <div className="p-6 flex-1 overflow-y-auto">
+                <div className="p-5 flex-1 overflow-y-auto bg-gray-50">
                     {loading ? (
                         <div className="flex items-center justify-center py-12">
                             <Loader2 size={32} className="animate-spin text-blue-600" />
@@ -387,55 +496,24 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                             <p className="text-gray-500">Không thể tải thông tin team</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-5">
+                            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm">
+                                <span className="font-semibold text-gray-900">{teamDetail.members?.length || 0} thành viên</span>
+                                <span className="h-1 w-1 rounded-full bg-gray-300" />
+                                <span className="text-gray-600">Leader: {teamDetail.leader?.fullName || "--"}</span>
+                                <span className="h-1 w-1 rounded-full bg-gray-300" />
+                                <span className="text-gray-600">{rotationData.length} lịch trong {formatMonthYear(selectedMonth, selectedYear)}</span>
+                                <span className={`rounded-md px-2 py-1 text-xs font-semibold ${teamDetail.isActive
+                                    ? "bg-green-100 text-green-700 border border-green-200"
+                                    : "bg-red-100 text-red-700 border border-red-200"
+                                    }`}>
+                                    {teamDetail.isActive ? "Hoạt động" : "Không hoạt động"}
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
                             {/* Left Column - Team Info */}
-                            <div className="col-span-1 space-y-4">
-                                {/* Team Basic Info */}
-                                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
-                                    <h3 className="text-lg font-bold text-gray-800 mb-2">
-                                        {teamDetail.name}
-                                    </h3>
-                                    <div className="flex flex-col gap-2 mb-3">
-                                        <span className="px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded w-fit">
-                                            {teamDetail.teamCode}
-                                        </span>
-                                        <span className={`px-2 py-1 text-xs font-semibold rounded w-fit ${teamDetail.isActive
-                                            ? "bg-green-100 text-green-700 border border-green-200"
-                                            : "bg-red-100 text-red-700 border border-red-200"
-                                            }`}>
-                                            {teamDetail.isActive ? "Hoạt động" : "Không hoạt động"}
-                                        </span>
-                                    </div>
-
-                                    {teamDetail.description && (
-                                        <div className="mt-3 p-2 bg-white rounded text-xs text-gray-700">
-                                            {teamDetail.description}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Department Info */}
-                                <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <Building2 className="text-purple-600" size={16} />
-                                        <h3 className="font-semibold text-sm text-gray-800">Phòng ban</h3>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <div>
-                                            <p className="text-xs text-gray-500">Tên phòng ban</p>
-                                            <p className="font-medium text-sm text-gray-800">
-                                                {teamDetail.departmentId?.name || "--"}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-500">Mã phòng ban</p>
-                                            <p className="font-medium text-sm text-gray-800">
-                                                {teamDetail.teamCode || "--"}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-
+                            <div className="space-y-4">
                                 {/* Team Leader Info */}
                                 <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
                                     <div className="flex items-center gap-2 mb-3">
@@ -463,7 +541,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                 </div>
 
                                 {/* Rotation Schedule */}
-                                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
                                     <div className="flex items-center justify-between mb-3">
                                         <div className="flex items-center gap-2">
                                             <CalendarSync className="text-gray-600" size={16} />
@@ -502,7 +580,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                                     className="px-2 py-1 text-xs bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors"
                                                     title="Về tháng hiện tại"
                                                 >
-                                                    Hiện tại
+                                                    Về tháng này
                                                 </button>
                                             )}
                                         </div>
@@ -580,62 +658,68 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                             </div>
 
                             {/* Right Column - Team Members */}
-                            <div className="col-span-2">
-                                <div className="bg-green-50 rounded-lg p-4 border border-green-200 h-full flex flex-col">
-                                    <div className="flex items-center justify-between mb-4">
+                            <div className="min-w-0">
+                                <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm h-full flex flex-col">
+                                    <div className="flex flex-col gap-3 mb-4 lg:flex-row lg:items-center lg:justify-between">
                                         <div className="flex items-center gap-2">
                                             <User className="text-green-600" size={18} />
                                             <h3 className="font-semibold text-gray-800">Danh sách thành viên</h3>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="px-3 py-1 bg-green-600 text-white text-xs font-semibold rounded-full">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="px-3 py-1 bg-green-100 text-green-700 border border-green-200 text-xs font-semibold rounded-md">
                                                 {teamDetail.members?.length || 0} người
                                             </span>
                                             <button
                                                 onClick={openAddMemberModal}
-                                                className="flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-full transition-colors"
+                                                className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md transition-colors"
                                                 title="Thêm thành viên"
                                             >
                                                 <UserPlus size={14} />
                                                 Thêm
                                             </button>
-                                            {isCurrentMonth() && (
-                                                <button
-                                                    onClick={rotationadd}
-                                                    className="flex items-center gap-1 px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white text-xs font-semibold rounded-full transition-colors"
-                                                    title="Set lịch làm luân phiên"
-                                                >
-                                                    <CalendarSync size={14} />
-                                                    Set lịch làm luân phiên
-                                                </button>
-                                            )}
+                                            <button
+                                                onClick={rotationadd}
+                                                className="flex items-center gap-1 px-3 py-1.5 bg-gray-700 hover:bg-gray-800 text-white text-xs font-semibold rounded-md transition-colors"
+                                                title="Tự động chia lịch nghỉ luân phiên"
+                                            >
+                                                <CalendarSync size={14} />
+                                                Set tự động
+                                            </button>
+                                            <button
+                                                onClick={openManualRotationModal}
+                                                className="flex items-center gap-1 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-md transition-colors"
+                                                title="Set lịch nghỉ luân phiên thủ công"
+                                            >
+                                                <CalendarSync size={14} />
+                                                Set thủ công
+                                            </button>
                                         </div>
                                     </div>
 
                                     {teamDetail.members && teamDetail.members.length > 0 ? (
-                                        <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                                        <div className="flex-1 overflow-y-auto rounded-lg border border-gray-200 bg-white">
                                             {teamDetail.members.map((member, index) => (
                                                 <div
                                                     key={member._id || index}
-                                                    className="bg-white rounded-lg p-3 border border-green-200 hover:shadow-sm transition-shadow"
+                                                    className="border-b border-gray-100 px-3 py-2.5 last:border-b-0 hover:bg-gray-50"
                                                 >
                                                     <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-3 flex-1">
-                                                            <div className="w-9 h-9 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                                                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
                                                                 {member.fullName?.charAt(0) || "?"}
                                                             </div>
-                                                            <div className="flex-1">
-                                                                <p className="font-semibold text-sm text-gray-800">
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="truncate text-sm font-semibold text-gray-800">
                                                                     {member.fullName}
                                                                 </p>
-                                                                <div className="flex items-center gap-3 text-xs text-gray-500">
+                                                                <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                                                                     <span>{member.employeeCode}</span>
-                                                                    <span>•</span>
+                                                                    <span className="h-1 w-1 rounded-full bg-gray-300" />
                                                                     <span>{member.jobTitle || "Chưa có chức danh"}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="ml-3 flex shrink-0 items-center gap-2">
                                                             <StatusBadge status={member.status} />
                                                             <button
                                                                 onClick={() => handleRemoveMember(member)}
@@ -650,7 +734,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="flex-1 flex items-center justify-center bg-white rounded-lg border border-green-200">
+                                        <div className="flex-1 flex items-center justify-center bg-gray-50 rounded-lg border border-gray-200">
                                             <div className="text-center py-8">
                                                 <Users size={48} className="mx-auto mb-3 text-gray-300" />
                                                 <p className="text-sm text-gray-500">Chưa có thành viên nào trong team</p>
@@ -659,6 +743,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                     )}
                                 </div>
                             </div>
+                        </div>
                         </div>
                     )}
                 </div>
@@ -794,6 +879,130 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                             Thêm thành viên ({selectedEmployees.length})
                                         </>
                                     )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Manual Rotation Modal */}
+            {showManualRotationModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] p-4">
+                    <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+                        <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-orange-50 to-yellow-50">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-orange-100 rounded-lg">
+                                    <CalendarSync className="text-orange-600" size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-800">Set lịch nghỉ thủ công</h3>
+                                    <p className="text-xs text-gray-500">
+                                        {formatMonthYear(selectedMonth, selectedYear)} - chọn nhân sự nghỉ cho từng thứ 7
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={closeManualRotationModal}
+                                className="p-2 hover:bg-white rounded-full transition-colors"
+                            >
+                                <X size={20} className="text-gray-500" />
+                            </button>
+                        </div>
+
+                        <div className="p-4 border-b bg-gray-50">
+                            <input
+                                type="text"
+                                placeholder="Tìm thành viên..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            />
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                            {getSaturdaysForSelectedMonth().map((saturday, index) => {
+                                const selectedIds = manualRotationSelections[saturday.key] || [];
+                                return (
+                                    <div key={saturday.key} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                                        <div className="mb-3 flex items-center justify-between gap-3">
+                                            <div>
+                                                <p className="text-sm font-bold text-gray-800">
+                                                    Tuần {index + 1} - {saturday.label}
+                                                </p>
+                                                <p className="text-xs text-gray-500">
+                                                    Đã chọn nghỉ: {selectedIds.length} người
+                                                </p>
+                                            </div>
+                                            {selectedIds.length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setManualRotationSelections((prev) => ({
+                                                            ...prev,
+                                                            [saturday.key]: [],
+                                                        }))
+                                                    }
+                                                    className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                                                >
+                                                    Bỏ chọn ngày này
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
+                                            {getAvailableEmployeesForRotation().map((member) => {
+                                                const checked = selectedIds.includes(member._id);
+                                                return (
+                                                    <label
+                                                        key={`${saturday.key}-${member._id}`}
+                                                        className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
+                                                            checked
+                                                                ? "border-orange-400 bg-orange-50"
+                                                                : "border-gray-200 bg-white hover:bg-gray-50"
+                                                        }`}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={checked}
+                                                            onChange={() => toggleManualRotationEmployee(saturday.key, member._id)}
+                                                            className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                                                        />
+                                                        <div className="min-w-0">
+                                                            <p className="truncate text-sm font-semibold text-gray-800">
+                                                                {member.fullName}
+                                                            </p>
+                                                            <p className="truncate text-xs text-gray-500">
+                                                                {member.employeeCode} - {member.jobTitle || "Chưa có chức danh"}
+                                                            </p>
+                                                        </div>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3 border-t bg-gray-50 p-4">
+                            <p className="text-xs text-gray-500">
+                                Lưu sẽ ghi đè lịch tháng {selectedMonth}/{selectedYear}. Ngày không chọn ai sẽ lưu danh sách nghỉ rỗng.
+                            </p>
+                            <div className="flex shrink-0 gap-3">
+                                <button
+                                    type="button"
+                                    onClick={closeManualRotationModal}
+                                    className="rounded-lg border border-gray-300 bg-white px-4 py-2 font-medium text-gray-700 hover:bg-gray-50"
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleSubmitManualRotations}
+                                    className="rounded-lg bg-orange-600 px-4 py-2 font-medium text-white hover:bg-orange-700"
+                                >
+                                    Lưu lịch thủ công
                                 </button>
                             </div>
                         </div>

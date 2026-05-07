@@ -87,16 +87,6 @@ const LeaveBalance = () => {
         return filteredData.slice(start, start + pagination.limit);
     }, [currentPage, filteredData, pagination.limit]);
 
-    // Tính toán thống kê
-    const stats = useMemo(() => {
-        const totalEmployees = filteredData.length;
-        const totalBalance = filteredData.reduce((sum, item) => sum + item.currentBalance, 0);
-        const totalUsed = filteredData.reduce((sum, item) => sum + item.totalUsed, 0);
-        const totalAccrued = filteredData.reduce((sum, item) => sum + item.totalAccrued, 0);
-        
-        return { totalEmployees, totalBalance, totalUsed, totalAccrued };
-    }, [filteredData]);
-
     const formatDate = (dateString) => {
         if (!dateString) return "--";
         return new Date(dateString).toLocaleDateString("vi-VN");
@@ -281,8 +271,12 @@ const LeaveBalance = () => {
 
         setAdjustLoading(true);
         try {
+            const signedAmount =
+                adjustForm.action === "LEAVE_DEDUCTION"
+                    ? -Math.abs(adjustForm.amount)
+                    : Math.abs(adjustForm.amount);
             const payload = {
-                amount: adjustForm.amount,
+                amount: signedAmount,
                 reason: adjustForm.reason.trim(),
                 action: adjustForm.action
             };
@@ -303,34 +297,43 @@ const LeaveBalance = () => {
     };
 
     const runLeaveBalanceJob = async (type) => {
-        const payload = { year: Number(yearFilter || new Date().getFullYear()) };
+        const selectedYear = Number(yearFilter || new Date().getFullYear());
         const labels = {
-            accrual: "chay cong phep thu cong",
-            reset: "reset phep nam",
-            carry: "chuyen phep nam",
+            accrual: "chạy cộng phép thủ công",
+            reset: "reset phép năm",
+            carry: "chuyển phép năm",
         };
-        if (!window.confirm(`Ban co chac muon ${labels[type]}?`)) return;
+        if (!window.confirm(`Bạn có chắc muốn ${labels[type]}?`)) return;
 
         try {
-            if (type === "accrual") await leavebalanceAPI.triggerManualAccrual(payload);
-            if (type === "reset") await leavebalanceAPI.resetYear(payload);
-            if (type === "carry") await leavebalanceAPI.carryOver(payload);
-            toast.success("Thao tac thanh cong");
+            if (type === "accrual") {
+                const currentMonth = new Date().getMonth();
+                const date = new Date(selectedYear, currentMonth, 1).toISOString();
+                await leavebalanceAPI.triggerManualAccrual({ date });
+            }
+            if (type === "reset") await leavebalanceAPI.resetYear({ year: selectedYear });
+            if (type === "carry") {
+                await leavebalanceAPI.carryOver({
+                    fromYear: selectedYear - 1,
+                    toYear: selectedYear,
+                });
+            }
+            toast.success("Thao tác thành công");
             await callAPI();
         } catch (error) {
-            toast.error(error.normalizedMessage || "Thao tac that bai");
+            toast.error(error.normalizedMessage || "Thao tác thất bại");
         }
     };
 
     const handleDeleteLeaveBalance = async (leaveBalance) => {
-        if (!window.confirm(`Xoa so du phep cua ${leaveBalance.employeeId?.fullName || "nhan vien nay"}?`)) return;
+        if (!window.confirm(`Xóa số dư phép của ${leaveBalance.employeeId?.fullName || "nhân viên này"}?`)) return;
 
         try {
             await leavebalanceAPI.delete(leaveBalance._id);
-            toast.success("Xoa so du phep thanh cong");
+            toast.success("Xóa số dư phép thành công");
             await callAPI();
         } catch (error) {
-            toast.error(error.normalizedMessage || "Xoa so du phep that bai");
+            toast.error(error.normalizedMessage || "Xóa số dư phép thất bại");
         }
     };
     return (
@@ -381,17 +384,17 @@ const LeaveBalance = () => {
 
                     <div className="flex flex-wrap gap-2">
                         <Button variant="secondary" onClick={() => runLeaveBalanceJob("accrual")}>
-                            Cong phep
+                            Cộng phép
                         </Button>
                         <Button variant="secondary" onClick={() => runLeaveBalanceJob("carry")}>
-                            Chuyen phep
+                            Chuyển phép
                         </Button>
                         <Button variant="secondary" onClick={() => runLeaveBalanceJob("reset")}>
-                            Reset nam
+                            Reset năm
                         </Button>
                     </div>
 
-                    {/* <div className="flex gap-3">
+                    <div className="flex gap-3">
                         <div className="relative">
                             <Filter
                                 size={16}
@@ -408,7 +411,7 @@ const LeaveBalance = () => {
                                 <option value="2024">2024</option>
                             </select>
                         </div>
-                    </div> */}
+                    </div>
                 </div>
 
             </Card>
@@ -541,7 +544,7 @@ const LeaveBalance = () => {
                                                 <button
                                                     onClick={() => handleDeleteLeaveBalance(item)}
                                                     className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                                                    title="Xoa so du phep"
+                                                    title="Xóa số dư phép"
                                                 >
                                                     <X size={16} />
                                                 </button>
@@ -559,10 +562,10 @@ const LeaveBalance = () => {
                     <div className="flex flex-col gap-3 border-t border-gray-200 bg-gray-50 p-4 text-sm text-gray-500 md:flex-row md:items-center md:justify-between">
                         <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
                             <span>
-                                Hi?n th? <strong>{(currentPage - 1) * pagination.limit + 1}</strong>-<strong>{Math.min(currentPage * pagination.limit, filteredData.length)}</strong> trong t?ng s? <strong>{filteredData.length}</strong> b?n ghi
+                                Hiển thị <strong>{(currentPage - 1) * pagination.limit + 1}</strong>-<strong>{Math.min(currentPage * pagination.limit, filteredData.length)}</strong> trong tổng số <strong>{filteredData.length}</strong> bản ghi
                             </span>
                             <label className="flex items-center gap-2">
-                                <span>M?i trang</span>
+                                <span>Mỗi trang</span>
                                 <select
                                     value={pagination.limit}
                                     onChange={(e) =>
@@ -591,7 +594,7 @@ const LeaveBalance = () => {
                                     setPagination((prev) => ({ ...prev, page: prev.page - 1 }))
                                 }
                             >
-                                Tr�?c
+                                Trước
                             </Button>
 
                             {buildPageList(currentPage, totalPages).map((page, index) =>

@@ -53,6 +53,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
   const [departments, setDepartments] = useState([]);
   const [teams, setTeams] = useState([]); // State lưu danh sách team
   const [banks, setBanks] = useState([]); // [MỚI] State lưu danh sách ngân hàng
+  const [employees, setEmployees] = useState([]);
   const [loadingDepts, setLoadingDepts] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [errors, setErrors] = useState({});
@@ -64,6 +65,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
     fullName: employee.fullName || "",
     employeeCode: employee.employeeCode || "",
     status: employee.status || "Probation",
+    isProfileUpdated: Boolean(employee.isProfileUpdated),
     // Model dùng departmentId, UI dùng department. Map logic ở đây:
     department:
       typeof employee.departmentId === "object"
@@ -78,13 +80,19 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
     employmentType: employee.employmentType || "Full-time",
     workMode: employee.workMode || "Onsite",
     workEmail: employee.workEmail || "",
+    reportingManager:
+      typeof employee.reportingManager === "object"
+        ? employee.reportingManager?._id
+        : employee.reportingManager || "",
     startDate: formatDateInput(employee.startDate),
+    endDate: formatDateInput(employee.endDate),
 
     // Lưu ý: Model chưa có annualLeaveBalance, giữ tạm để UI không lỗi
     annualLeaveBalance: employee.annualLeaveBalance || 0,
 
     // --- 2. Lương & Phụ cấp (Mapping từ object allowances) ---
     baseSalary: employee.baseSalary || 0,
+    baseCurrency: employee.baseCurrency || "VND",
     lunchAllowance: employee.allowances?.lunch || 0, // Map từ allowances.lunch
     fuelAllowance: employee.allowances?.fuel || 0, // Map từ allowances.fuel
     otherAllowance: employee.allowances?.other || 0, // Map từ allowances.other
@@ -118,8 +126,6 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
 
   // Fetch Departments & Banks
   useEffect(() => {
-    console.log("CHECK :",formData.annualLeaveBalance)
-
     const fetchData = async () => {
       setLoadingDepts(true);
       try {
@@ -135,7 +141,15 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
         const teamList = teamRes.data?.data || teamRes.data || [];
         setTeams(teamList);
 
-        // 3. Fetch Banks (External API - VietQR)
+        // 3. Fetch Employees for reportingManager
+        const employeeRes = await employeeApi.getAll({ limit: 1000 });
+        const employeeBody = employeeRes.data || {};
+        const employeeList = Array.isArray(employeeBody)
+          ? employeeBody
+          : employeeBody.data || [];
+        setEmployees(Array.isArray(employeeList) ? employeeList : []);
+
+        // 4. Fetch Banks (External API - VietQR)
         const bankRes = await fetch("https://api.vietqr.io/v2/banks");
         const bankData = await bankRes.json();
         if (bankData.code === "00") {
@@ -153,22 +167,13 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    // 1) employeeCode (5-10 characters)
-    const employeeCode = normalizeTrim(formData.employeeCode);
-    if (!employeeCode) {
-      newErrors.employeeCode = "Employee code is required";
-    } else if (employeeCode.length < 5 || employeeCode.length > 10) {
-      newErrors.employeeCode =
-        "Employee code must be between 5 and 10 characters";
-    }
-
-    // 2) jobTitle (required)
+    // 1) jobTitle (required)
     const jobTitle = normalizeTrim(formData.jobTitle);
     if (!jobTitle) {
       newErrors.jobTitle = "Job title cannot be empty";
     }
 
-    // 3) phoneNumber (VN format)
+    // 2) phoneNumber (VN format)
     const phone = normalizeSpaces(formData.phoneNumber);
     if (!phone) {
       newErrors.phoneNumber = "Phone number is required";
@@ -177,7 +182,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
         "Phone number is not in the correct Vietnamese format";
     }
 
-    // 4) birthDate (ISO yyyy-mm-dd)
+    // 3) birthDate (ISO yyyy-mm-dd)
     const birthDate = normalizeTrim(formData.birthDate);
     if (!birthDate) {
       newErrors.birthDate = "Birth date is required";
@@ -185,7 +190,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
       newErrors.birthDate = "Birth date must be a valid ISO8601 date format";
     }
 
-    // 5) identityCard (digits only + length 9-12)
+    // 4) identityCard (digits only + length 9-12)
     const id = normalizeSpaces(formData.identityCard);
     if (id) {
       if (!IDENTITY_CARD_DIGITS_REGEX.test(id)) {
@@ -195,7 +200,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
       }
     }
 
-    // 6) personalEmail (required + format)
+    // 5) personalEmail (required + format)
     const personalEmail = normalizeTrim(formData.personalEmail);
     if (!personalEmail) {
       newErrors.personalEmail = "Personal email is required";
@@ -203,7 +208,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
       newErrors.personalEmail = "Personal email is invalid";
     }
 
-    // 7) workEmail (required + format)
+    // 6) workEmail (required + format)
     const workEmail = normalizeTrim(formData.workEmail);
     if (!workEmail) {
       newErrors.workEmail = "Work email is required";
@@ -211,7 +216,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
       newErrors.workEmail = "Work email is invalid";
     }
 
-    // 8) fullName (required)
+    // 7) fullName (required)
     const fullName = normalizeTrim(formData.fullName);
     if (!fullName) {
       newErrors.fullName = "Full name is required";
@@ -233,8 +238,11 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
@@ -262,7 +270,6 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
 
     // Normalize dữ liệu trước khi validate và submit
     const phone = normalizeSpaces(formData.phoneNumber);
-    const id = normalizeSpaces(formData.identityCard);
     const personalEmail = normalizeTrim(formData.personalEmail);
     const workEmail = normalizeTrim(formData.workEmail);
     const birthDate = normalizeTrim(formData.birthDate);
@@ -300,10 +307,13 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
         employmentType: formData.employmentType || undefined,
         workMode: formData.workMode || undefined,
         status: formData.status || undefined,
+        isProfileUpdated: Boolean(formData.isProfileUpdated),
+        reportingManager: formData.reportingManager || null,
         identityCard: formData.identityCard || "",
         // Lifecycle
         startDate: normalizeTrim(formData.startDate) || undefined,
         probationEndDate: normalizeTrim(formData.probationEndDate) || undefined,
+        endDate: normalizeTrim(formData.endDate) || undefined,
         annualLeaveBalance: Number(formData.annualLeaveBalance),
         // Nested Objects Reconstruction
         emergencyContact: {
@@ -320,6 +330,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
 
         // Compensation
         baseSalary: Number(formData.baseSalary) || 0,
+        baseCurrency: normalizeTrim(formData.baseCurrency) || "VND",
         allowances: {
           lunch: Number(formData.lunchAllowance) || 0,
           fuel: Number(formData.fuelAllowance) || 0,
@@ -375,13 +386,9 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
     }
   };
 
-  useEffect(() => {
-    console.log("LƯƠNG :", formData.baseSalary);
-    console.log("LƯƠNG 2: ", employee);
-  }, [formData.baseSalary]);
   // --- UI HELPERS ---
   const inputClass = (field) =>
-    `w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 ${errors[field] ? "border-red-500 focus:ring-red-200" : "border-gray-300 focus:ring-blue-500"}`;
+    `w-full px-3 py-1.5 border rounded-lg text-sm focus:outline-none focus:ring-2 ${errors[field] ? "border-red-500 focus:ring-red-200" : "border-gray-300 focus:ring-blue-500"}`;
   const labelClass =
     "block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide";
   const ErrorMsg = ({ field }) =>
@@ -393,9 +400,9 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col max-h-[95vh]">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-[96vw] overflow-hidden flex flex-col max-h-[96vh]">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+        <div className="px-5 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50">
           <div>
             <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
               <User size={20} className="text-blue-600" /> Cập nhật hồ sơ nhân
@@ -419,16 +426,16 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
         {/* Body */}
         <form
           onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto p-6 bg-gray-50/30"
+          className="flex-1 overflow-y-auto xl:overflow-visible p-3 bg-gray-50/30"
         >
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            {/* COLUMN 1: CÔNG VIỆC & HỢP ĐỒNG */}
-            <div className="space-y-6">
-              <div className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm">
-                <h4 className="font-bold text-blue-700 flex items-center gap-2 mb-4 border-b pb-2">
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 items-start">
+            {/* COLUMN 1: CÔNG VIỆC */}
+            <div className="space-y-4 xl:col-span-2">
+              <div className="bg-white p-3 rounded-lg border border-blue-100 shadow-sm">
+                <h4 className="font-bold text-blue-700 flex items-center gap-2 mb-3 border-b pb-2">
                   <Briefcase size={16} /> Thông tin công việc
                 </h4>
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <div>
                     <label className={labelClass}>
                       Mã NV <span className="text-red-500">*</span>
@@ -460,7 +467,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                     />
                     <ErrorMsg field="fullName" />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="md:col-span-2 grid grid-cols-2 gap-2">
                     <div>
                       <label className={labelClass}>
                         Phòng ban
@@ -527,8 +534,31 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                     </select>
                     <ErrorMsg field="team" />
                   </div>
+                  <div>
+                    <label className={labelClass}>
+                      Quản lý trực tiếp
+                    </label>
+                    <select
+                      name="reportingManager"
+                      value={formData.reportingManager}
+                      onChange={handleChange}
+                      className={inputClass("reportingManager")}
+                      disabled={loadingDepts}
+                    >
+                      <option value="">-- Chọn quản lý --</option>
+                      {employees
+                        .filter((item) => item._id !== (employee._id || employee.id))
+                        .map((item) => (
+                          <option key={item._id} value={item._id}>
+                            {item.fullName || item.name || "Không tên"}
+                            {item.employeeCode ? ` (${item.employeeCode})` : ""}
+                          </option>
+                        ))}
+                    </select>
+                    <ErrorMsg field="reportingManager" />
+                  </div>
                   {/* ... (Giữ nguyên các trường khác như Cấp bậc, Trạng thái, Hình thức...) ... */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="md:col-span-2 grid grid-cols-2 gap-2">
                     <div>
                       <label className={labelClass}>Cấp bậc</label>
                       <input
@@ -549,10 +579,12 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                         <option value="Active">Chính thức</option>
                         <option value="Probation">Thử việc</option>
                         <option value="Resigned">Nghỉ việc</option>
+                        <option value="Suspended">Tạm ngưng</option>
+                        <option value="OnLeave">Đang nghỉ</option>
                       </select>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="md:col-span-2 grid grid-cols-2 gap-2">
                     <div>
                       <label className={labelClass}>Hình thức</label>
                       <select
@@ -563,6 +595,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                       >
                         <option value="Full-time">Full-time</option>
                         <option value="Part-time">Part-time</option>
+                        <option value="Internship">Internship</option>
                         <option value="Contract">Contract</option>
                       </select>
                     </div>
@@ -580,7 +613,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                       </select>
                     </div>
                   </div>
-                  <div>
+                  <div className="md:col-span-2">
                     <label className={labelClass}>
                       Email Công việc <span className="text-red-500">*</span>
                     </label>
@@ -593,7 +626,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                     />
                     <ErrorMsg field="workEmail" />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="md:col-span-2 grid grid-cols-2 gap-2">
                     <div>
                       <label className={labelClass}>Ngày vào làm</label>
                       <input
@@ -602,6 +635,16 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                         value={formData.startDate}
                         onChange={handleChange}
                         className={inputClass("startDate")}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Kết thúc thử việc</label>
+                      <input
+                        type="date"
+                        name="probationEndDate"
+                        value={formData.probationEndDate}
+                        onChange={handleChange}
+                        className={inputClass("probationEndDate")}
                       />
                     </div>
                     {/* <div>
@@ -615,15 +658,41 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                       />
                     </div> */}
                   </div>
+                  {["Resigned", "Suspended"].includes(formData.status) && (
+                    <div className="md:col-span-2">
+                      <label className={labelClass}>Ngày nghỉ việc</label>
+                      <input
+                        type="date"
+                        name="endDate"
+                        value={formData.endDate}
+                        onChange={handleChange}
+                        className={inputClass("endDate")}
+                      />
+                    </div>
+                  )}
+                  <label className="md:col-span-2 flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      name="isProfileUpdated"
+                      checked={formData.isProfileUpdated}
+                      onChange={handleChange}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    Hồ sơ cá nhân đã hoàn tất
+                  </label>
                 </div>
               </div>
 
+            </div>
+
+            {/* COLUMN 2: HỢP ĐỒNG & CÁ NHÂN */}
+            <div className="space-y-4">
               {/* Hợp đồng lao động */}
-              <div className="bg-white p-4 rounded-lg border border-purple-100 shadow-sm">
-                <h4 className="font-bold text-purple-700 flex items-center gap-2 mb-4 border-b pb-2">
+              <div className="bg-white p-3 rounded-lg border border-purple-100 shadow-sm">
+                <h4 className="font-bold text-purple-700 flex items-center gap-2 mb-3 border-b pb-2">
                   <FileText size={16} /> Hợp đồng lao động
                 </h4>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   <div className="col-span-2">
                     <label className={labelClass}>Số hợp đồng</label>
                     <input
@@ -662,28 +731,15 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                       className={inputClass("contractEndDate")}
                     />
                   </div>
-                  <div className="col-span-2">
-                    <label className={labelClass}>Kết thúc thử việc</label>
-                    <input
-                      type="date"
-                      name="probationEndDate"
-                      value={formData.probationEndDate}
-                      onChange={handleChange}
-                      className={inputClass("probationEndDate")}
-                    />
-                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* COLUMN 2: CÁ NHÂN & PHÁP LÝ */}
-            <div className="space-y-6">
-              <div className="bg-white p-4 rounded-lg border border-green-100 shadow-sm">
-                <h4 className="font-bold text-green-700 flex items-center gap-2 mb-4 border-b pb-2">
+              <div className="bg-white p-3 rounded-lg border border-green-100 shadow-sm">
+                <h4 className="font-bold text-green-700 flex items-center gap-2 mb-3 border-b pb-2">
                   <User size={16} /> Thông tin cá nhân
                 </h4>
-                <div className="grid grid-cols-1 gap-3">
-                  <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className={labelClass}>
                         Ngày sinh <span className="text-red-500">*</span>
@@ -730,7 +786,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                       className={inputClass("taxIdentification")}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className={labelClass}>
                         SĐT Cá nhân <span className="text-red-500">*</span>
@@ -768,11 +824,131 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                 </div>
               </div>
 
-              <div className="bg-white p-4 rounded-lg border border-red-100 shadow-sm">
-                <h4 className="font-bold text-red-700 flex items-center gap-2 mb-4 border-b pb-2">
+            </div>
+
+            {/* COLUMN 3: LƯƠNG & NGÂN HÀNG */}
+            <div className="space-y-4">
+              <div className="bg-white p-3 rounded-lg border border-yellow-100 shadow-sm">
+                <h4 className="font-bold text-yellow-700 flex items-center gap-2 mb-3 border-b pb-2">
+                  <CreditCard size={16} /> Lương & Phụ cấp
+                </h4>
+                <div className="grid grid-cols-1 gap-2">
+                  <div>
+                    <label className={labelClass}>Lương cơ bản</label>
+                    <div className="grid grid-cols-[1fr_92px] gap-2">
+                      <input
+                        type="text"
+                        name="baseSalary"
+                        value={formatNumberWithDots(formData.baseSalary)}
+                        onChange={handleMoneyChange}
+                        className={`${inputClass("baseSalary")} font-bold text-blue-600`}
+                        placeholder="0"
+                      />
+                      <select
+                        name="baseCurrency"
+                        value={formData.baseCurrency}
+                        onChange={handleChange}
+                        className={inputClass("baseCurrency")}
+                      >
+                        <option value="VND">VND</option>
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                        <option value="JPY">JPY</option>
+                      </select>
+                    </div>
+                    <ErrorMsg field="baseSalary" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className={labelClass}>Phụ cấp ăn trưa</label>
+                      <input
+                        type="text"
+                        name="lunchAllowance"
+                        value={formatNumberWithDots(formData.lunchAllowance)}
+                        onChange={handleMoneyChange}
+                        className={inputClass("lunchAllowance")}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Phụ cấp xăng xe</label>
+                      <input
+                        type="text"
+                        name="fuelAllowance"
+                        value={formatNumberWithDots(formData.fuelAllowance)}
+                        onChange={handleMoneyChange}
+                        className={inputClass("fuelAllowance")}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className={labelClass}>Phụ cấp khác</label>
+                      <input
+                        type="text"
+                        name="otherAllowance"
+                        value={formatNumberWithDots(formData.otherAllowance)}
+                        onChange={handleMoneyChange}
+                        className={inputClass("otherAllowance")}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Phụ cấp trách nhiệm</label>
+                      <input
+                        type="text"
+                        name="responsibilityAllowance"
+                        value={formatNumberWithDots(formData.responsibilityAllowance)}
+                        onChange={handleMoneyChange}
+                        className={inputClass("responsibilityAllowance")}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* [UPDATED] NGÂN HÀNG: SỬ DỤNG DROPDOWN TỪ API VIETQR */}
+              <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                <h4 className="font-bold text-gray-700 flex items-center gap-2 mb-3 border-b pb-2">
+                  <Landmark size={16} /> Tài khoản ngân hàng
+                </h4>
+                <div className="grid grid-cols-1 gap-2">
+                  <div>
+                    <label className={labelClass}>Tên ngân hàng</label>
+                    <select
+                      name="bankName"
+                      value={formData.bankName}
+                      onChange={handleChange}
+                      className={inputClass("bankName")}
+                    >
+                      <option value="">-- Chọn ngân hàng --</option>
+                      {banks.map((bank) => (
+                        <option key={bank.id} value={bank.shortName}>
+                          {bank.shortName} - {bank.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Số tài khoản</label>
+                    <input
+                      name="bankAccountNumber"
+                      value={formData.bankAccountNumber}
+                      onChange={handleChange}
+                      className={inputClass("bankAccountNumber")}
+                      placeholder="VD: 1903..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white p-3 rounded-lg border border-red-100 shadow-sm">
+                <h4 className="font-bold text-red-700 flex items-center gap-2 mb-3 border-b pb-2">
                   <Phone size={16} /> Liên hệ khẩn cấp
                 </h4>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   <div className="col-span-2">
                     <label className={labelClass}>Họ tên người thân</label>
                     <input
@@ -806,117 +982,11 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                 </div>
               </div>
             </div>
-
-            {/* COLUMN 3: LƯƠNG & NGÂN HÀNG */}
-            <div className="space-y-6">
-              <div className="bg-white p-4 rounded-lg border border-yellow-100 shadow-sm">
-                <h4 className="font-bold text-yellow-700 flex items-center gap-2 mb-4 border-b pb-2">
-                  <CreditCard size={16} /> Lương & Phụ cấp
-                </h4>
-                <div className="grid grid-cols-1 gap-3">
-                  <div>
-                    <label className={labelClass}>Lương cơ bản (VND)</label>
-                    <input
-                      type="text"
-                      name="baseSalary"
-                      value={formatNumberWithDots(formData.baseSalary)}
-                      onChange={handleMoneyChange}
-                      className={`${inputClass("baseSalary")} font-bold text-blue-600`}
-                      placeholder="0"
-                    />
-                    <ErrorMsg field="baseSalary" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelClass}>Phụ cấp ăn trưa</label>
-                      <input
-                        type="text"
-                        name="lunchAllowance"
-                        value={formatNumberWithDots(formData.lunchAllowance)}
-                        onChange={handleMoneyChange}
-                        className={inputClass("lunchAllowance")}
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Phụ cấp xăng xe</label>
-                      <input
-                        type="text"
-                        name="fuelAllowance"
-                        value={formatNumberWithDots(formData.fuelAllowance)}
-                        onChange={handleMoneyChange}
-                        className={inputClass("fuelAllowance")}
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelClass}>Phụ cấp khác</label>
-                      <input
-                        type="text"
-                        name="otherAllowance"
-                        value={formatNumberWithDots(formData.otherAllowance)}
-                        onChange={handleMoneyChange}
-                        className={inputClass("otherAllowance")}
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Phụ cấp trách nhiệm</label>
-                      <input
-                        type="text"
-                        name="responsibilityAllowance"
-                        value={formatNumberWithDots(formData.responsibilityAllowance)}
-                        onChange={handleMoneyChange}
-                        className={inputClass("responsibilityAllowance")}
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* [UPDATED] NGÂN HÀNG: SỬ DỤNG DROPDOWN TỪ API VIETQR */}
-              <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                <h4 className="font-bold text-gray-700 flex items-center gap-2 mb-4 border-b pb-2">
-                  <Landmark size={16} /> Tài khoản ngân hàng
-                </h4>
-                <div className="grid grid-cols-1 gap-3">
-                  <div>
-                    <label className={labelClass}>Tên ngân hàng</label>
-                    <select
-                      name="bankName"
-                      value={formData.bankName}
-                      onChange={handleChange}
-                      className={inputClass("bankName")}
-                    >
-                      <option value="">-- Chọn ngân hàng --</option>
-                      {banks.map((bank) => (
-                        <option key={bank.id} value={bank.shortName}>
-                          {bank.shortName} - {bank.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={labelClass}>Số tài khoản</label>
-                    <input
-                      name="bankAccountNumber"
-                      value={formData.bankAccountNumber}
-                      onChange={handleChange}
-                      className={inputClass("bankAccountNumber")}
-                      placeholder="VD: 1903..."
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </form>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
+        <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
           <Button variant="secondary" onClick={onClose} disabled={updating}>
             Hủy bỏ
           </Button>

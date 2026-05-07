@@ -2,10 +2,10 @@
 
 import DataTableShell from "../../../components/shared/DataTableShell";
 import {
-  formatHours,
   formatMoney,
   getAllowanceBreakdownItems,
-  getOtBreakdownItems,
+  getLeaveBreakdownItems,
+  getOtPayBreakdownItems,
   getPayrollStatusBadgeClass,
   getPayrollStatusLabel,
 } from "./payrollOverviewUtils";
@@ -28,9 +28,18 @@ const BreakdownList = ({ items, formatter }) => {
   return (
     <div className="mt-1 space-y-1 text-xs text-gray-500">
       {items.map((item) => (
-        <div key={item.key} className="flex items-center justify-between gap-2">
-          <span className="truncate">{item.label}</span>
-          <span className="font-mono font-medium text-gray-700">{formatter(item.value)}</span>
+        <div key={item.key} className="flex items-start justify-between gap-2">
+          <span className="min-w-0">
+            <span className="block truncate">{item.label}</span>
+            {item.formulaText && (
+              <span className="block truncate font-mono text-[11px] text-gray-400">
+                {item.formulaText}
+              </span>
+            )}
+          </span>
+          <span className="shrink-0 font-mono font-medium text-gray-700">
+            {formatter(item.value)}
+          </span>
         </div>
       ))}
     </div>
@@ -56,7 +65,8 @@ const PayrollOverviewTable = ({
     <div className="space-y-3">
       {rows.map((row) => {
         const isSelected = selectedRows.includes(row._id);
-        const otBreakdown = getOtBreakdownItems(row);
+        const otPayBreakdown = getOtPayBreakdownItems(row);
+        const leaveBreakdown = getLeaveBreakdownItems(row);
         const allowanceBreakdown = getAllowanceBreakdownItems(row);
 
         return (
@@ -92,7 +102,7 @@ const PayrollOverviewTable = ({
               <div>
                 <p className="text-xs uppercase text-gray-400">Lương OT</p>
                 <p className="font-medium text-orange-600">{formatMoney(row.otPay || 0)}</p>
-                <BreakdownList items={otBreakdown} formatter={formatHours} />
+                <BreakdownList items={otPayBreakdown} formatter={formatMoney} />
               </div>
               <div>
                 <p className="text-xs uppercase text-gray-400">Phụ cấp</p>
@@ -104,6 +114,7 @@ const PayrollOverviewTable = ({
                 <p className="font-medium text-red-600">
                   {row.actualWorkDays}/{row.standardWorkDays}
                 </p>
+                <BreakdownList items={leaveBreakdown} formatter={formatMoney} />
               </div>
             </div>
 
@@ -163,7 +174,8 @@ const PayrollOverviewTable = ({
         <tbody className="divide-y divide-gray-100 bg-white">
           {rows.map((row, index) => {
             const isSelected = selectedRows.includes(row._id);
-            const otBreakdown = getOtBreakdownItems(row);
+            const otPayBreakdown = getOtPayBreakdownItems(row);
+            const leaveBreakdown = getLeaveBreakdownItems(row);
             const allowanceBreakdown = getAllowanceBreakdownItems(row);
 
             return (
@@ -196,14 +208,15 @@ const PayrollOverviewTable = ({
                 </td>
                 <td className="p-4">
                   <div className="text-right font-mono text-orange-600">{formatMoney(row.otPay || 0)}</div>
-                  <BreakdownList items={otBreakdown} formatter={formatHours} />
+                  <BreakdownList items={otPayBreakdown} formatter={formatMoney} />
                 </td>
                 <td className="p-4">
                   <div className="text-right font-mono text-green-600">{formatMoney(row.totalAllowance || 0)}</div>
                   <BreakdownList items={allowanceBreakdown} formatter={formatMoney} />
                 </td>
                 <td className="p-4 text-right font-mono text-red-600">
-                  {row.actualWorkDays}/{row.standardWorkDays}
+                  <div>{row.actualWorkDays}/{row.standardWorkDays}</div>
+                  <BreakdownList items={leaveBreakdown} formatter={formatMoney} />
                 </td>
                 <td className="bg-blue-50/50 p-4 text-right font-mono text-base font-bold text-blue-700">
                   {formatMoney(row.netIncome || 0)}
