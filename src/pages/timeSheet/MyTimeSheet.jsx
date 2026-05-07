@@ -1,7 +1,6 @@
-import { useState, useMemo, lazy, Suspense } from "react";
+import { useMemo, useState, lazy, Suspense } from "react";
 import { toast } from "react-toastify";
 
-// Hooks
 import {
   useTimesheetData,
   useTimesheetModals,
@@ -9,31 +8,39 @@ import {
   useMonthNavigation,
 } from "./hooks";
 
-// Components
 import {
   TimesheetHeader,
   TimesheetStats,
   CalendarGrid,
   DayDetailPanel,
   CalendarLegend,
+  TimesheetAttendanceTable,
 } from "./components";
 
-// Lazy load modals
 const LeaveRequestModal = lazy(() => import("../../components/modals/CreateLeaveModal"));
 const ModalOT = lazy(() => import("../../components/modals/OTModal"));
 
 const MyTimesheet = () => {
   const [selectedDate, setSelectedDate] = useState(null);
 
-  // Custom hooks
-  const { selectedMonth, selectedYear, todayInfo, handlePreviousMonth, handleNextMonth } = 
-    useMonthNavigation();
+  const {
+    selectedMonth,
+    selectedYear,
+    todayInfo,
+    handlePreviousMonth,
+    handleNextMonth,
+  } = useMonthNavigation();
 
-  const { timesheetData, attendanceData, holidayData, loading } = 
+  const { timesheetData, attendanceData, holidayData, loading } =
     useTimesheetData(selectedMonth, selectedYear);
 
-  const { calendarDays } = 
-    useCalendarData(selectedMonth, selectedYear, todayInfo, attendanceData, holidayData);
+  const { calendarDays } = useCalendarData(
+    selectedMonth,
+    selectedYear,
+    todayInfo,
+    attendanceData,
+    holidayData,
+  );
 
   const {
     isLeaveModalOpen,
@@ -48,37 +55,36 @@ const MyTimesheet = () => {
     submitOTRequest,
   } = useTimesheetModals();
 
-  // Default leave type based on remaining leave days
   const defaultLeaveType = useMemo(() => {
     const remaining = timesheetData?.leave?.remaining || 0;
     return remaining > 0 ? "ANNUAL" : "UNPAID";
   }, [timesheetData?.leave?.remaining]);
 
-  // Handlers
   const handleDayClick = (day) => {
     setSelectedDate(day);
   };
 
   const handleLeaveRequest = () => {
     if (!selectedDate?.inMonth || !selectedDate?.isoDate) {
-      toast.info("Vui lòng chọn ngày trên lịch trước khi xin nghỉ.");
+      toast.info("Vui long chon ngay tren lich truoc khi xin nghi.");
       return;
     }
+
     openLeaveModal(selectedDate.isoDate);
   };
 
   const handleOTRequest = () => {
     if (!selectedDate?.inMonth || !selectedDate?.isoDate) {
-      toast.info("Vui lòng chọn ngày trên lịch trước khi đăng ký OT.");
+      toast.info("Vui long chon ngay tren lich truoc khi dang ky OT.");
       return;
     }
+
     openOTModal(selectedDate.isoDate);
   };
 
   return (
     <div className="space-y-6 max-w-full">
       <Suspense fallback={<div>Loading...</div>}>
-        {/* OT Modal */}
         {isOTModalOpen && (
           <ModalOT
             open={isOTModalOpen}
@@ -91,7 +97,6 @@ const MyTimesheet = () => {
           />
         )}
 
-        {/* Leave Modal */}
         {isLeaveModalOpen && (
           <LeaveRequestModal
             defaultFromDate={defaultFromDate}
@@ -102,7 +107,6 @@ const MyTimesheet = () => {
         )}
       </Suspense>
 
-      {/* Header */}
       <TimesheetHeader
         selectedMonth={selectedMonth}
         selectedYear={selectedYear}
@@ -110,36 +114,42 @@ const MyTimesheet = () => {
         onNextMonth={handleNextMonth}
       />
 
-      {/* Stats Cards */}
-      <TimesheetStats
-        timesheetData={timesheetData}
-        attendanceData={attendanceData}
-      />
-
-      {/* Main Content: Calendar + Detail Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
-        {/* Calendar Grid */}
-        <CalendarGrid
+      <div className="md:hidden">
+        <TimesheetAttendanceTable
           calendarDays={calendarDays}
           loading={loading}
-          selectedDate={selectedDate}
-          onDayClick={handleDayClick}
-          selectedMonth={selectedMonth}
-          selectedYear={selectedYear}
-          todayInfo={todayInfo}
+        />
+      </div>
+
+      <div className="hidden space-y-6 md:block">
+        <TimesheetStats
+          timesheetData={timesheetData}
+          attendanceData={attendanceData}
         />
 
-        {/* Right Panel */}
-        <div className="lg:col-span-4 xl:col-span-3 space-y-6">
-          <DayDetailPanel
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <CalendarGrid
+            className="lg:col-span-8 xl:col-span-9"
+            calendarDays={calendarDays}
+            loading={loading}
             selectedDate={selectedDate}
-            todayInfo={todayInfo}
+            onDayClick={handleDayClick}
             selectedMonth={selectedMonth}
             selectedYear={selectedYear}
-            onLeaveRequest={handleLeaveRequest}
-            onOTRequest={handleOTRequest}
+            todayInfo={todayInfo}
           />
-          <CalendarLegend />
+
+          <div className="space-y-6 lg:col-span-4 xl:col-span-3">
+            <DayDetailPanel
+              selectedDate={selectedDate}
+              todayInfo={todayInfo}
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
+              onLeaveRequest={handleLeaveRequest}
+              onOTRequest={handleOTRequest}
+            />
+            <CalendarLegend />
+          </div>
         </div>
       </div>
     </div>

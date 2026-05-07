@@ -136,7 +136,7 @@ const LeaveTable = ({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="space-y-3 p-3 sm:hidden">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 sm:hidden">
         {leaves.map((leave) => {
           const row = getRowState(leave);
           return (

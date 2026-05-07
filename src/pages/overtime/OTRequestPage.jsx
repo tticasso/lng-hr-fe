@@ -38,7 +38,7 @@ const OTRequestPage = ({ mode, title, description }) => {
   } = useOvertimeRequests({ mode });
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col gap-3 overflow-hidden lg:gap-4">
+    <div className="flex min-w-0 flex-col gap-3 overflow-visible sm:h-full sm:min-h-0 sm:overflow-hidden lg:gap-4">
       <div className="flex shrink-0 flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div>
           <h1 className="text-xl font-bold text-gray-800 sm:text-[2rem]">{title}</h1>
@@ -48,22 +48,30 @@ const OTRequestPage = ({ mode, title, description }) => {
           </p>
         </div>
 
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+        <div className="flex w-full gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
           {mode === "mine" && (
-            <Button className="flex w-full items-center gap-2 sm:w-auto" onClick={openCreateOTModal}>
+            <Button
+              className="h-9 flex-1 gap-1.5 px-2 text-xs sm:h-auto sm:w-auto sm:flex-none sm:gap-2 sm:px-4 sm:text-sm"
+              onClick={openCreateOTModal}
+            >
               <Plus size={16} />
-              Tạo đơn OT
+              <span className="sm:hidden">Tạo OT</span>
+              <span className="hidden sm:inline">Tạo đơn OT</span>
             </Button>
           )}
 
-          <Button variant="secondary" className="flex w-full items-center gap-2 sm:w-auto" onClick={refresh}>
+          <Button
+            variant="secondary"
+            className="h-9 flex-1 gap-1.5 px-2 text-xs sm:h-auto sm:w-auto sm:flex-none sm:gap-2 sm:px-4 sm:text-sm"
+            onClick={refresh}
+          >
             {loading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
             Làm mới
           </Button>
         </div>
       </div>
 
-      <Card className="flex flex-1 min-h-0 min-w-0 flex-col overflow-hidden border border-gray-200 p-0">
+      <Card className="flex min-w-0 flex-col overflow-visible border border-gray-200 p-0 sm:min-h-0 sm:flex-1 sm:overflow-hidden">
         <OTFilters filters={filters} setFilters={setFilters} />
 
         <OTTable

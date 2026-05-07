@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { Calendar, Plus, Edit, Trash2, X, Clock, Eye, Info } from "lucide-react";
+import React, { useCallback, useEffect, useState } from "react";
+import { BarChart3, Calendar, ChevronDown, Clock, Edit, Eye, Info, Plus, Search, Trash2, Upload, X } from "lucide-react";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import MonthYearPicker from "../../components/common/MonthYearPicker";
 import { holidayAPI } from "../../apis/holidayAPI";
 import { shitfAPI } from "../../apis/shiftsAPI";
 import { toast } from "react-toastify";
-import { departmentApi } from "../../apis/departmentApi";
-import { employeeApi } from "../../apis/employeeApi";
 
 const Holiday = () => {
   const [activeTab, setActiveTab] = useState("holidays");
@@ -25,7 +23,7 @@ const Holiday = () => {
   const [checkDate, setCheckDate] = useState("");
   const [checkResult, setCheckResult] = useState(null);
   const [bulkPayload, setBulkPayload] = useState('{\n  "holidays": []\n}');
-  const [departments, setDepartments] = useState([]);
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [selectedMonthYear, setSelectedMonthYear] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -44,10 +42,7 @@ const Holiday = () => {
   const [shifts, setShifts] = useState([]);
   const [loadingShifts, setLoadingShifts] = useState(true);
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
-  const [isShiftDetailModalOpen, setIsShiftDetailModalOpen] = useState(false);
   const [editingShift, setEditingShift] = useState(null);
-  const [selectedShift, setSelectedShift] = useState(null);
-  const [loadingShiftDetail, setLoadingShiftDetail] = useState(false);
   const [shiftFormData, setShiftFormData] = useState({
     name: "",
     shiftCode: "",
@@ -59,22 +54,6 @@ const Holiday = () => {
     appliedDepartments: [],
     isActive: true,
   });
-
-
-  useEffect(() => {
-    const callAPIDepartment = async () => {
-      try {
-        const res = await departmentApi.getAll();
-        console.log("DATA RES :", res);
-        setDepartments(res.data?.data || []);
-      } catch (error) {
-        console.log("DATA error :", error);
-      }
-    };
-    callAPIDepartment();
-    fetchHolidays();
-    fetchShifts();
-  }, [selectedMonthYear]);
 
 
   // Menu items cho sidebar
@@ -94,19 +73,16 @@ const Holiday = () => {
   ];
 
   // Fetch holidays từ API
-  const fetchHolidays = async () => {
+  const fetchHolidays = useCallback(async () => {
     try {
       setLoading(true);
       
-      // Tính toán startDate và endDate từ selectedMonthYear
       const [year, month] = selectedMonthYear.split("-");
-      const startDate = `${year}-${month}-01`;
-      
-      // Tính ngày cuối cùng của tháng
-      const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
-      const endDate = `${year}-${month}-${lastDay}`;
-      
-      const res = await holidayAPI.get(startDate, endDate);
+      const res = await holidayAPI.getAll({
+        year,
+        month: Number(month),
+        limit: 100,
+      });
       const holidayData = res.data?.data || [];
       setHolidays(holidayData);
     } catch (error) {
@@ -115,10 +91,10 @@ const Holiday = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedMonthYear]);
 
   // Fetch shifts từ API
-  const fetchShifts = async () => {
+  const fetchShifts = useCallback(async () => {
     try {
       setLoadingShifts(true);
       const res = await shitfAPI.get();
@@ -130,7 +106,12 @@ const Holiday = () => {
     } finally {
       setLoadingShifts(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchHolidays();
+    fetchShifts();
+  }, [fetchHolidays, fetchShifts]);
 
   // ===== HOLIDAYS FUNCTIONS =====
 
@@ -195,7 +176,15 @@ const Holiday = () => {
 
     try {
       if (editingHoliday) {
-        await holidayAPI.update(editingHoliday._id, formData);
+        await holidayAPI.update(editingHoliday._id, {
+          ...formData,
+          appliedDepartments: formData.appliedDepartments.map((dept) =>
+            typeof dept === "string" ? dept : dept._id,
+          ),
+          appliedRoles: formData.appliedRoles.map((role) =>
+            typeof role === "string" ? role : role._id,
+          ),
+        });
         toast.success("Cập nhật ngày nghỉ thành công");
       } else {
         await holidayAPI.create(formData);
@@ -306,23 +295,6 @@ const Holiday = () => {
 
   // ===== SHIFTS FUNCTIONS =====
 
-  // Open modal thêm shift mới
-  const handleAddShift = () => {
-    setEditingShift(null);
-    setShiftFormData({
-      name: "",
-      shiftCode: "",
-      startTime: "",
-      endTime: "",
-      breakMinutes: 0,
-      workHours: 8,
-      isDefault: false,
-      appliedDepartments: [],
-      isActive: true,
-    });
-    setIsShiftModalOpen(true);
-  };
-
   // Open modal sửa shift
   const handleEditShift = (shift) => {
     setEditingShift(shift);
@@ -393,22 +365,6 @@ const Holiday = () => {
     }
   };
 
-  // Xem chi tiết shift
-  const handleViewShiftDetail = async (shiftId) => {
-    try {
-      setLoadingShiftDetail(true);
-      setIsShiftDetailModalOpen(true);
-      const res = await shitfAPI.getbyid(shiftId);
-      setSelectedShift(res.data?.data || res.data);
-    } catch (error) {
-      console.error("Error fetching shift detail:", error);
-      toast.error("Không thể tải chi tiết ca làm việc");
-      setIsShiftDetailModalOpen(false);
-    } finally {
-      setLoadingShiftDetail(false);
-    }
-  };
-
   // ===== RENDER FUNCTIONS =====
 
   // Render nội dung Lịch nghỉ
@@ -430,55 +386,85 @@ const Holiday = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-          <div className="flex gap-2">
-            <Button type="button" variant="secondary" onClick={handleLoadTemplates}>
-              Templates
-            </Button>
-            <Button type="button" variant="secondary" onClick={handleLoadYearSummary}>
-              Tong hop nam
-            </Button>
+      <div className="border border-gray-200 rounded-lg bg-white">
+        <button
+          type="button"
+          onClick={() => setIsToolsOpen((current) => !current)}
+          className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+        >
+          <div>
+            <p className="text-sm font-semibold text-gray-800">Công cụ nâng cao</p>
+            <p className="text-xs text-gray-500 mt-0.5">Kiểm tra ngày nghỉ, xem mẫu từ hệ thống hoặc import hàng loạt khi cần.</p>
           </div>
-          <div className="mt-3 text-xs text-gray-600 max-h-24 overflow-auto">
-            {holidayTemplates.length > 0 && (
-              <pre>{JSON.stringify(holidayTemplates, null, 2)}</pre>
-            )}
-            {holidaySummary && (
-              <pre>{JSON.stringify(holidaySummary, null, 2)}</pre>
-            )}
-          </div>
-        </div>
-        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-          <label className="block text-xs font-medium text-gray-500 mb-1">Kiem tra ngay nghi</label>
-          <div className="flex gap-2">
-            <input
-              type="date"
-              value={checkDate}
-              onChange={(e) => setCheckDate(e.target.value)}
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
-            />
-            <Button type="button" variant="secondary" onClick={handleCheckHoliday}>
-              Kiem tra
-            </Button>
-          </div>
-          {checkResult && (
-            <pre className="mt-2 text-xs text-gray-600 max-h-20 overflow-auto">{JSON.stringify(checkResult, null, 2)}</pre>
-          )}
-        </div>
-        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-          <label className="block text-xs font-medium text-gray-500 mb-1">Bulk import JSON</label>
-          <textarea
-            value={bulkPayload}
-            onChange={(e) => setBulkPayload(e.target.value)}
-            rows={3}
-            spellCheck={false}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono"
+          <ChevronDown
+            size={18}
+            className={`text-gray-500 transition-transform ${isToolsOpen ? "rotate-180" : ""}`}
           />
-          <Button type="button" variant="secondary" onClick={handleBulkImportHolidays} className="mt-2">
-            Import hang loat
-          </Button>
-        </div>
+        </button>
+
+        {isToolsOpen && (
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 border-t border-gray-100 p-4 bg-gray-50">
+            <div className="rounded-lg border border-gray-200 bg-white p-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                <BarChart3 size={16} className="text-blue-600" />
+                Mẫu và tổng hợp
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button type="button" variant="secondary" onClick={handleLoadTemplates}>
+                  Xem mẫu
+                </Button>
+                <Button type="button" variant="secondary" onClick={handleLoadYearSummary}>
+                  Tổng hợp năm
+                </Button>
+              </div>
+              {(holidayTemplates.length > 0 || holidaySummary) && (
+                <pre className="mt-3 max-h-32 overflow-auto rounded-md bg-gray-900 p-3 text-xs text-gray-100">
+                  {JSON.stringify({ templates: holidayTemplates, summary: holidaySummary }, null, 2)}
+                </pre>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-gray-200 bg-white p-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                <Search size={16} className="text-green-600" />
+                Kiểm tra một ngày
+              </div>
+              <div className="mt-3 flex gap-2">
+                <input
+                  type="date"
+                  value={checkDate}
+                  onChange={(e) => setCheckDate(e.target.value)}
+                  className="min-w-0 flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                />
+                <Button type="button" variant="secondary" onClick={handleCheckHoliday}>
+                  Kiểm tra
+                </Button>
+              </div>
+              {checkResult && (
+                <pre className="mt-3 max-h-28 overflow-auto rounded-md bg-gray-900 p-3 text-xs text-gray-100">
+                  {JSON.stringify(checkResult, null, 2)}
+                </pre>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-gray-200 bg-white p-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                <Upload size={16} className="text-orange-600" />
+                Import nâng cao
+              </div>
+              <textarea
+                value={bulkPayload}
+                onChange={(e) => setBulkPayload(e.target.value)}
+                rows={4}
+                spellCheck={false}
+                className="mt-3 w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono"
+              />
+              <Button type="button" variant="secondary" onClick={handleBulkImportHolidays} className="mt-2">
+                Import JSON
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {loading ? (

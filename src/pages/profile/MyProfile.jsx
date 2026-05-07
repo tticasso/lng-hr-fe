@@ -92,6 +92,8 @@ const MyProfile = () => {
           emergencyName: user.emergencyContact?.name || "",
           emergencyPhone: user.emergencyContact?.phone || "",
           emergencyRelation: user.emergencyContact?.relation || "",
+          bankName: user.bankAccount?.bankName || "",
+          bankAccountNumber: user.bankAccount?.accountNumber || "",
         });
       }
     }
@@ -164,6 +166,10 @@ const MyProfile = () => {
           name: formData.emergencyName,
           phone: formData.emergencyPhone,
           relation: formData.emergencyRelation,
+        },
+        bankAccount: {
+          bankName: formData.bankName,
+          accountNumber: formData.bankAccountNumber,
         },
       };
 
@@ -446,6 +452,36 @@ const MyProfile = () => {
                         ? errorInputClassName
                         : inputClassName
                     }
+                  />
+                </InputGroup>
+              </div>
+            </div>
+
+            {/* Nhóm 4: Tài khoản ngân hàng */}
+            <div>
+              <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4 border-t pt-6">
+                4. Tài khoản ngân hàng
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <InputGroup label="Tên ngân hàng">
+                  <input
+                    type="text"
+                    name="bankName"
+                    value={formData.bankName}
+                    onChange={handleInputChange}
+                    className={inputClassName}
+                    placeholder="VD: Vietcombank, ACB..."
+                  />
+                </InputGroup>
+
+                <InputGroup label="Số tài khoản">
+                  <input
+                    type="text"
+                    name="bankAccountNumber"
+                    value={formData.bankAccountNumber}
+                    onChange={handleInputChange}
+                    className={inputClassName}
+                    placeholder="VD: 1903..."
                   />
                 </InputGroup>
               </div>

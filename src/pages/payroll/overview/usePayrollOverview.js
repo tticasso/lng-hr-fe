@@ -9,7 +9,7 @@ import {
   formatMoney,
   getAllowanceBreakdownItems,
   getCurrentPayrollPeriod,
-  getOtBreakdownItems,
+  getLeaveBreakdownItems,
   getPayrollStatusLabel,
   OT_TYPE_LABELS,
 } from "./payrollOverviewUtils";
@@ -136,6 +136,7 @@ export const usePayrollOverview = () => {
       await fetchPayrollData();
       setSelectedRows([]);
     } catch (error) {
+      console.error("[ERROR] Error marking payroll as paid:", error);
       toast.error("Thanh toán thất bại");
     }
   };
@@ -156,47 +157,60 @@ export const usePayrollOverview = () => {
       const otKeys = Object.keys(OT_TYPE_LABELS);
       const allowanceKeys = Object.keys(ALLOWANCE_TYPE_LABELS);
 
-      const exportData = filteredData.map((item, index) => ({
-        "Số thứ tự": index + 1,
-        "Mã nhân viên": item.employeeId?.employeeCode || "",
-        "Họ và tên": item.employeeId?.fullName || "",
-        "Phòng ban": item.departmentId?.name || "",
-        "Lương cơ bản": item.baseSalary || 0,
-        "Công chuẩn": item.standardWorkDays || 0,
-        "Công thực tế": item.actualWorkDays || 0,
-        "Nghỉ phép hưởng lương": item.paidLeaveDays || 0,
-        "Tổng giờ OT": Object.values(item.otHours || {}).reduce(
-          (sum, value) => sum + Number(value || 0),
+      const exportData = filteredData.map((item, index) => {
+        const leaveDetails = getLeaveBreakdownItems(item);
+        const totalLeaveDays = leaveDetails.reduce(
+          (sum, detail) => sum + Number(detail.days || 0),
           0,
-        ),
-        ...Object.fromEntries(
-          otKeys.map((key) => [
-            `${OT_TYPE_LABELS[key]} (giờ)`,
-            Number(item.otHours?.[key] || 0),
-          ]),
-        ),
-        "Tiền OT": item.otPay || 0,
-        ...Object.fromEntries(
-          allowanceKeys.map((key) => [
-            ALLOWANCE_TYPE_LABELS[key],
-            Number(item.allowanceBreakdown?.[key] || 0),
-          ]),
-        ),
-        "Tổng phụ cấp": item.totalAllowance || 0,
-        "Chi tiết OT": getOtBreakdownItems(item)
-          .map((detail) => `${detail.label}: ${detail.value.toFixed(2)}h`)
-          .join(" | "),
-        "Chi tiết phụ cấp": getAllowanceBreakdownItems(item)
-          .map((detail) => `${detail.label}: ${formatMoney(detail.value)}`)
-          .join(" | "),
-        "BHXH": item.insurance?.bhxh || 0,
-        "BHYT": item.insurance?.bhyt || 0,
-        "BHTN": item.insurance?.bhtn || 0,
-        "Khấu trừ bảo hiểm": item.insurance?.total || item.totalDeduction || 0,
-        "Tổng thu nhập": item.grossIncome || 0,
-        "Thực nhận": item.netIncome || 0,
-        "Trạng thái": getPayrollStatusLabel(item.status),
-      }));
+        );
+        const totalLeaveAmount = leaveDetails.reduce(
+          (sum, detail) => sum + Number(detail.value || 0),
+          0,
+        );
+
+        return {
+          "Số thứ tự": index + 1,
+          "Mã nhân viên": item.employeeId?.employeeCode || "",
+          "Họ và tên": item.employeeId?.fullName || "",
+          "Phòng ban": item.departmentId?.name || "",
+          "Lương cơ bản": item.baseSalary || 0,
+          "Lương theo ngày": item.dailyRate || 0,
+          "Lương theo giờ": Number(item.dailyRate || 0) / 8,
+          "Công chuẩn": item.standardWorkDays || 0,
+          "Công thực tế": item.actualWorkDays || 0,
+          "Nghỉ phép hưởng lương": item.paidLeaveDays || 0,
+          "Tổng ngày nghỉ": Number(totalLeaveDays.toFixed(2)),
+          "Tổng tiền nghỉ": Math.round(totalLeaveAmount),
+          "Tổng giờ OT": Object.values(item.otHours || {}).reduce(
+            (sum, value) => sum + Number(value || 0),
+            0,
+          ),
+          ...Object.fromEntries(
+            otKeys.map((key) => {
+              const label = OT_TYPE_LABELS[key];
+              return [`${label} - Giờ`, Number(item.otHours?.[key] || 0)];
+            }),
+          ),
+          "Tiền OT": item.otPay || 0,
+          ...Object.fromEntries(
+            allowanceKeys.map((key) => [
+              ALLOWANCE_TYPE_LABELS[key],
+              Number(item.allowanceBreakdown?.[key] || 0),
+            ]),
+          ),
+          "Tổng phụ cấp": item.totalAllowance || 0,
+          "Chi tiết phụ cấp": getAllowanceBreakdownItems(item)
+            .map((detail) => `${detail.label}: ${formatMoney(detail.value)}`)
+            .join(" | "),
+          "BHXH": item.insurance?.bhxh || 0,
+          "BHYT": item.insurance?.bhyt || 0,
+          "BHTN": item.insurance?.bhtn || 0,
+          "Khấu trừ bảo hiểm": item.insurance?.total || item.totalDeduction || 0,
+          "Tổng thu nhập": item.grossIncome || 0,
+          "Thực nhận": item.netIncome || 0,
+          "Trạng thái": getPayrollStatusLabel(item.status),
+        };
+      });
 
       const ws = XLSX.utils.json_to_sheet(exportData, { origin: "A4" });
       const [year, month] = selectedMonth.split("-");

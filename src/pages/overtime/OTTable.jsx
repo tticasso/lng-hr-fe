@@ -25,6 +25,20 @@ const StatusBadge = ({ status }) => {
   );
 };
 
+const formatCurrency = (value) => {
+  if (value === null || value === undefined) return "--";
+  return `${Number(value || 0).toLocaleString("vi-VN")} đ`;
+};
+
+const OTMoneyValue = ({ ot, align = "left" }) => (
+  <div className={align === "right" ? "text-right" : ""}>
+    <p className="font-semibold text-gray-800">{formatCurrency(ot?.otPayDetails?.totalAmount)}</p>
+    {ot?.otPayDetails?.isEstimated && (
+      <p className="text-[11px] font-medium text-gray-400">Tạm tính</p>
+    )}
+  </div>
+);
+
 const OTActionButtons = ({
   ot,
   row,
@@ -59,7 +73,7 @@ const OTActionButtons = ({
         </button>
         <button
           type="button"
-          disabled={!row.canRejectOT || !row.canApproveOT}
+          disabled={!row.canRejectOT}
           onClick={() => handleRejectOT(ot)}
           className={`${actionButtonClass} border-red-200 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-300`}
           title={row.ownOT ? "Không thể tự từ chối đơn của chính mình" : "Từ chối OT"}
@@ -104,8 +118,6 @@ const OTTable = ({
   openEditOTModal,
   handleDeleteOT,
 }) => {
-  const colSpanCount = 6;
-
   if (loading) {
     return (
       <div className="flex min-h-0 flex-1 flex-col">
@@ -131,7 +143,7 @@ const OTTable = ({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="space-y-3 p-3 sm:hidden">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 sm:hidden">
         {ots.map((ot) => {
           const row = getRowState(ot);
           return (
@@ -162,6 +174,10 @@ const OTTable = ({
                     {ot?.startTime && ot?.endTime ? `${ot.startTime} - ${ot.endTime}` : "--"}
                   </span>
                 </div>
+                <div className="flex items-start justify-between gap-3">
+                  <span className="text-xs uppercase tracking-wide text-gray-400">Tiền OT</span>
+                  <OTMoneyValue ot={ot} align="right" />
+                </div>
               </div>
 
               <div className="mt-4 border-t border-gray-100 pt-3">
@@ -190,6 +206,7 @@ const OTTable = ({
               <th className="w-[92px] px-2 py-2.5">Ngày OT</th>
               <th className="w-[108px] px-2 py-2.5">Loại OT</th>
               <th className="w-[124px] px-2 py-2.5">Giờ đăng ký</th>
+              <th className="w-[112px] px-2 py-2.5 text-right">Tiền OT</th>
               <th className="w-[104px] px-2 py-2.5">Trạng thái</th>
               <th className="w-[144px] px-2 py-2.5 text-center">Hành động</th>
             </tr>
@@ -212,6 +229,9 @@ const OTTable = ({
                   </td>
                   <td className="whitespace-nowrap px-2 py-2.5 text-gray-700">
                     {ot?.startTime && ot?.endTime ? `${ot.startTime} - ${ot.endTime}` : "--"}
+                  </td>
+                  <td className="whitespace-nowrap px-2 py-2.5">
+                    <OTMoneyValue ot={ot} align="right" />
                   </td>
                   <td className="px-2 py-2.5 align-middle">
                     <StatusBadge status={row.status} />

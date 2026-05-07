@@ -10,10 +10,11 @@ const CalendarGrid = memo(({
   onDayClick,
   selectedMonth,
   selectedYear,
-  todayInfo 
+  todayInfo,
+  className = "",
 }) => {
   return (
-    <Card className="lg:col-span-8 xl:col-span-9 p-0 overflow-hidden border border-gray-200 shadow-sm">
+    <Card className={`w-full p-0 overflow-hidden border border-gray-200 shadow-sm ${className}`}>
       {/* Calendar Header Days */}
       <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
         {dayLabels.map((dayLabel, i) => (

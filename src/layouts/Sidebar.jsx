@@ -434,12 +434,12 @@ const Sidebar = () => {
             {!shouldCollapse && <span>Đăng xuất</span>}
           </button>
 
-          {!shouldCollapse && (
+          {/* {!shouldCollapse && (
             <div className="mt-3 flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-500">
               <Plane size={14} />
               <span className="truncate">© 2026 LNG Inc.</span>
             </div>
-          )}
+          )} */}
         </div>
       </aside>
     </>
