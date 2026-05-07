@@ -12,7 +12,7 @@ const currentEmployeeId = () => localStorage.getItem("employee_ID") || "";
 
 export const useOvertimeRequests = ({ mode }) => {
   const role = useMemo(() => getStoredRole(), []);
-  const { canApprove } = useMemo(() => getRoleFlags(role), [role]);
+  const { canApprove, isSuperApprover } = useMemo(() => getRoleFlags(role), [role]);
 
   const [loading, setLoading] = useState(true);
   const [ots, setOts] = useState([]);
@@ -47,6 +47,75 @@ export const useOvertimeRequests = ({ mode }) => {
   );
 
   const isOwnRequest = (request) => getEntityId(request?.employeeId) === currentEmployeeId();
+
+  const getSuperApprovalLevel = (ot) => {
+    const chain = Array.isArray(ot?.approvalChain) ? ot.approvalChain : [];
+    const pendingStep = chain.find((step) => normalizeStatus(step?.status) === "PENDING");
+    if (pendingStep?.level) return pendingStep.level;
+
+    const maxLevel = chain.reduce((max, step) => Math.max(max, Number(step?.level) || 0), 0);
+    return maxLevel > 0 ? maxLevel + 1 : 1;
+  };
+
+  const getOTApprovalContext = (ot) => {
+    const status = normalizeStatus(ot?.status);
+    if (status !== "PENDING") {
+      return {
+        canAction: false,
+        approvalLevel: null,
+        title: "Đơn đã được xử lý",
+      };
+    }
+
+    if (isSuperApprover) {
+      return {
+        canAction: true,
+        approvalLevel: getSuperApprovalLevel(ot),
+        title: "Duyệt nhanh với quyền Admin/HR",
+      };
+    }
+
+    const accountID = currentEmployeeId();
+    const approvalChain = Array.isArray(ot?.approvalChain) ? ot.approvalChain : [];
+    const userApproval = approvalChain.find((step) => getEntityId(step?.approver) === accountID);
+    const userApprovalLevel = userApproval?.level || null;
+
+    if (!userApprovalLevel || !userApproval) {
+      return {
+        canAction: false,
+        approvalLevel: null,
+        title: "Bạn không nằm trong cấp duyệt của đơn này",
+      };
+    }
+
+    if (normalizeStatus(userApproval.status) !== "PENDING") {
+      return {
+        canAction: false,
+        approvalLevel: userApprovalLevel,
+        title: "Đã xử lý cấp duyệt này",
+      };
+    }
+
+    if (userApprovalLevel > 1) {
+      const lowerLevelsApproved = approvalChain
+        .filter((step) => Number(step?.level) < Number(userApprovalLevel))
+        .every((step) => normalizeStatus(step?.status) === "APPROVED");
+
+      if (!lowerLevelsApproved) {
+        return {
+          canAction: false,
+          approvalLevel: userApprovalLevel,
+          title: "Chưa đến lượt duyệt",
+        };
+      }
+    }
+
+    return {
+      canAction: true,
+      approvalLevel: userApprovalLevel,
+      title: "Duyệt",
+    };
+  };
 
   const fetchOTs = async (page = pagination.page, limit = pagination.limit) => {
     setLoading(true);
@@ -112,8 +181,18 @@ export const useOvertimeRequests = ({ mode }) => {
   };
 
   const handleApproveOT = async (otId, payload) => {
+    const ot = approveOTModal.otData || ots.find((item) => item?._id === otId);
+    const approvalContext = getOTApprovalContext(ot);
+    if (!approvalContext.canAction || !approvalContext.approvalLevel) {
+      toast.error(approvalContext.title || "Bạn không có quyền duyệt đơn OT này");
+      return;
+    }
+
     try {
-      await OTApi.put(otId, payload);
+      await OTApi.approve(otId, {
+        ...payload,
+        approvalLevel: approvalContext.approvalLevel,
+      });
       toast.success("Duyệt đơn OT thành công");
       setApproveOTModal({ isOpen: false, otData: null });
       await refresh();
@@ -124,11 +203,18 @@ export const useOvertimeRequests = ({ mode }) => {
   };
 
   const handleRejectOT = async (ot) => {
+    const approvalContext = getOTApprovalContext(ot);
+    if (!approvalContext.canAction || !approvalContext.approvalLevel) {
+      toast.error(approvalContext.title || "Bạn không có quyền từ chối đơn OT này");
+      return;
+    }
+
     const rejectionReason = window.prompt("Nhập lý do từ chối đơn OT:");
     if (!rejectionReason?.trim()) return;
 
     try {
       await OTApi.approve(ot._id, {
+        approvalLevel: approvalContext.approvalLevel,
         status: "REJECTED",
         approvedStartTime: ot.startTime,
         approvedEndTime: ot.endTime,
@@ -175,13 +261,15 @@ export const useOvertimeRequests = ({ mode }) => {
   const getRowState = (ot) => {
     const status = normalizeStatus(ot?.status);
     const ownOT = isOwnRequest(ot);
+    const approvalContext = getOTApprovalContext(ot);
 
     if (mode === "approvals") {
       return {
         status,
         ownOT,
-        canApproveOT: canApprove && !ownOT && status === "PENDING",
-        canRejectOT: canApprove && !ownOT,
+        approvalContext,
+        canApproveOT: !ownOT && approvalContext.canAction,
+        canRejectOT: !ownOT && approvalContext.canAction,
         canEditOT: false,
         canDeleteOT: false,
       };
@@ -190,6 +278,7 @@ export const useOvertimeRequests = ({ mode }) => {
     return {
       status,
       ownOT,
+      approvalContext,
       canApproveOT: false,
       canRejectOT: false,
       canEditOT: ownOT && status === "PENDING",
@@ -223,6 +312,7 @@ export const useOvertimeRequests = ({ mode }) => {
     handleSubmitOTForm,
     handleDeleteOT,
     canApprove,
+    isSuperApprover,
     mode,
   };
 };

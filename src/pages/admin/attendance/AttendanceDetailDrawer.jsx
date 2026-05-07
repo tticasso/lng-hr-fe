@@ -2,8 +2,47 @@ import {
   Clock,
   HelpCircle,
   Edit,
+  Info,
   X,
 } from "lucide-react";
+
+const SOURCE_META = {
+  WEB_APP: {
+    label: "Web",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  },
+  MOBILE_APP: {
+    label: "Mobile",
+    className: "border-sky-200 bg-sky-50 text-sky-700",
+  },
+  MACHINE: {
+    label: "May cham cong",
+    className: "border-gray-200 bg-gray-50 text-gray-700",
+  },
+  IMPORT_EXCEL: {
+    label: "Excel",
+    className: "border-blue-200 bg-blue-50 text-blue-700",
+  },
+  SYSTEM_SYNC: {
+    label: "He thong",
+    className: "border-purple-200 bg-purple-50 text-purple-700",
+  },
+  MANUAL: {
+    label: "Sua tay",
+    className: "border-amber-200 bg-amber-50 text-amber-700",
+  },
+  AUTO_DETECT: {
+    label: "Tu dong",
+    className: "border-red-200 bg-red-50 text-red-700",
+  },
+};
+
+const getSourceMeta = (source) => (
+  SOURCE_META[source] || {
+    label: source || "--",
+    className: "border-gray-200 bg-gray-50 text-gray-500",
+  }
+);
 
 const AttendanceDetailDrawer = ({
   selectedEmployee,
@@ -23,7 +62,7 @@ const AttendanceDetailDrawer = ({
       onClick={onClose}
     >
       <div
-        className="animate-in slide-in-from-right flex h-full w-full max-w-full flex-col bg-white shadow-2xl duration-300 sm:max-w-2xl"
+        className="animate-in slide-in-from-right flex h-full w-full max-w-full flex-col bg-white shadow-2xl duration-300 sm:max-w-5xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between border-b border-gray-100 bg-gray-50 p-5">
@@ -85,12 +124,13 @@ const AttendanceDetailDrawer = ({
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-left text-sm">
+              <table className="w-full min-w-[860px] text-left text-sm">
                 <thead className="sticky top-0 z-10 border-b border-gray-100 bg-white shadow-sm">
                   <tr>
                     <th className="p-4 font-medium text-gray-500">Ngày</th>
                     <th className="p-4 text-center font-medium text-gray-500">Vào</th>
                     <th className="p-4 text-center font-medium text-gray-500">Ra</th>
+                    <th className="p-4 text-center font-medium text-gray-500">Nguon</th>
                     <th className="p-4 text-center font-medium text-gray-500">
                       OT (h)
                     </th>
@@ -111,6 +151,7 @@ const AttendanceDetailDrawer = ({
                               0,
                             )
                           : 0;
+                      const sourceMeta = getSourceMeta(log.source);
 
                       let statusBadge;
                       if (
@@ -170,14 +211,41 @@ const AttendanceDetailDrawer = ({
                             {formattedDate}
                           </td>
                           <td className="p-4 text-center font-mono text-gray-600">
-                            {log.checkIn || "--:--"}
+                            <div>{log.checkIn || "--:--"}</div>
+                            {log.checkInIp && (
+                              <div className="mt-1 text-[11px] font-medium text-gray-400">
+                                IP: {log.checkInIp}
+                              </div>
+                            )}
                           </td>
                           <td
                             className={`p-4 text-center font-mono font-bold ${
                               !log.checkOut ? "text-red-500" : "text-gray-600"
                             }`}
                           >
-                            {log.checkOut || "--:--"}
+                            <div>{log.checkOut || "--:--"}</div>
+                            {log.checkOutIp && (
+                              <div className="mt-1 text-[11px] font-medium text-gray-400">
+                                IP: {log.checkOutIp}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-4 text-center">
+                            <div className="inline-flex items-center gap-1.5">
+                              <span
+                                title={log.networkNotes || `Source: ${log.source || "--"}`}
+                                className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold ${sourceMeta.className}`}
+                              >
+                                {sourceMeta.label}
+                              </span>
+                              {log.networkNotes && (
+                                <Info
+                                  size={14}
+                                  className="text-gray-400"
+                                  title={log.networkNotes}
+                                />
+                              )}
+                            </div>
                           </td>
                           <td className="p-4 text-center">
                             {totalOTHours > 0 ? (
@@ -284,7 +352,7 @@ const AttendanceDetailDrawer = ({
                     })
                   ) : (
                     <tr>
-                      <td colSpan="6" className="p-8 text-center text-gray-400">
+                      <td colSpan="7" className="p-8 text-center text-gray-400">
                         <Clock size={32} className="mx-auto mb-2 opacity-50" />
                         <p className="text-sm">Không có dữ liệu chấm công</p>
                       </td>

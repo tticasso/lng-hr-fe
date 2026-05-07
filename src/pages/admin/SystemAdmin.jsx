@@ -14,11 +14,13 @@ import {
   Key, // Icon mới cho Permission
   ChevronDown,
   ChevronRight,
+  Wifi,
 } from "lucide-react";
 import { roleApi } from "../../apis/roleApi";
 import { permissionApi } from "../../apis/permissionApi";
 import { auditLogApi } from "../../apis/auditLogApi";
 import { systemSettingApi } from "../../apis/systemSettingApi";
+import { officeNetworkApi } from "../../apis/officeNetworkApi";
 import { toast } from "react-toastify";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button"; // Đảm bảo component này tồn tại
@@ -194,6 +196,14 @@ const SystemAdmin = () => {
   const [settingCategory, setSettingCategory] = useState("");
   const [settingKey, setSettingKey] = useState("");
   const [settingPayload, setSettingPayload] = useState("{\n  \n}");
+  const [officeNetworksLoading, setOfficeNetworksLoading] = useState(false);
+  const [officeNetworks, setOfficeNetworks] = useState([]);
+  const [officeNetworkForm, setOfficeNetworkForm] = useState({
+    officeName: "",
+    ipAddress: "",
+    isActive: true,
+    editingId: null,
+  });
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditLogs, setAuditLogs] = useState([]);
   const [auditLogId, setAuditLogId] = useState("");
@@ -388,6 +398,7 @@ const SystemAdmin = () => {
       {[
         { id: "roles", label: "Vai tro & quyen" },
         { id: "settings", label: "Cau hinh he thong" },
+        { id: "officeNetworks", label: "Mang van phong" },
         { id: "audit", label: "Audit logs" },
       ].map((tab) => (
         <button
@@ -438,6 +449,95 @@ const SystemAdmin = () => {
       toast.error(error.normalizedMessage || "Cap nhat cau hinh that bai");
     } finally {
       setSettingsLoading(false);
+    }
+  };
+
+  const resetOfficeNetworkForm = () => {
+    setOfficeNetworkForm({
+      officeName: "",
+      ipAddress: "",
+      isActive: true,
+      editingId: null,
+    });
+  };
+
+  const fetchOfficeNetworks = async () => {
+    try {
+      setOfficeNetworksLoading(true);
+      const res = await officeNetworkApi.getAll();
+      const data = res.data?.data || res.data || [];
+      setOfficeNetworks(Array.isArray(data) ? data : []);
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Khong the tai danh sach mang van phong");
+    } finally {
+      setOfficeNetworksLoading(false);
+    }
+  };
+
+  const submitOfficeNetwork = async () => {
+    const payload = {
+      officeName: officeNetworkForm.officeName.trim(),
+      ipAddress: officeNetworkForm.ipAddress.trim(),
+      isActive: officeNetworkForm.isActive,
+    };
+
+    if (!payload.officeName || !payload.ipAddress) {
+      toast.warning("Vui long nhap ten van phong va dia chi IP");
+      return;
+    }
+
+    try {
+      setOfficeNetworksLoading(true);
+      if (officeNetworkForm.editingId) {
+        await officeNetworkApi.update(officeNetworkForm.editingId, payload);
+        toast.success("Cap nhat mang van phong thanh cong");
+      } else {
+        await officeNetworkApi.create(payload);
+        toast.success("Them mang van phong thanh cong");
+      }
+      resetOfficeNetworkForm();
+      await fetchOfficeNetworks();
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Luu mang van phong that bai");
+    } finally {
+      setOfficeNetworksLoading(false);
+    }
+  };
+
+  const editOfficeNetwork = (network) => {
+    setOfficeNetworkForm({
+      officeName: network.officeName || "",
+      ipAddress: network.ipAddress || "",
+      isActive: network.isActive !== false,
+      editingId: network._id,
+    });
+  };
+
+  const toggleOfficeNetwork = async (network) => {
+    try {
+      setOfficeNetworksLoading(true);
+      await officeNetworkApi.update(network._id, { isActive: !network.isActive });
+      toast.success("Cap nhat trang thai mang thanh cong");
+      await fetchOfficeNetworks();
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Cap nhat trang thai that bai");
+    } finally {
+      setOfficeNetworksLoading(false);
+    }
+  };
+
+  const disableOfficeNetwork = async (network) => {
+    if (!window.confirm(`Tat mang van phong "${network.officeName}"?`)) return;
+
+    try {
+      setOfficeNetworksLoading(true);
+      await officeNetworkApi.disable(network._id);
+      toast.success("Da tat mang van phong");
+      await fetchOfficeNetworks();
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Tat mang van phong that bai");
+    } finally {
+      setOfficeNetworksLoading(false);
     }
   };
 
@@ -555,6 +655,141 @@ const SystemAdmin = () => {
     </div>
   );
 
+  const renderOfficeNetworks = () => (
+    <div className="space-y-4">
+      {renderAdminTabs()}
+
+      <Card className="p-5">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+            <Wifi size={20} />
+          </div>
+          <div>
+            <h2 className="font-bold text-gray-800">Mang van phong</h2>
+            <p className="text-sm text-gray-500">Quan ly IP duoc phep cham cong bang web.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr_auto_auto] lg:items-end">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-500">Ten van phong</label>
+            <input
+              value={officeNetworkForm.officeName}
+              onChange={(e) => setOfficeNetworkForm((prev) => ({ ...prev, officeName: e.target.value }))}
+              placeholder="VD: LNG Office"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-500">Dia chi IP</label>
+            <input
+              value={officeNetworkForm.ipAddress}
+              onChange={(e) => setOfficeNetworkForm((prev) => ({ ...prev, ipAddress: e.target.value }))}
+              placeholder="VD: 127.0.0.1"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <label className="flex h-10 items-center gap-2 rounded-lg border border-gray-200 px-3 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={officeNetworkForm.isActive}
+              onChange={(e) => setOfficeNetworkForm((prev) => ({ ...prev, isActive: e.target.checked }))}
+              className="h-4 w-4 rounded text-blue-600"
+            />
+            Dang hoat dong
+          </label>
+
+          <div className="flex gap-2">
+            {officeNetworkForm.editingId && (
+              <Button type="button" variant="secondary" onClick={resetOfficeNetworkForm} disabled={officeNetworksLoading}>
+                Huy
+              </Button>
+            )}
+            <Button type="button" onClick={submitOfficeNetwork} disabled={officeNetworksLoading}>
+              {officeNetworksLoading ? <Loader2 size={16} className="mr-2 animate-spin" /> : null}
+              {officeNetworkForm.editingId ? "Cap nhat" : "Them IP"}
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="overflow-hidden p-0">
+        <div className="flex items-center justify-between border-b bg-gray-50 p-4">
+          <div className="font-semibold text-gray-800">Danh sach IP</div>
+          <Button type="button" variant="secondary" onClick={fetchOfficeNetworks} disabled={officeNetworksLoading}>
+            {officeNetworksLoading ? <Loader2 size={16} className="mr-2 animate-spin" /> : null}
+            Tai danh sach
+          </Button>
+        </div>
+
+        {officeNetworks.length === 0 ? (
+          <div className="p-8 text-center text-gray-400">Chua co IP nao. Nhan "Tai danh sach" hoac them IP moi.</div>
+        ) : (
+          <div className="overflow-auto">
+            <table className="w-full min-w-[760px] text-sm">
+              <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                <tr>
+                  <th className="p-3 text-left">Van phong</th>
+                  <th className="p-3 text-left">IP</th>
+                  <th className="p-3 text-left">Trang thai</th>
+                  <th className="p-3 text-left">Cap nhat</th>
+                  <th className="p-3 text-right">Thao tac</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {officeNetworks.map((network) => (
+                  <tr key={network._id} className="hover:bg-blue-50/40">
+                    <td className="p-3 font-medium text-gray-800">{network.officeName}</td>
+                    <td className="p-3 font-mono text-xs text-gray-700">{network.ipAddress}</td>
+                    <td className="p-3">
+                      <span className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                        network.isActive
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-gray-100 text-gray-500"
+                      }`}>
+                        {network.isActive ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td className="p-3 text-gray-500">
+                      {network.updatedAt ? new Date(network.updatedAt).toLocaleString("vi-VN") : "--"}
+                    </td>
+                    <td className="p-3">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => editOfficeNetwork(network)}
+                          className="rounded-md border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                        >
+                          Sua
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleOfficeNetwork(network)}
+                          className="rounded-md border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50"
+                        >
+                          {network.isActive ? "Tat" : "Bat"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => disableOfficeNetwork(network)}
+                          className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                        >
+                          Disable
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+
   const renderAuditLogs = () => (
     <div className="space-y-4">
       {renderAdminTabs()}
@@ -643,6 +878,10 @@ const SystemAdmin = () => {
 
   if (activeAdminTab === "settings") {
     return renderSystemSettings();
+  }
+
+  if (activeAdminTab === "officeNetworks") {
+    return renderOfficeNetworks();
   }
 
   if (activeAdminTab === "audit") {

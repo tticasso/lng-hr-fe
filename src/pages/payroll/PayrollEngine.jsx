@@ -23,9 +23,9 @@ import { payrollAPI } from "../../apis/payrollAPI";
 import { toast } from "react-toastify";
 import { employeeApi } from "../../apis/employeeApi";
 import {
-  formatHours,
   getAllowanceBreakdownItems,
-  getOtBreakdownItems,
+  getLeaveBreakdownItems,
+  getOtPayBreakdownItems,
 } from "./overview/payrollOverviewUtils";
 
 const PayrollEngine = () => {
@@ -39,7 +39,6 @@ const PayrollEngine = () => {
   }); // State lưu tháng đã chọn (default: tháng hiện tại)
   const [payrollData, setPayrollData] = useState([]); // State lưu dữ liệu lương từ API
   const [loadingData, setLoadingData] = useState(false); // Loading cho việc fetch data tab 2
-  const [selectedRows, setSelectedRows] = useState([]); // State lưu các hàng được chọn
   const [searchQuery, setSearchQuery] = useState(""); // State cho search
   const [totalUser, setTotalUser] = useState();
 
@@ -57,14 +56,6 @@ const PayrollEngine = () => {
     fech()
   }, [])
 
-
-  const summary = {
-    totalEmployees: 125,
-    totalGross: 4500000000,
-    totalDeductions: 500000000,
-    totalNet: 4000000000,
-    payDate: "10/01/2026",
-  };
 
   // Helper format tiền
   const formatMoney = (amount) =>
@@ -88,30 +79,6 @@ const PayrollEngine = () => {
   const handleMonthChange = (e) => {
     setSelectedMonth(e.target.value);
   };
-
-  // Handler chọn/bỏ chọn một hàng
-  const handleSelectRow = (rowId) => {
-    setSelectedRows((prev) => {
-      if (prev.includes(rowId)) {
-        return prev.filter((id) => id !== rowId);
-      } else {
-        return [...prev, rowId];
-      }
-    });
-  };
-
-  // Handler chọn/bỏ chọn tất cả
-  const handleSelectAll = () => {
-    if (selectedRows.length === payrollData.length) {
-      setSelectedRows([]);
-    } else {
-      setSelectedRows(payrollData.map((row) => row._id));
-    }
-  };
-
-  // Check xem tất cả có được chọn không
-  const isAllSelected = payrollData.length > 0 && selectedRows.length === payrollData.length;
-  const isSomeSelected = selectedRows.length > 0 && selectedRows.length < payrollData.length;
 
   // Filter data dựa trên search query
   const filteredPayrollData = payrollData.filter((row) => {
@@ -144,7 +111,6 @@ const PayrollEngine = () => {
           // Extract data từ response
           const apiData = res.data?.data?.data || res.data?.data || [];
           setPayrollData(apiData);
-          setSelectedRows([]); // Reset selected rows khi load data mới
 
           toast.success("Tải dữ liệu lương thành công");
           console.log("Mapped payroll data:", apiData);
@@ -479,6 +445,7 @@ const PayrollEngine = () => {
                         <th className="p-2">Nhân viên</th>
                         <th className="p-2">Phòng ban</th>
                         <th className="p-2 text-right">Lương cơ bản</th>
+                        <th className="p-2 text-right">Nghỉ phép</th>
                         <th className="p-2 text-right text-orange-600">Lương OT</th>
                         <th className="p-2 text-right text-green-600">Phụ cấp</th>
                         <th className="p-2 text-right text-red-600">Khấu trừ</th>
@@ -488,7 +455,8 @@ const PayrollEngine = () => {
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {filteredPayrollData.map((row) => {
-                        const otBreakdown = getOtBreakdownItems(row);
+                        const otPayBreakdown = getOtPayBreakdownItems(row);
+                        const leaveBreakdown = getLeaveBreakdownItems(row);
                         const allowanceBreakdown = getAllowanceBreakdownItems(row);
                         return (
                           <tr
@@ -509,9 +477,15 @@ const PayrollEngine = () => {
                             </td>
                             <td className="p-2">
                               <div className="text-right font-mono text-gray-600">
+                                {Number(row.paidLeaveDays || 0).toFixed(2)} ngày
+                              </div>
+                              <BreakdownList items={leaveBreakdown} formatter={formatMoney} />
+                            </td>
+                            <td className="p-2">
+                              <div className="text-right font-mono text-gray-600">
                                 {formatMoney(row.otPay || 0)}
                               </div>
-                              <BreakdownList items={otBreakdown} formatter={formatHours} />
+                              <BreakdownList items={otPayBreakdown} formatter={formatMoney} />
                             </td>
                             <td className="p-2">
                               <div className="text-right font-mono text-gray-600">
@@ -551,7 +525,8 @@ const PayrollEngine = () => {
                 {!loadingData && filteredPayrollData.length > 0 && (
                   <div className="space-y-3 p-3 md:hidden">
                     {filteredPayrollData.map((row) => {
-                      const otBreakdown = getOtBreakdownItems(row);
+                      const otPayBreakdown = getOtPayBreakdownItems(row);
+                      const leaveBreakdown = getLeaveBreakdownItems(row);
                       const allowanceBreakdown = getAllowanceBreakdownItems(row);
                       return (
                       <article key={row._id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -583,11 +558,16 @@ const PayrollEngine = () => {
                           <div>
                             <p className="text-xs uppercase text-gray-400">OT</p>
                             <p className="font-medium text-orange-600">{formatMoney(row.otPay || 0)}</p>
-                            <BreakdownList items={otBreakdown} formatter={formatHours} align="left" />
+                            <BreakdownList items={otPayBreakdown} formatter={formatMoney} align="left" />
                           </div>
                           <div>
                             <p className="text-xs uppercase text-gray-400">Khấu trừ</p>
                             <p className="font-medium text-red-600">-{formatMoney(row.totalDeduction || 0)}</p>
+                          </div>
+                          <div className="col-span-2">
+                            <p className="text-xs uppercase text-gray-400">Nghỉ phép</p>
+                            <p className="font-medium text-gray-700">{Number(row.paidLeaveDays || 0).toFixed(2)} ngày có lương</p>
+                            <BreakdownList items={leaveBreakdown} formatter={formatMoney} align="left" />
                           </div>
                           <div className="col-span-2">
                             <p className="text-xs uppercase text-gray-400">Phụ cấp</p>
@@ -743,7 +723,14 @@ const BreakdownList = ({ items, formatter, align = "right" }) => {
     <div className={`mt-1 space-y-1 text-[10px] text-gray-500 ${align === "right" ? "text-right" : ""}`}>
       {items.map((item) => (
         <div key={item.key} className="flex items-start justify-between gap-2">
-          <span className="min-w-0 flex-1 truncate">{item.label}</span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate">{item.label}</span>
+            {item.formulaText && (
+              <span className="block truncate font-mono text-[10px] text-gray-400">
+                {item.formulaText}
+              </span>
+            )}
+          </span>
           <span className="shrink-0 font-mono font-medium text-gray-700">
             {formatter(item.value)}
           </span>

@@ -77,5 +77,6 @@ export const getRoleFlags = (role) => {
     isManager,
     isLeader,
     canApprove: isAdmin || isHR || isManager || isLeader,
+    isSuperApprover: isAdmin || isHR,
   };
 };

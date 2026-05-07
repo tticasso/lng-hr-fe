@@ -1,13 +1,49 @@
 import React, { memo } from "react";
 import Card from "../../components/common/Card";
-import { Coffee, Clock, DollarSign, PlusCircle, AlertCircle } from "lucide-react";
+import { AlertCircle, Coffee, Clock, DollarSign, LogIn, LogOut, PlusCircle } from "lucide-react";
 
-const QuickActions = memo(({ onLeaveClick, onOTClick, onPayrollClick, onSupportClick }) => {
+const QuickActions = memo(({
+  onLeaveClick,
+  onOTClick,
+  onPayrollClick,
+  onSupportClick,
+  onCheckInClick,
+  onCheckOutClick,
+  isOffline = false,
+  checkingAttendance = false,
+}) => {
   return (
     <Card className="h-full">
       <h3 className="mb-5 text-base font-bold text-gray-800 sm:text-lg">Truy cập nhanh</h3>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <button
+          className="group flex min-h-[120px] flex-col items-center justify-center rounded-xl border border-gray-100 bg-gray-50 p-4 transition-all hover:border-emerald-200 hover:bg-emerald-50 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-gray-100 disabled:hover:bg-gray-50 disabled:hover:shadow-none"
+          onClick={onCheckInClick}
+          disabled={isOffline || checkingAttendance}
+          title={isOffline ? "Ban dang offline" : "Check In"}
+        >
+          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-emerald-500 shadow-sm group-hover:text-emerald-600">
+            <LogIn size={20} />
+          </div>
+          <span className="text-center text-sm font-semibold text-gray-700 group-hover:text-emerald-700">
+            Check In
+          </span>
+        </button>
+
+        <button
+          className="group flex min-h-[120px] flex-col items-center justify-center rounded-xl border border-gray-100 bg-gray-50 p-4 transition-all hover:border-sky-200 hover:bg-sky-50 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-gray-100 disabled:hover:bg-gray-50 disabled:hover:shadow-none"
+          onClick={onCheckOutClick}
+          disabled={checkingAttendance}
+        >
+          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-sky-500 shadow-sm group-hover:text-sky-600">
+            <LogOut size={20} />
+          </div>
+          <span className="text-center text-sm font-semibold text-gray-700 group-hover:text-sky-700">
+            Check Out
+          </span>
+        </button>
+
         <button
           className="group flex min-h-[120px] flex-col items-center justify-center rounded-xl border border-gray-100 bg-gray-50 p-4 transition-all hover:border-blue-200 hover:bg-blue-50 hover:shadow-sm"
           onClick={onLeaveClick}
