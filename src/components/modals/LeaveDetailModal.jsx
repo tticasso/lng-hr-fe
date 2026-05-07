@@ -1,13 +1,22 @@
 import { useState, useEffect } from "react";
-import { X, Calendar, Clock, User, FileText, Tag, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import {
+    X,
+    Calendar,
+    Clock,
+    User,
+    FileText,
+    Tag,
+    CheckCircle2,
+    XCircle,
+    AlertCircle,
+    Download,
+    Upload,
+    Loader2,
+    RotateCcw,
+} from "lucide-react";
+import { toast } from "react-toastify";
 import { leaveAPI } from "../../apis/leaveAPI";
-
-const leaveTypeLabel = {
-    ANNUAL: "Nghỉ phép năm",
-    UNPAID: "Nghỉ không lương",
-    SICK: "Nghỉ ốm / bệnh",
-    MATERNITY: "Nghỉ thai sản",
-};
+import { getRoleFlags, getStoredRole, leaveTypeLabel } from "../../pages/leave/shared";
 
 const leaveScopeLabel = {
     FULL_DAY: "Cả ngày",
@@ -72,6 +81,14 @@ const StatusBadge = ({ statusKey, statusText }) => {
 const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
     const [loading, setLoading] = useState(false);
     const [leaveDetail, setLeaveDetail] = useState(null);
+    const [approvalStatusData, setApprovalStatusData] = useState(null);
+    const [attachments, setAttachments] = useState([]);
+    const [selectedFiles, setSelectedFiles] = useState([]);
+    const [uploading, setUploading] = useState(false);
+    const [downloadingFile, setDownloadingFile] = useState("");
+    const [refundDays, setRefundDays] = useState("");
+    const [refundReason, setRefundReason] = useState("");
+    const [refunding, setRefunding] = useState(false);
 
     useEffect(() => {
         if (isOpen && leaveId) {
@@ -82,20 +99,100 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
     const fetchLeaveDetail = async () => {
         setLoading(true);
         try {
-            const response = await leaveAPI.getbyID(leaveId);
-            const data = response?.data?.data || response?.data;
+            const [detailResponse, approvalResponse, attachmentResponse] = await Promise.all([
+                leaveAPI.getbyID(leaveId),
+                leaveAPI.approvalStatus(leaveId).catch(() => null),
+                leaveAPI.getAttachments(leaveId).catch(() => null),
+            ]);
+
+            const data = detailResponse?.data?.data || detailResponse?.data;
             setLeaveDetail(data);
+            setApprovalStatusData(approvalResponse?.data?.data || null);
+            setAttachments(attachmentResponse?.data?.data?.attachments || []);
         } catch (error) {
             console.error("Error fetching leave detail:", error);
             setLeaveDetail(null);
+            setApprovalStatusData(null);
+            setAttachments([]);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleUploadAttachments = async () => {
+        if (!selectedFiles.length) {
+            toast.error("Vui long chon file dinh kem");
+            return;
+        }
+
+        const formData = new FormData();
+        selectedFiles.forEach((file) => formData.append("files", file));
+
+        setUploading(true);
+        try {
+            const response = await leaveAPI.submitAttachments(leaveId, formData);
+            const nextAttachments = response?.data?.data?.attachments || [];
+            setAttachments(nextAttachments);
+            setSelectedFiles([]);
+            toast.success("Da tai file dinh kem");
+        } catch (error) {
+            toast.error(error.normalizedMessage || error.response?.data?.message || "Tai file that bai");
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleDownloadAttachment = async (attachment) => {
+        if (!attachment?.filename) return;
+
+        setDownloadingFile(attachment.filename);
+        try {
+            const response = await leaveAPI.downloadAttachment(leaveId, encodeURIComponent(attachment.filename));
+            const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement("a");
+            link.href = blobUrl;
+            link.setAttribute("download", attachment.filename);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(blobUrl);
+        } catch (error) {
+            toast.error(error.normalizedMessage || error.response?.data?.message || "Tai file xuong that bai");
+        } finally {
+            setDownloadingFile("");
+        }
+    };
+
+    const handleRefund = async () => {
+        const days = Number(refundDays);
+        if (!days || days <= 0 || !refundReason.trim()) {
+            toast.error("Vui long nhap so ngay hoan va ly do");
+            return;
+        }
+
+        setRefunding(true);
+        try {
+            await leaveAPI.refund(leaveId, {
+                refundDays: days,
+                refundReason: refundReason.trim(),
+            });
+            toast.success("Da hoan phep cho don nghi");
+            setRefundDays("");
+            setRefundReason("");
+            await fetchLeaveDetail();
+        } catch (error) {
+            toast.error(error.normalizedMessage || error.response?.data?.message || "Hoan phep that bai");
+        } finally {
+            setRefunding(false);
         }
     };
 
     if (!isOpen) return null;
 
     const displayStatus = normalizeStatus(leaveDetail?.status);
+    const approvalSteps = approvalStatusData?.approximateStatus || leaveDetail?.approvalChain || [];
+    const roleFlags = getRoleFlags(getStoredRole());
+    const canRefund = roleFlags.isSuperApprover && displayStatus === "APPROVED" && !leaveDetail?.isRefunded;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50 p-0 sm:items-center sm:p-4">
@@ -215,20 +312,82 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                                         </div>
                                     </div>
                                 </div>
+
+                                <div className="bg-white rounded-lg p-3 border border-gray-200 sm:p-4">
+                                    <div className="flex items-center gap-2 mb-3 sm:gap-3">
+                                        <Upload className="text-blue-600" size={18} />
+                                        <h3 className="font-semibold text-gray-800">File dinh kem</h3>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        {attachments.length > 0 ? (
+                                            attachments.map((attachment, index) => (
+                                                <div
+                                                    key={`${attachment.filename}-${index}`}
+                                                    className="flex flex-col gap-2 rounded-lg border border-gray-100 bg-gray-50 p-2 sm:flex-row sm:items-center sm:justify-between"
+                                                >
+                                                    <div className="min-w-0">
+                                                        <p className="truncate text-sm font-medium text-gray-800">
+                                                            {attachment.filename || "--"}
+                                                        </p>
+                                                        <p className="text-xs text-gray-500">
+                                                            Tai len: {formatDateTime(attachment.uploadDate)}
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDownloadAttachment(attachment)}
+                                                        className="inline-flex items-center justify-center gap-1 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                                                        disabled={downloadingFile === attachment.filename}
+                                                    >
+                                                        {downloadingFile === attachment.filename ? (
+                                                            <Loader2 size={14} className="animate-spin" />
+                                                        ) : (
+                                                            <Download size={14} />
+                                                        )}
+                                                        Tai xuong
+                                                    </button>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="rounded-lg border border-dashed border-gray-200 p-3 text-sm text-gray-400">
+                                                Chua co file dinh kem
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                                        <input
+                                            type="file"
+                                            multiple
+                                            onChange={(event) => setSelectedFiles(Array.from(event.target.files || []))}
+                                            className="block w-full rounded-lg border border-gray-300 text-sm text-gray-700 file:mr-3 file:border-0 file:bg-gray-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-gray-700"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleUploadAttachments}
+                                            disabled={uploading || selectedFiles.length === 0}
+                                            className="inline-flex shrink-0 items-center justify-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                                            Tai len
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Right Column - Approval Timeline */}
-                            <div className="lg:col-span-1">
-                                {leaveDetail.approvalChain && leaveDetail.approvalChain.length > 0 ? (
-                                    <div className="bg-white rounded-lg border border-purple-200 p-3 h-full sm:p-4">
+                            <div className="space-y-3 lg:col-span-1 lg:space-y-4">
+                                {approvalSteps.length > 0 ? (
+                                    <div className="bg-white rounded-lg border border-purple-200 p-3 sm:p-4">
                                         <div className="flex items-center gap-2 mb-3 sm:mb-4">
                                             <Tag className="text-purple-600" size={18} />
                                             <h3 className="font-semibold text-gray-800">Chuỗi phê duyệt</h3>
                                         </div>
                                         <div className="relative">
-                                            {leaveDetail.approvalChain.map((approval, index) => {
+                                            {approvalSteps.map((approval, index) => {
                                                 const approvalStatus = normalizeStatus(approval.status);
-                                                const isLast = index === leaveDetail.approvalChain.length - 1;
+                                                const isLast = index === approvalSteps.length - 1;
                                                 
                                                 return (
                                                     <div key={approval._id || index} className="relative flex gap-3 pb-3 sm:pb-4">
@@ -298,6 +457,64 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                                 ) : (
                                     <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 min-h-24 flex items-center justify-center lg:h-full">
                                         <p className="text-sm text-gray-400">Chưa có thông tin phê duyệt</p>
+                                    </div>
+                                )}
+                                {approvalStatusData?.rejectionReason && (
+                                    <div className="rounded-lg border border-red-200 bg-red-50 p-3 sm:p-4">
+                                        <div className="flex items-center gap-2">
+                                            <XCircle size={18} className="text-red-600" />
+                                            <h3 className="font-semibold text-red-800">Ly do tu choi</h3>
+                                        </div>
+                                        <p className="mt-2 text-sm text-red-700">{approvalStatusData.rejectionReason}</p>
+                                    </div>
+                                )}
+
+                                {leaveDetail?.isRefunded && (
+                                    <div className="rounded-lg border border-green-200 bg-green-50 p-3 sm:p-4">
+                                        <div className="flex items-center gap-2">
+                                            <RotateCcw size={18} className="text-green-600" />
+                                            <h3 className="font-semibold text-green-800">Da hoan phep</h3>
+                                        </div>
+                                        <p className="mt-2 text-sm text-green-700">
+                                            {leaveDetail.refundReason || "Don nay da duoc hoan phep."}
+                                        </p>
+                                        <p className="mt-1 text-xs text-green-600">{formatDateTime(leaveDetail.refundDate)}</p>
+                                    </div>
+                                )}
+
+                                {canRefund && (
+                                    <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 sm:p-4">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <RotateCcw size={18} className="text-orange-600" />
+                                            <h3 className="font-semibold text-orange-900">Hoan phep</h3>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="0.5"
+                                                value={refundDays}
+                                                onChange={(event) => setRefundDays(event.target.value)}
+                                                placeholder="So ngay hoan"
+                                                className="w-full rounded-lg border border-orange-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                                            />
+                                            <textarea
+                                                rows={3}
+                                                value={refundReason}
+                                                onChange={(event) => setRefundReason(event.target.value)}
+                                                placeholder="Ly do hoan phep"
+                                                className="w-full rounded-lg border border-orange-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleRefund}
+                                                disabled={refunding}
+                                                className="inline-flex w-full items-center justify-center gap-1 rounded-lg bg-orange-600 px-3 py-2 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-60"
+                                            >
+                                                {refunding ? <Loader2 size={16} className="animate-spin" /> : <RotateCcw size={16} />}
+                                                Xac nhan hoan phep
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>

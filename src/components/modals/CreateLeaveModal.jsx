@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { X, FileText, AlertCircle } from "lucide-react";
+import { X, FileText, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import Button from "../common/Button";
+import { leaveAPI } from "../../apis/leaveAPI";
+import { leaveTypeOptions } from "../../pages/leave/shared";
 
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -36,6 +38,7 @@ const LeaveRequestModal = ({
   const [isShortLeave, setIsShortLeave] = useState(
     Boolean(initialValues?.leaveScope && initialValues.leaveScope !== "FULL_DAY"),
   );
+  const isEditing = Boolean(initialValues?._id);
 
   // ✅ formData lưu ISO để payload luôn chuẩn
   const [formData, setFormData] = useState({
@@ -47,6 +50,9 @@ const LeaveRequestModal = ({
   });
 
   const [errors, setErrors] = useState({});
+  const [preview, setPreview] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
 
   // ✅ Sync ngày và loại nghỉ từ Timesheet mỗi lần mở modal
   useEffect(() => {
@@ -97,6 +103,8 @@ const LeaveRequestModal = ({
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((p) => ({ ...p, [name]: value }));
+    setPreview(null);
+    setPreviewError("");
     if (errors[name]) setErrors((p) => ({ ...p, [name]: "" }));
   };
 
@@ -114,6 +122,27 @@ const LeaveRequestModal = ({
     e.preventDefault();
     if (!validate()) return;
     onConfirm?.(payload);
+  };
+
+  const handlePreview = async () => {
+    if (!validate()) return;
+
+    setPreviewLoading(true);
+    setPreview(null);
+    setPreviewError("");
+
+    try {
+      const response = await leaveAPI.preview(payload);
+      setPreview(response?.data?.data || response?.data || null);
+    } catch (error) {
+      setPreviewError(
+        error.normalizedMessage ||
+        error.response?.data?.message ||
+        "Khong the xem truoc don nghi"
+      );
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
   const inputClass = (field) =>
@@ -162,9 +191,11 @@ const LeaveRequestModal = ({
               onChange={handleChange}
               className={inputClass("leaveType")}
             >
-              <option value="ANNUAL">Nghỉ phép năm (Annual Leave)</option>
-              <option value="UNPAID">Nghỉ không lương (Unpaid Leave)</option>
-              <option value="MATERNITY">Nghỉ thai sản (Maternity Leave)</option>
+              {leaveTypeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
             <ErrorMsg field="leaveType" />
           </div>
@@ -221,6 +252,8 @@ const LeaveRequestModal = ({
                     // nếu nghỉ dài ngày và toDate đang trống -> set theo fromDate
                     toDate: isShortLeave ? p.toDate : (p.toDate || iso),
                   }));
+                  setPreview(null);
+                  setPreviewError("");
                   if (errors.fromDate) setErrors((p) => ({ ...p, fromDate: "" }));
                 }}
                 dateFormat="dd/MM/yyyy"
@@ -239,10 +272,12 @@ const LeaveRequestModal = ({
                 <DatePicker
                   selected={isoToDate(formData.toDate)}
                   onChange={(date) => {
-                    const iso = dateToISO(date);
-                    setFormData((p) => ({ ...p, toDate: iso }));
-                    if (errors.toDate) setErrors((p) => ({ ...p, toDate: "" }));
-                  }}
+                  const iso = dateToISO(date);
+                  setFormData((p) => ({ ...p, toDate: iso }));
+                  setPreview(null);
+                  setPreviewError("");
+                  if (errors.toDate) setErrors((p) => ({ ...p, toDate: "" }));
+                }}
                   dateFormat="dd/MM/yyyy"
                   placeholderText="Chọn ngày"
                   className={datePickerInputClass("toDate")}
@@ -272,6 +307,68 @@ const LeaveRequestModal = ({
               </select>
               <ErrorMsg field="leaveScope" />
             </div>
+          )}
+
+          {!isEditing && (
+          <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-blue-900">Kiem tra truoc khi gui</p>
+                <p className="text-xs text-blue-700">
+                  Tinh so ngay nghi thuc te, ngay le va lich bi trung.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handlePreview}
+                disabled={previewLoading}
+                className="shrink-0"
+              >
+                {previewLoading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                Xem truoc
+              </Button>
+            </div>
+
+            {previewError && (
+              <p className="mt-3 flex items-center gap-1 text-xs font-medium text-red-600">
+                <AlertCircle size={14} /> {previewError}
+              </p>
+            )}
+
+            {preview && (
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                <div className="rounded-md bg-white p-2">
+                  <p className="text-xs text-gray-500">So ngay tinh phep</p>
+                  <p className="font-bold text-blue-700">{preview.totalDays ?? 0}</p>
+                </div>
+                <div className="rounded-md bg-white p-2">
+                  <p className="text-xs text-gray-500">Co the tao</p>
+                  <p className={`font-bold ${preview.isPossible ? "text-green-700" : "text-red-700"}`}>
+                    {preview.isPossible ? "Co" : "Khong"}
+                  </p>
+                </div>
+                <div className="rounded-md bg-white p-2">
+                  <p className="text-xs text-gray-500">Ngay le</p>
+                  <p className="font-bold text-gray-800">{preview.holidayCount ?? 0}</p>
+                </div>
+                <div className="rounded-md bg-white p-2">
+                  <p className="text-xs text-gray-500">Trung lich</p>
+                  <p className="font-bold text-gray-800">{preview.conflictCount ?? 0}</p>
+                </div>
+                {Array.isArray(preview.holidays) && preview.holidays.length > 0 && (
+                  <p className="col-span-2 text-xs text-gray-600 sm:col-span-4">
+                    Ngay le: {preview.holidays.join(", ")}
+                  </p>
+                )}
+                {Array.isArray(preview.conflicts) && preview.conflicts.length > 0 && (
+                  <p className="col-span-2 text-xs text-gray-600 sm:col-span-4">
+                    Don trung: {preview.conflicts.map((item) => item.type || item.id).join(", ")}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
           )}
 
           {/* Footer */}

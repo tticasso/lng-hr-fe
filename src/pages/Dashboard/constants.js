@@ -1,10 +1,7 @@
+import { leaveTypeLabel } from "../leave/shared";
+
 // Map leaveType và otType sang tên tiếng Việt
-export const leaveTypeMap = {
-  ANNUAL: "Nghỉ phép năm",
-  UNPAID: "Nghỉ không lương",
-  SICK: "Nghỉ ốm",
-  MATERNITY: "Nghỉ thai sản",
-};
+export const leaveTypeMap = leaveTypeLabel;
 
 export const otTypeMap = {
   WEEKDAY: "OT Ngày thường",

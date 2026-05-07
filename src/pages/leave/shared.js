@@ -1,9 +1,31 @@
 export const leaveTypeLabel = {
+  PATERNITY: "Nghỉ thai sản cho cha",
+  BEREAVEMENT: "Nghỉ tang",
+  WEDDING: "Nghỉ kết hôn",
+  PERSONAL_PAID: "Nghỉ việc riêng có lương",
+  PERSONAL_UNPAID: "Nghỉ việc riêng không lương",
   ANNUAL: "Nghỉ phép năm",
   UNPAID: "Nghỉ không lương",
   SICK: "Nghỉ ốm / bệnh",
   MATERNITY: "Nghỉ thai sản",
 };
+
+export const leaveTypeValues = [
+  "ANNUAL",
+  "SICK",
+  "MATERNITY",
+  "PATERNITY",
+  "BEREAVEMENT",
+  "WEDDING",
+  "UNPAID",
+  "PERSONAL_PAID",
+  "PERSONAL_UNPAID",
+];
+
+export const leaveTypeOptions = leaveTypeValues.map((value) => ({
+  value,
+  label: leaveTypeLabel[value] || value,
+}));
 
 export const statusLabel = {
   PENDING: "Chờ duyệt",

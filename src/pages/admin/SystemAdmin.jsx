@@ -25,6 +25,29 @@ import { toast } from "react-toastify";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button"; // Đảm bảo component này tồn tại
 
+const APPROVER_TYPES = [
+  { value: "TEAM_LEADER", label: "Team leader" },
+  { value: "DEPARTMENT_MANAGER", label: "Department manager" },
+  { value: "REPORTING_MANAGER", label: "Reporting manager" },
+];
+
+const DEFAULT_APPROVAL_POLICIES = {
+  "approval.leave": {
+    requestType: "LEAVE",
+    levels: [
+      { type: "TEAM_LEADER", label: "Team leader", enabled: true },
+      { type: "DEPARTMENT_MANAGER", label: "Department manager", enabled: true },
+    ],
+  },
+  "approval.overtime": {
+    requestType: "OVERTIME",
+    levels: [
+      { type: "TEAM_LEADER", label: "Team leader", enabled: true },
+      { type: "DEPARTMENT_MANAGER", label: "Department manager", enabled: true },
+    ],
+  },
+};
+
 const SystemAdmin = () => {
   const [activeAdminTab, setActiveAdminTab] = useState("roles");
   // --- MAPPING TIẾNG VIỆT ---
@@ -196,6 +219,8 @@ const SystemAdmin = () => {
   const [settingCategory, setSettingCategory] = useState("");
   const [settingKey, setSettingKey] = useState("");
   const [settingPayload, setSettingPayload] = useState("{\n  \n}");
+  const [approvalPolicies, setApprovalPolicies] = useState(DEFAULT_APPROVAL_POLICIES);
+  const [approvalLoading, setApprovalLoading] = useState(false);
   const [officeNetworksLoading, setOfficeNetworksLoading] = useState(false);
   const [officeNetworks, setOfficeNetworks] = useState([]);
   const [officeNetworkForm, setOfficeNetworkForm] = useState({
@@ -213,6 +238,13 @@ const SystemAdmin = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (activeAdminTab === "settings") {
+      fetchApprovalPolicies();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeAdminTab]);
 
   const fetchData = async () => {
     try {
@@ -452,6 +484,97 @@ const SystemAdmin = () => {
     }
   };
 
+  const normalizeApprovalPolicy = (value, fallback) => {
+    const levels = Array.isArray(value?.levels) && value.levels.length > 0
+      ? value.levels
+      : fallback.levels;
+
+    return {
+      ...fallback,
+      ...value,
+      levels: levels.slice(0, 2).map((level, index) => ({
+        type: level.type || fallback.levels[index]?.type || "TEAM_LEADER",
+        label: level.label || APPROVER_TYPES.find((item) => item.value === level.type)?.label || level.type,
+        enabled: level.enabled !== false,
+      })),
+    };
+  };
+
+  const fetchApprovalPolicies = async () => {
+    try {
+      setApprovalLoading(true);
+      const res = await systemSettingApi.getByCategory("APPROVAL");
+      const rows = res.data?.data || [];
+      const next = { ...DEFAULT_APPROVAL_POLICIES };
+
+      rows.forEach((item) => {
+        if (!DEFAULT_APPROVAL_POLICIES[item.key]) return;
+        next[item.key] = normalizeApprovalPolicy(item.value, DEFAULT_APPROVAL_POLICIES[item.key]);
+      });
+
+      setApprovalPolicies(next);
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Khong the tai cau hinh duyet don");
+    } finally {
+      setApprovalLoading(false);
+    }
+  };
+
+  const setApprovalLevelCount = (key, count) => {
+    setApprovalPolicies((prev) => {
+      const current = prev[key] || DEFAULT_APPROVAL_POLICIES[key];
+      const baseLevels = current.levels.length >= count ? current.levels : DEFAULT_APPROVAL_POLICIES[key].levels;
+      return {
+        ...prev,
+        [key]: {
+          ...current,
+          levels: baseLevels.slice(0, count).map((level) => ({ ...level, enabled: true })),
+        },
+      };
+    });
+  };
+
+  const updateApprovalLevelType = (key, index, type) => {
+    setApprovalPolicies((prev) => {
+      const current = prev[key] || DEFAULT_APPROVAL_POLICIES[key];
+      const label = APPROVER_TYPES.find((item) => item.value === type)?.label || type;
+      const nextLevels = current.levels.map((level, levelIndex) =>
+        levelIndex === index ? { ...level, type, label, enabled: true } : level
+      );
+      return { ...prev, [key]: { ...current, levels: nextLevels } };
+    });
+  };
+
+  const saveApprovalPolicy = async (key) => {
+    const policy = approvalPolicies[key];
+    if (!policy?.levels?.length) {
+      toast.warning("Can co it nhat 1 tang duyet");
+      return;
+    }
+
+    try {
+      setApprovalLoading(true);
+      await systemSettingApi.updateByKey(key, {
+        category: "APPROVAL",
+        description: key === "approval.leave" ? "Leave approval policy" : "Overtime approval policy",
+        value: {
+          requestType: policy.requestType,
+          levels: policy.levels.map((level) => ({
+            type: level.type,
+            label: APPROVER_TYPES.find((item) => item.value === level.type)?.label || level.type,
+            enabled: true,
+          })),
+        },
+      });
+      toast.success("Da cap nhat cau hinh duyet don");
+      await Promise.all([fetchApprovalPolicies(), fetchSystemSettings()]);
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Cap nhat cau hinh duyet that bai");
+    } finally {
+      setApprovalLoading(false);
+    }
+  };
+
   const resetOfficeNetworkForm = () => {
     setOfficeNetworkForm({
       officeName: "",
@@ -570,9 +693,72 @@ const SystemAdmin = () => {
     }
   };
 
+  const renderApprovalPolicyCard = (key, title, description) => {
+    const policy = approvalPolicies[key] || DEFAULT_APPROVAL_POLICIES[key];
+
+    return (
+      <Card className="p-5 space-y-4">
+        <div>
+          <h3 className="font-semibold text-gray-800">{title}</h3>
+          <p className="text-sm text-gray-500">{description}</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-[160px_1fr] gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">So tang duyet</label>
+            <select
+              value={policy.levels.length}
+              onChange={(event) => setApprovalLevelCount(key, Number(event.target.value))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value={1}>1 tang</option>
+              <option value={2}>2 tang</option>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {policy.levels.map((level, index) => (
+              <div key={`${key}-${index}`}>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Tang {index + 1}</label>
+                <select
+                  value={level.type}
+                  onChange={(event) => updateApprovalLevelType(key, index, event.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {APPROVER_TYPES.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <Button type="button" onClick={() => saveApprovalPolicy(key)} disabled={approvalLoading}>
+          {approvalLoading ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+          Luu cau hinh
+        </Button>
+      </Card>
+    );
+  };
+
   const renderSystemSettings = () => (
     <div className="space-y-4">
       {renderAdminTabs()}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {renderApprovalPolicyCard(
+          "approval.leave",
+          "Duyet don nghi",
+          "Ap dung cho cac don leave tao moi sau khi luu cau hinh."
+        )}
+        {renderApprovalPolicyCard(
+          "approval.overtime",
+          "Duyet don OT",
+          "Ap dung cho cac don OT tao moi sau khi luu cau hinh."
+        )}
+      </div>
       <Card className="p-5">
         <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-end">
           <div className="flex-1">
