@@ -1,3 +1,6 @@
+import { useState } from "react";
+
+import BulkAttendanceModal from "../../components/modals/BulkAttendanceModal";
 import EditAttendanceModal from "../../components/modals/EditAttendanceModal";
 import AttendanceAdminHeader from "./attendance/AttendanceAdminHeader";
 import AttendanceDetailDrawer from "./attendance/AttendanceDetailDrawer";
@@ -6,14 +9,18 @@ import AttendanceOverviewTable from "./attendance/AttendanceOverviewTable";
 import { useAttendanceAdmin } from "./attendance/useAttendanceAdmin";
 
 const AttendanceAdmin = () => {
+  const [isBulkAttendanceModalOpen, setIsBulkAttendanceModalOpen] = useState(false);
   const {
     OT_TYPE_LABELS,
+    bulkAttendanceLoading,
+    bulkAttendanceResult,
     departments,
     employeeDetail,
     errorCount,
     fileInputRef,
     filteredAttendanceData,
     filters,
+    handleBulkAttendanceSubmit,
     handleEmployeeClick,
     handleExportExcel,
     handleFileChange,
@@ -33,6 +40,7 @@ const AttendanceAdmin = () => {
     openOTDetailId,
     selectedAttendanceLog,
     selectedEmployee,
+    selectedPeriod,
     setIsEditModalOpen,
     setIsPeriodLocked,
     setOpenOTDetailId,
@@ -66,6 +74,7 @@ const AttendanceAdmin = () => {
         onPreviousPeriod={handlePreviousPeriod}
         onNextPeriod={handleNextPeriod}
         onImport={handleImportClick}
+        onOpenBulkAttendance={() => setIsBulkAttendanceModalOpen(true)}
         onExport={handleExportExcel}
         onSyncData={handleSyncData}
         onSyncHoliday={handleSyncHoliday}
@@ -101,6 +110,16 @@ const AttendanceAdmin = () => {
         attendanceLog={selectedAttendanceLog}
         employee={selectedEmployee}
         onSave={handleSaveAttendance}
+      />
+
+      <BulkAttendanceModal
+        departments={departments}
+        defaultDate={`${selectedPeriod}-01`}
+        isOpen={isBulkAttendanceModalOpen}
+        loading={bulkAttendanceLoading}
+        onClose={() => setIsBulkAttendanceModalOpen(false)}
+        onSubmit={handleBulkAttendanceSubmit}
+        result={bulkAttendanceResult}
       />
     </div>
   );

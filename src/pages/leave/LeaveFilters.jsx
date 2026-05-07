@@ -1,4 +1,5 @@
 import { Search } from "lucide-react";
+import { leaveTypeOptions } from "./shared";
 
 const LeaveFilters = ({ filters, setFilters }) => {
   return (
@@ -28,10 +29,11 @@ const LeaveFilters = ({ filters, setFilters }) => {
             }
           >
             <option value="">Tất cả loại nghỉ</option>
-            <option value="ANNUAL">Nghỉ phép năm</option>
-            <option value="UNPAID">Nghỉ không lương</option>
-            <option value="SICK">Nghỉ ốm / bệnh</option>
-            <option value="MATERNITY">Nghỉ thai sản</option>
+            {leaveTypeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
 
           <select

@@ -22,6 +22,7 @@ export const useLeaveRequests = ({ mode }) => {
     total: 0,
     totalPages: 1,
   });
+  const [leaveSummary, setLeaveSummary] = useState(null);
   const [filters, setFilters] = useState({
     search: "",
     leaveType: "",
@@ -144,10 +145,24 @@ export const useLeaveRequests = ({ mode }) => {
     }
   };
 
+  const fetchLeaveSummary = async () => {
+    if (mode !== "mine") return;
+
+    try {
+      const year = new Date().getFullYear();
+      const res = await leaveAPI.summary({ year });
+      setLeaveSummary(res?.data?.data || null);
+    } catch (error) {
+      console.error("fetchLeaveSummary error:", error);
+      setLeaveSummary(null);
+    }
+  };
+
   useEffect(() => {
     if (hasFetched.current) return;
     const timer = setTimeout(() => {
       fetchLeaves(pagination.page, pagination.limit);
+      fetchLeaveSummary();
       hasFetched.current = true;
     }, 200);
     return () => clearTimeout(timer);
@@ -233,7 +248,10 @@ export const useLeaveRequests = ({ mode }) => {
   };
 
   const refresh = async () => {
-    await fetchLeaves(pagination.page, pagination.limit);
+    await Promise.all([
+      fetchLeaves(pagination.page, pagination.limit),
+      fetchLeaveSummary(),
+    ]);
   };
 
   const handleApprove = async (leave) => {
@@ -315,6 +333,7 @@ export const useLeaveRequests = ({ mode }) => {
       if (pagination.page === 1) {
         await fetchLeaves(1, pagination.limit);
       }
+      await fetchLeaveSummary();
     } catch (error) {
       toast.error(error.normalizedMessage || error.response?.data?.message || "Lưu đơn nghỉ thất bại");
     }
@@ -322,6 +341,7 @@ export const useLeaveRequests = ({ mode }) => {
 
   return {
     loading,
+    leaveSummary,
     filters,
     setFilters,
     leaves: filteredLeaves,

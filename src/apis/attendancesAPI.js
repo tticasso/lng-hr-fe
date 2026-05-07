@@ -66,6 +66,10 @@ export const attendancesAPI = {
     return apiClient.post("/attendances/detect-absences", payload);
   },
 
+  bulkWrite: (payload) => {
+    return apiClient.post("/attendances/bulk-write", payload);
+  },
+
   updateAtendances: (id, payload) => {
     return apiClient.patch(`/attendances/${id}`, payload);
   },
