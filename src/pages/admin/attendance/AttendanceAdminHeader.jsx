@@ -4,6 +4,7 @@ import {
   RefreshCcw,
   Unlock,
   Upload,
+  UserPlus,
 } from "lucide-react";
 
 import Button from "../../../components/common/Button";
@@ -17,6 +18,7 @@ const AttendanceAdminHeader = ({
   onPreviousPeriod,
   onNextPeriod,
   onImport,
+  onOpenBulkAttendance,
   onExport,
   onSyncData,
   onSyncHoliday,
@@ -50,6 +52,14 @@ const AttendanceAdminHeader = ({
           onClick={onImport}
         >
           <Upload size={16} /> Import dữ liệu
+        </Button>
+
+        <Button
+          variant="secondary"
+          className="h-14 min-w-[160px] gap-2 rounded-xl px-4 text-sm xl:min-w-0 xl:flex-1"
+          onClick={onOpenBulkAttendance}
+        >
+          <UserPlus size={16} /> Tạo công hàng loạt
         </Button>
 
         <Button

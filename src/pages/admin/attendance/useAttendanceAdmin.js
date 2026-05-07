@@ -44,6 +44,8 @@ export const useAttendanceAdmin = () => {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [bulkAttendanceLoading, setBulkAttendanceLoading] = useState(false);
+  const [bulkAttendanceResult, setBulkAttendanceResult] = useState(null);
   const [employeeDetail, setEmployeeDetail] = useState(null);
   const [selectedAttendanceLog, setSelectedAttendanceLog] = useState(null);
   const [openOTDetailId, setOpenOTDetailId] = useState(null);
@@ -285,6 +287,35 @@ export const useAttendanceAdmin = () => {
     }
   };
 
+  const handleBulkAttendanceSubmit = async (payload) => {
+    try {
+      setBulkAttendanceLoading(true);
+      const res = await attendancesAPI.bulkWrite(payload);
+      const result = res.data?.data || {};
+      setBulkAttendanceResult(result);
+
+      if (payload.dryRun) {
+        toast.info(`Xem trước: ${result.targetRecords || 0} bản ghi sẽ được xử lý`);
+        return result;
+      }
+
+      toast.success(
+        `Đã tạo ${result.created || 0} và cập nhật ${result.updated || 0} bản ghi chấm công`,
+      );
+      await refreshAttendanceList();
+      if (selectedEmployee) {
+        await refreshEmployeeDetail();
+      }
+      return result;
+    } catch (error) {
+      console.error("[ERROR] Bulk attendance failed:", error);
+      toast.error(error.response?.data?.message || "Tạo công hàng loạt thất bại");
+      return null;
+    } finally {
+      setBulkAttendanceLoading(false);
+    }
+  };
+
   const handleExportExcel = () => {
     try {
       const exportData = buildExportRows(filteredAttendanceData);
@@ -403,12 +434,15 @@ export const useAttendanceAdmin = () => {
 
   return {
     OT_TYPE_LABELS,
+    bulkAttendanceLoading,
+    bulkAttendanceResult,
     departments,
     employeeDetail,
     errorCount,
     fileInputRef,
     filteredAttendanceData,
     filters,
+    handleBulkAttendanceSubmit,
     handleEmployeeClick,
     handleExportExcel,
     handleFileChange,

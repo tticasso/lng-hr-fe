@@ -11,13 +11,7 @@ import LeaveRequestModal from "../../components/modals/CreateLeaveModal";
 import ModalOT from "../../components/modals/OTModal";
 import OTDetailModal from "../../components/modals/OTDetailModal";
 import { toast } from "react-toastify";
-
-const leaveTypeLabel = {
-    ANNUAL: "Nghỉ phép năm",
-    UNPAID: "Nghỉ không lương",
-    SICK: "Nghỉ ốm / bệnh",
-    MATERNITY: "Nghỉ thai sản",
-};
+import { leaveTypeLabel, leaveTypeOptions } from "./shared";
 
 const leaveScopeLabel = {
     FULL_DAY: "Cả ngày",
@@ -900,10 +894,11 @@ const MyLeave = () => {
                             onChange={(e) => setFilters((p) => ({ ...p, leaveType: e.target.value }))}
                         >
                             <option value="">Tất cả loại nghỉ</option>
-                            <option value="ANNUAL">Nghỉ phép năm</option>
-                            <option value="UNPAID">Nghỉ không lương</option>
-                            <option value="SICK">Nghỉ ốm / bệnh</option>
-                            <option value="MATERNITY">Nghỉ thai sản</option>
+                            {leaveTypeOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
                         </select>
 
                         <select
