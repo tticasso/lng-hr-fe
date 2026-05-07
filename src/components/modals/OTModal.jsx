@@ -4,10 +4,9 @@ import { X, Clock, AlertCircle } from "lucide-react";
 import { DatePicker, TimePicker } from "antd";
 import dayjs from "../../untils/dayjs";
 
-const makePayload = ({ date, otType, startTime, endTime, reason }) => ({
+const makePayload = ({ date, startTime, endTime, reason }) => ({
   // backend cần "YYYY-MM-DD"
   date: date ? dayjs(date).format("YYYY-MM-DD") : "",
-  otType,
   // backend cần "HH:mm"
   startTime: startTime ? dayjs(startTime).format("HH:mm") : "",
   endTime: endTime ? dayjs(endTime).format("HH:mm") : "",
@@ -20,7 +19,7 @@ const makePayload = ({ date, otType, startTime, endTime, reason }) => ({
  * - open: boolean
  * - onClose: () => void
  * - onSubmit: (payload) => Promise<void> | void
- * - initialValues?: { date, otType, startTime, endTime, reason }
+ * - initialValues?: { date, startTime, endTime, reason }
  */
 const ModalOT = ({
   open,
@@ -40,7 +39,6 @@ const ModalOT = ({
   });
 
   const [date, setDate] = useState(null); // dayjs
-  const [otType, setOtType] = useState("WEEKDAY");
   const [startTime, setStartTime] = useState(null); // dayjs
   const [endTime, setEndTime] = useState(null); // dayjs
   const [reason, setReason] = useState("");
@@ -68,8 +66,6 @@ const ModalOT = ({
     });
 
     setDate(initialValues?.date ? dayjs(initialValues.date) : null);
-    setOtType(initialValues?.otType || "WEEKDAY");
-
     // cho phép initialValues dạng "20:00" hoặc full datetime
     setStartTime(
       initialValues?.startTime
@@ -87,14 +83,13 @@ const ModalOT = ({
 
   const canSubmit = useMemo(() => {
     if (!date) return false;
-    if (!otType) return false;
     if (!startTime || !endTime) return false;
     
     // Validate lý do phải có nội dung
     if (!reason || reason.trim() === "") return false;
     
     return true;
-  }, [date, otType, startTime, endTime, reason]);
+  }, [date, startTime, endTime, reason]);
 
   const handleOk = async () => {
     setShowValidation(true);
@@ -104,7 +99,7 @@ const ModalOT = ({
       return; // Dừng lại, không call API
     }
 
-    const payload = makePayload({ date, otType, startTime, endTime, reason });
+    const payload = makePayload({ date, startTime, endTime, reason });
 
     try {
       setConfirmLoading(true);
@@ -172,19 +167,6 @@ const ModalOT = ({
                 <AlertCircle size={12} /> Vui lòng chọn ngày OT
               </p>
             )}
-          </div>
-
-          <div>
-            <label className={labelClass}>Loai OT *</label>
-            <select
-              value={otType}
-              onChange={(e) => setOtType(e.target.value)}
-              className={inputClass(false)}
-            >
-              <option value="WEEKDAY">Ngay thuong</option>
-              <option value="WEEKEND">Cuoi tuan</option>
-              <option value="HOLIDAY">Ngay le</option>
-            </select>
           </div>
 
           {/* time */}

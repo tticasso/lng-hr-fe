@@ -91,7 +91,6 @@ const MyTimesheet = () => {
             onClose={closeOTModal}
             onSubmit={submitOTRequest}
             initialValues={{
-              otType: "WEEKDAY",
               date: otPrefillDate,
             }}
           />
