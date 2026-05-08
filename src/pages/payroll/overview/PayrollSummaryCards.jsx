@@ -67,14 +67,14 @@ const PayrollSummaryCards = ({ summary, formatMoney }) => {
             key={card.label}
             className={`border p-4 bg-gradient-to-br ${tone.card}`}
           >
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
                 <p className={`mt-1 text-xs font-medium uppercase ${tone.subtext}`}>
                   {card.label}
                 </p>
-                <p className={`mt-1 text-xl font-bold ${tone.text}`}>{card.value}</p>
+                <p className={`mt-1 truncate text-xl font-bold ${tone.text}`}>{card.value}</p>
               </div>
-              <div className={`rounded-lg p-3 ${tone.icon}`}>
+              <div className={`shrink-0 rounded-lg p-3 ${tone.icon}`}>
                 <Icon size={24} />
               </div>
             </div>

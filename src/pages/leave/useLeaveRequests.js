@@ -118,10 +118,15 @@ export const useLeaveRequests = ({ mode }) => {
   const fetchLeaves = async (page = pagination.page, limit = pagination.limit) => {
     setLoading(true);
     try {
+      const serverFilters = {
+        ...(filters.status && { status: filters.status }),
+        ...(filters.leaveType && { leaveType: filters.leaveType }),
+        ...(filters.search.trim() && { search: filters.search.trim() }),
+      };
       const res =
         mode === "approvals"
-          ? await leaveAPI.getbyADMIN(page, limit)
-          : await leaveAPI.getbyUSER(page, limit);
+          ? await leaveAPI.getbyADMIN(page, limit, serverFilters)
+          : await leaveAPI.getbyUSER(page, limit, serverFilters);
 
       const responseData = res?.data;
       const rows = responseData?.data || [];
@@ -177,6 +182,19 @@ export const useLeaveRequests = ({ mode }) => {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagination.page, pagination.limit]);
+
+  useEffect(() => {
+    if (!hasFetched.current) return;
+    const timer = setTimeout(() => {
+      if (pagination.page !== 1) {
+        setPagination((prev) => ({ ...prev, page: 1 }));
+      } else {
+        fetchLeaves(1, pagination.limit);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.search, filters.leaveType, filters.status, mode]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {

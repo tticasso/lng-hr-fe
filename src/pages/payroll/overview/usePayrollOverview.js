@@ -7,6 +7,7 @@ import { payrollAPI } from "../../../apis/payrollAPI";
 import {
   ALLOWANCE_TYPE_LABELS,
   formatMoney,
+  getAdjustmentBreakdownItems,
   getAllowanceBreakdownItems,
   getCurrentPayrollPeriod,
   getLeaveBreakdownItems,
@@ -18,6 +19,8 @@ export const usePayrollOverview = () => {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentPayrollPeriod());
   const [payrollData, setPayrollData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [sendingBulkEmails, setSendingBulkEmails] = useState(false);
+  const [adjustmentModalPayroll, setAdjustmentModalPayroll] = useState(null);
   const [selectedRows, setSelectedRows] = useState([]);
   const [filters, setFilters] = useState({
     search: "",
@@ -84,11 +87,14 @@ export const usePayrollOverview = () => {
       totalGross: filteredData.reduce((sum, item) => sum + (item.grossIncome || 0), 0),
       totalNet: filteredData.reduce((sum, item) => sum + (item.netIncome || 0), 0),
       totalDeduction: filteredData.reduce(
-        (sum, item) => sum + (item.insurance?.total || 0),
+        (sum, item) => sum + (item.totalDeduction || item.insurance?.total || 0),
         0,
       ),
+      emailReadyCount: payrollData.filter((item) =>
+        ["FINALIZED", "PAID"].includes(item.status),
+      ).length,
     }),
-    [filteredData],
+    [filteredData, payrollData],
   );
 
   const handleFilterChange = (e) => {
@@ -152,6 +158,85 @@ export const usePayrollOverview = () => {
     }
   };
 
+  const handleReopenPayroll = async (payroll) => {
+    if (!payroll?._id) return;
+
+    const employeeName = payroll.employeeId?.fullName || payroll.employeeId?.employeeCode || "nhân viên này";
+    if (
+      !window.confirm(
+        `Mở lại phiếu lương của ${employeeName} về DRAFT? Trạng thái email sẽ được reset để có thể gửi lại sau khi chốt lại.`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await payrollAPI.reopen(payroll._id);
+      toast.success("Đã mở lại phiếu lương về DRAFT");
+      await fetchPayrollData();
+      setSelectedRows((prev) => prev.filter((id) => id !== payroll._id));
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Mở lại phiếu lương thất bại");
+    }
+  };
+
+  const handleOpenAdjustments = (payroll) => {
+    setAdjustmentModalPayroll(payroll);
+  };
+
+  const handleCloseAdjustments = () => {
+    setAdjustmentModalPayroll(null);
+  };
+
+  const handleSendPayrollEmailsBulk = async () => {
+    const [year, month] = selectedMonth.split("-");
+    const emailReadyCount = payrollData.filter((item) =>
+      ["FINALIZED", "PAID"].includes(item.status),
+    ).length;
+
+    if (emailReadyCount === 0) {
+      toast.warning("Kỳ lương này chưa có bản lương đã chốt hoặc đã thanh toán.");
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Gửi email phiếu lương tháng ${month}/${year} cho ${emailReadyCount} nhân viên?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setSendingBulkEmails(true);
+      const res = await payrollAPI.sendEmailsBulk({
+        month: parseInt(month, 10),
+        year: parseInt(year, 10),
+      });
+      const result = res.data?.data || {};
+      const alreadySentCount = Number(result.skippedAlreadySent || 0);
+      const skippedCount =
+        Number(result.skippedNoEmployee || 0) +
+        Number(result.skippedNoEmail || 0) +
+        Number(result.skippedInvalidEmail || 0) +
+        alreadySentCount;
+
+      if (res.data?.status === "partial_success") {
+        toast.warning(
+          `Đã gửi mới ${result.sent || 0}/${result.total || 0} email. Đã gửi trước đó: ${alreadySentCount}. Lỗi: ${result.failed || 0}, bỏ qua: ${skippedCount}.`,
+        );
+      } else {
+        toast.success(
+          `Đã gửi mới ${result.sent || 0}/${result.total || 0} email. Đã gửi trước đó: ${alreadySentCount}.`,
+        );
+      }
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Gửi email phiếu lương hàng loạt thất bại");
+    } finally {
+      setSendingBulkEmails(false);
+    }
+  };
+
   const handleExportExcel = () => {
     try {
       const otKeys = Object.keys(OT_TYPE_LABELS);
@@ -202,10 +287,15 @@ export const usePayrollOverview = () => {
           "Chi tiết phụ cấp": getAllowanceBreakdownItems(item)
             .map((detail) => `${detail.label}: ${formatMoney(detail.value)}`)
             .join(" | "),
+          "Tổng điều chỉnh cộng": item.totalAdjustmentEarnings || 0,
+          "Tổng điều chỉnh trừ": item.totalAdjustmentDeductions || 0,
+          "Chi tiết điều chỉnh": getAdjustmentBreakdownItems(item)
+            .map((detail) => `${detail.label}: ${formatMoney(detail.value)}`)
+            .join(" | "),
           "BHXH": item.insurance?.bhxh || 0,
           "BHYT": item.insurance?.bhyt || 0,
           "BHTN": item.insurance?.bhtn || 0,
-          "Khấu trừ bảo hiểm": item.insurance?.total || item.totalDeduction || 0,
+          "Tổng khấu trừ": item.totalDeduction || item.insurance?.total || 0,
           "Tổng thu nhập": item.grossIncome || 0,
           "Thực nhận": item.netIncome || 0,
           "Trạng thái": getPayrollStatusLabel(item.status),
@@ -267,10 +357,16 @@ export const usePayrollOverview = () => {
     handlePayment,
     handleSelectAll,
     handleSelectRow,
+    handleSendPayrollEmailsBulk,
     handleSendPayrollEmail,
+    handleReopenPayroll,
+    handleOpenAdjustments,
+    handleCloseAdjustments,
     isAllSelected,
     isSomeSelected,
     loading,
+    sendingBulkEmails,
+    adjustmentModalPayroll,
     selectedMonth,
     selectedRows,
     setSelectedMonth,

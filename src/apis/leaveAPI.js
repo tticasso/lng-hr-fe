@@ -5,16 +5,16 @@ export const leaveAPI = {
     return apiClient.get("/leaves", { params });
   },
 
-  getbyADMIN: (page, limit) => {
-    return apiClient.get("/leaves", { params: { page, limit } });
+  getbyADMIN: (page, limit, params = {}) => {
+    return apiClient.get("/leaves", { params: { page, limit, ...params } });
   },
 
   getMy: (params) => {
     return apiClient.get("/leaves/my-leaves", { params });
   },
 
-  getbyUSER: (page, limit) => {
-    return apiClient.get("/leaves/my-leaves", { params: { page, limit } });
+  getbyUSER: (page, limit, params = {}) => {
+    return apiClient.get("/leaves/my-leaves", { params: { page, limit, ...params } });
   },
 
   getbyID: (id) => {

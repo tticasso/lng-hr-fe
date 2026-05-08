@@ -1,4 +1,4 @@
-import { Download, DollarSign, RefreshCw } from "lucide-react";
+import { Download, DollarSign, Loader2, RefreshCw, Send } from "lucide-react";
 
 import Button from "../../../components/common/Button";
 import MonthYearPicker from "../../../components/common/MonthYearPicker";
@@ -9,10 +9,13 @@ const PayrollOverviewHeader = ({
   onChangeMonth,
   onRefresh,
   onPayment,
+  onSendEmailsBulk,
   onExport,
   loading,
+  sendingBulkEmails,
   selectedCount,
   exportDisabled,
+  emailDisabled,
 }) => {
   const actions = (
     <div className="flex w-full flex-col gap-3 xl:flex-row xl:items-center xl:justify-end">
@@ -22,7 +25,7 @@ const PayrollOverviewHeader = ({
         className="w-full xl:w-auto xl:flex-none"
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:flex xl:min-w-0 xl:flex-nowrap xl:items-center xl:justify-end">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:flex xl:min-w-0 xl:flex-nowrap xl:items-center xl:justify-end">
         <Button
           variant="secondary"
           onClick={onRefresh}
@@ -40,6 +43,20 @@ const PayrollOverviewHeader = ({
         >
           <DollarSign size={16} />
           Thanh toán ({selectedCount})
+        </Button>
+
+        <Button
+          variant="secondary"
+          onClick={onSendEmailsBulk}
+          disabled={emailDisabled || sendingBulkEmails}
+          className="h-12 gap-2 rounded-xl border-blue-200 bg-blue-50 px-4 text-sm text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 xl:min-w-[190px]"
+        >
+          {sendingBulkEmails ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <Send size={16} />
+          )}
+          Gửi email tất cả
         </Button>
 
         <Button

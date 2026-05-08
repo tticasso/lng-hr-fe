@@ -120,10 +120,15 @@ export const useOvertimeRequests = ({ mode }) => {
   const fetchOTs = async (page = pagination.page, limit = pagination.limit) => {
     setLoading(true);
     try {
+      const serverFilters = {
+        ...(filters.statusGroup && { status: filters.statusGroup }),
+        ...(filters.otType && { otType: filters.otType }),
+        ...(filters.searchName.trim() && { search: filters.searchName.trim() }),
+      };
       const res =
         mode === "approvals"
-          ? await OTApi.getALL(page, limit)
-          : await OTApi.getMy({ page, limit });
+          ? await OTApi.getALL(page, limit, serverFilters)
+          : await OTApi.getMy({ page, limit, ...serverFilters });
 
       const responseData = res?.data;
       const rows = responseData?.data || [];
@@ -145,6 +150,18 @@ export const useOvertimeRequests = ({ mode }) => {
     fetchOTs(pagination.page, pagination.limit);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagination.page, pagination.limit, mode]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (pagination.page !== 1) {
+        setPagination((prev) => ({ ...prev, page: 1 }));
+      } else {
+        fetchOTs(1, pagination.limit);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.searchName, filters.statusGroup, filters.otType]);
 
   const filteredOTs = useMemo(() => {
     const filtered = ots.filter((ot) => {

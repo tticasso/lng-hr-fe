@@ -36,6 +36,20 @@ export const ALLOWANCE_TYPE_LABELS = {
   other: "Phụ cấp khác",
 };
 
+export const ADJUSTMENT_TYPE_LABELS = {
+  EARNING: "Điều chỉnh cộng",
+  ALLOWANCE: "Phụ cấp bổ sung",
+  DEDUCTION: "Khấu trừ khác",
+};
+
+export const ADJUSTMENT_CODE_LABELS = {
+  BONUS: "Thưởng",
+  PENALTY: "Phạt",
+  ADVANCE: "Tạm ứng",
+  ARREARS: "Truy lĩnh",
+  OTHER: "Khác",
+};
+
 export const LEAVE_TYPE_LABELS = {
   annual: "Nghỉ phép năm",
   sick: "Nghỉ ốm",
@@ -128,6 +142,26 @@ export const getAllowanceBreakdownItems = (row) =>
       value: Number(value || 0),
     }))
     .filter((item) => item.value > 0);
+
+export const getAdjustmentBreakdownItems = (row) =>
+  (row?.adjustmentBreakdown || [])
+    .map((item, index) => {
+      const type = item.type || "";
+      const amount = Number(item.amount || 0);
+      const sign = type === "DEDUCTION" ? -1 : 1;
+
+      return {
+        key: item.adjustmentId || `${item.code || "ADJ"}-${index}`,
+        label: item.name || ADJUSTMENT_CODE_LABELS[item.code] || item.code || "Điều chỉnh",
+        value: sign * amount,
+        rawAmount: amount,
+        type,
+        code: item.code,
+        note: item.note,
+        formulaText: ADJUSTMENT_TYPE_LABELS[type] || type,
+      };
+    })
+    .filter((item) => item.rawAmount > 0);
 
 export const getLeaveBreakdownItems = (row) => {
   const dailyRate = Number(row?.dailyRate || 0);

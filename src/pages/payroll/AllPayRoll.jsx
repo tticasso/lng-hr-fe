@@ -3,6 +3,7 @@ import PayrollOverviewHeader from "./overview/PayrollOverviewHeader";
 import PayrollOverviewTable from "./overview/PayrollOverviewTable";
 import PayrollSummaryCards from "./overview/PayrollSummaryCards";
 import { usePayrollOverview } from "./overview/usePayrollOverview";
+import PayrollAdjustmentModal from "../../components/modals/PayrollAdjustmentModal";
 
 const AllPayRoll = () => {
   const {
@@ -16,10 +17,16 @@ const AllPayRoll = () => {
     handlePayment,
     handleSelectAll,
     handleSelectRow,
+    handleSendPayrollEmailsBulk,
     handleSendPayrollEmail,
+    handleReopenPayroll,
+    handleOpenAdjustments,
+    handleCloseAdjustments,
     isAllSelected,
     isSomeSelected,
     loading,
+    sendingBulkEmails,
+    adjustmentModalPayroll,
     selectedMonth,
     selectedRows,
     setSelectedMonth,
@@ -37,16 +44,19 @@ const AllPayRoll = () => {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6 pb-6">
       <PayrollOverviewHeader
         selectedMonth={selectedMonth}
         onChangeMonth={(e) => setSelectedMonth(e.target.value)}
         onRefresh={fetchPayrollData}
         onPayment={handlePayment}
+        onSendEmailsBulk={handleSendPayrollEmailsBulk}
         onExport={handleExportExcel}
         loading={loading}
+        sendingBulkEmails={sendingBulkEmails}
         selectedCount={selectedRows.length}
         exportDisabled={filteredData.length === 0}
+        emailDisabled={summary.emailReadyCount === 0}
       />
 
       <PayrollSummaryCards summary={summary} formatMoney={formatMoney} />
@@ -61,6 +71,16 @@ const AllPayRoll = () => {
         onSelectAll={handleSelectAll}
         onSelectRow={handleSelectRow}
         onSendPayrollEmail={handleSendPayrollEmail}
+        onReopenPayroll={handleReopenPayroll}
+        onManageAdjustments={handleOpenAdjustments}
+      />
+
+      <PayrollAdjustmentModal
+        isOpen={Boolean(adjustmentModalPayroll)}
+        onClose={handleCloseAdjustments}
+        payroll={adjustmentModalPayroll}
+        selectedMonth={selectedMonth}
+        onChanged={fetchPayrollData}
       />
     </div>
   );

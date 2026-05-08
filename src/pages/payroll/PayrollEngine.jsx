@@ -14,15 +14,18 @@ import {
   Search,
   AlertCircle,
   Loader2,
+  CircleDollarSign,
 } from "lucide-react";
 
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import MonthYearPicker from "../../components/common/MonthYearPicker";
+import PayrollAdjustmentModal from "../../components/modals/PayrollAdjustmentModal";
 import { payrollAPI } from "../../apis/payrollAPI";
 import { toast } from "react-toastify";
 import { employeeApi } from "../../apis/employeeApi";
 import {
+  getAdjustmentBreakdownItems,
   getAllowanceBreakdownItems,
   getLeaveBreakdownItems,
   getOtPayBreakdownItems,
@@ -41,6 +44,7 @@ const PayrollEngine = () => {
   const [loadingData, setLoadingData] = useState(false); // Loading cho việc fetch data tab 2
   const [searchQuery, setSearchQuery] = useState(""); // State cho search
   const [totalUser, setTotalUser] = useState();
+  const [adjustmentModalPayroll, setAdjustmentModalPayroll] = useState(null);
 
 
   useEffect(() => {
@@ -234,7 +238,7 @@ const PayrollEngine = () => {
   };
 
   return (
-    <div className="flex min-h-[calc(100dvh-5rem)] flex-col gap-3 lg:h-[calc(100vh-100px)] lg:gap-4">
+    <div className="flex h-[calc(100dvh-7.25rem)] min-h-0 flex-col gap-3 overflow-hidden lg:gap-4">
       {/* Loading Overlay khi call API */}
       {isProcessing && currentStep === 1 && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
@@ -261,7 +265,7 @@ const PayrollEngine = () => {
       </div>
 
       {/* --- STEPPER --- */}
-      <div className="mb-4 flex items-center justify-center overflow-x-auto pb-1 shrink-0">
+      <div className="mb-2 flex items-center justify-center overflow-x-auto pb-1 shrink-0">
         <div className="flex items-center w-full max-w-3xl">
           <StepIndicator
             step={1}
@@ -287,11 +291,11 @@ const PayrollEngine = () => {
       </div>
 
       {/* --- MAIN CONTENT AREA --- */}
-      <div className="flex-1 overflow-hidden">
-        <Card className="h-full flex flex-col p-0 overflow-hidden border border-gray-200 shadow-sm">
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <Card className="h-full min-h-0 flex flex-col p-0 overflow-hidden border border-gray-200 shadow-sm">
           {/* STEP 1: CONFIGURATION */}
           {currentStep === 1 && (
-            <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="flex min-h-0 flex-1 flex-col animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="p-8 max-w-2xl mx-auto w-full space-y-8 flex-1 overflow-y-auto">
                 <div className="text-center space-y-2">
                   <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -373,9 +377,9 @@ const PayrollEngine = () => {
           )}
 
           {currentStep === 2 && (
-            <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="flex min-h-0 flex-1 flex-col animate-in fade-in slide-in-from-right-4 duration-300">
               {/* Review Toolbar */}
-              <div className="flex flex-col gap-3 border-b border-gray-200 bg-gray-50 p-4 md:flex-row md:items-center md:justify-between">
+              <div className="flex shrink-0 flex-col gap-3 border-b border-gray-200 bg-gray-50 p-4 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <AlertCircle size={16} className="text-blue-500" />
@@ -392,29 +396,22 @@ const PayrollEngine = () => {
                     placeholder="Tìm nhân viên..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full rounded-md border border-gray-300 py-1.5 pl-9 pr-3 text-sm outline-none focus:border-blue-500 md:w-auto"
+                    className="w-full rounded-md border border-gray-300 py-1.5 pl-9 pr-3 text-sm outline-none focus:border-blue-500 md:w-60"
                   />
                 </div>
                 <Button
-                  onClick={handleNext}
-                  disabled={isProcessing}
-                  className="bg-blue-600 hover:bg-blue-700 text-white md:self-auto"
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setAdjustmentModalPayroll({})}
+                  className="border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100"
                 >
-                  {isProcessing ? (
-                    <div className="flex items-center gap-2">
-                      <Loader2 size={18} className="animate-spin" />
-                      <span>Đang xử lý...</span>
-                    </div>
-                  ) : (
-                    <>
-                      Tiếp theo <ArrowRight size={18} className="ml-2" />
-                    </>
-                  )}
+                  <CircleDollarSign size={18} className="mr-2" />
+                  Thêm điều chỉnh
                 </Button>
               </div>
 
               {/* Data Table - Giới hạn chiều cao */}
-              <div className="flex-1 overflow-auto">
+              <div className="min-h-0 flex-1 overflow-auto">
                 {loadingData ? (
                   <div className="flex items-center justify-center h-64">
                     <div className="flex flex-col items-center gap-3">
@@ -439,18 +436,31 @@ const PayrollEngine = () => {
                     </div>
                   </div>
                 ) : (
-                  <table className="hidden w-full text-left text-xs md:table">
+                  <table className="hidden w-full min-w-[1560px] table-fixed text-left text-xs md:table">
+                    <colgroup>
+                      <col className="w-[170px]" />
+                      <col className="w-[140px]" />
+                      <col className="w-[150px]" />
+                      <col className="w-[220px]" />
+                      <col className="w-[190px]" />
+                      <col className="w-[190px]" />
+                      <col className="w-[110px]" />
+                      <col className="w-[130px]" />
+                      <col className="w-[110px]" />
+                      <col className="w-[130px]" />
+                    </colgroup>
                     <thead className="bg-white border-b border-gray-200 text-[10px] uppercase text-gray-500 font-semibold sticky top-0 z-10 shadow-sm">
                       <tr>
                         <th className="p-2">Nhân viên</th>
-                        <th className="p-2">Phòng ban</th>
                         <th className="p-2 text-right">Lương cơ bản</th>
                         <th className="p-2 text-right">Nghỉ phép</th>
                         <th className="p-2 text-right text-orange-600">Lương OT</th>
                         <th className="p-2 text-right text-green-600">Phụ cấp</th>
+                        <th className="p-2 text-right text-purple-600">Điều chỉnh</th>
                         <th className="p-2 text-right text-red-600">Khấu trừ</th>
                         <th className="p-2 text-right bg-blue-50/50">Thực nhận</th>
                         <th className="p-2 text-center">Trạng thái</th>
+                        <th className="sticky right-0 z-20 border-l border-gray-200 bg-white p-2 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.35)]">Thao tác</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -458,42 +468,48 @@ const PayrollEngine = () => {
                         const otPayBreakdown = getOtPayBreakdownItems(row);
                         const leaveBreakdown = getLeaveBreakdownItems(row);
                         const allowanceBreakdown = getAllowanceBreakdownItems(row);
+                        const adjustmentBreakdown = getAdjustmentBreakdownItems(row);
                         return (
                           <tr
                             key={row._id}
                             className="align-top hover:bg-gray-50 group transition-colors"
                           >
                             <td className="p-2 font-medium text-gray-800">
-                              {row.employeeId?.fullName || "--"} <br />
-                              <span className="text-[10px] text-gray-400 font-normal">
-                                {row.employeeId?.employeeCode || "--"}
-                              </span>
+                              <div className="min-w-0">
+                                <p className="truncate">{row.employeeId?.fullName || "--"}</p>
+                                <span className="text-[10px] text-gray-400 font-normal">
+                                  {row.employeeId?.employeeCode || "--"}
+                                </span>
+                              </div>
                             </td>
-                            <td className="p-2 text-gray-600">
-                              {row.departmentId?.name || "--"}
-                            </td>
-                            <td className="p-2 text-right font-mono text-gray-600">
+                            <td className="p-2 text-right font-mono text-gray-600 whitespace-nowrap">
                               {formatMoney(row.baseSalary || 0)}
                             </td>
                             <td className="p-2">
-                              <div className="text-right font-mono text-gray-600">
+                              <div className="text-right font-mono text-gray-600 whitespace-nowrap">
                                 {Number(row.paidLeaveDays || 0).toFixed(2)} ngày
                               </div>
-                              <BreakdownList items={leaveBreakdown} formatter={formatMoney} />
+                              <BreakdownList items={leaveBreakdown} formatter={formatMoney} compact maxItems={2} />
                             </td>
                             <td className="p-2">
-                              <div className="text-right font-mono text-gray-600">
+                              <div className="text-right font-mono text-gray-600 whitespace-nowrap">
                                 {formatMoney(row.otPay || 0)}
                               </div>
-                              <BreakdownList items={otPayBreakdown} formatter={formatMoney} />
+                              <BreakdownList items={otPayBreakdown} formatter={formatMoney} compact maxItems={3} />
                             </td>
                             <td className="p-2">
-                              <div className="text-right font-mono text-gray-600">
+                              <div className="text-right font-mono text-gray-600 whitespace-nowrap">
                                 {formatMoney(row.totalAllowance || 0)}
                               </div>
-                              <BreakdownList items={allowanceBreakdown} formatter={formatMoney} />
+                              <BreakdownList items={allowanceBreakdown} formatter={formatMoney} compact maxItems={3} />
                             </td>
-                            <td className="p-2 text-right font-mono text-gray-600">
+                            <td className="p-2">
+                              <div className="text-right font-mono text-purple-600 whitespace-nowrap">
+                                {formatMoney((row.totalAdjustmentEarnings || 0) - (row.totalAdjustmentDeductions || 0))}
+                              </div>
+                              <BreakdownList items={adjustmentBreakdown} formatter={formatMoney} compact maxItems={3} />
+                            </td>
+                            <td className="p-2 text-right font-mono text-gray-600 whitespace-nowrap">
                               -{formatMoney(row.totalDeduction || 0)}
                             </td>
                             <td className="p-2 text-right font-mono font-bold text-blue-700 bg-blue-50/30 group-hover:bg-blue-100/30 text-sm">
@@ -515,26 +531,36 @@ const PayrollEngine = () => {
                                 />
                               )}
                             </td>
+                            <td className="sticky right-0 border-l border-gray-100 bg-white p-2 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.28)] group-hover:bg-gray-50">
+                              <button
+                                type="button"
+                                onClick={() => setAdjustmentModalPayroll(row)}
+                                className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-2 py-1.5 text-[11px] font-semibold text-purple-700 transition hover:bg-purple-100"
+                                title="Quản lý khoản điều chỉnh"
+                              >
+                                <CircleDollarSign size={14} />
+                                Điều chỉnh
+                              </button>
+                            </td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
                 )}
-
                 {!loadingData && filteredPayrollData.length > 0 && (
                   <div className="space-y-3 p-3 md:hidden">
                     {filteredPayrollData.map((row) => {
                       const otPayBreakdown = getOtPayBreakdownItems(row);
                       const leaveBreakdown = getLeaveBreakdownItems(row);
                       const allowanceBreakdown = getAllowanceBreakdownItems(row);
+                      const adjustmentBreakdown = getAdjustmentBreakdownItems(row);
                       return (
                       <article key={row._id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="font-semibold text-gray-800">{row.employeeId?.fullName || "--"}</p>
                             <p className="text-xs text-gray-500">{row.employeeId?.employeeCode || "--"}</p>
-                            <p className="mt-1 text-sm text-gray-600">{row.departmentId?.name || "--"}</p>
                           </div>
                           {row.status === "DRAFT" ? (
                             <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-1 text-[10px] font-bold text-yellow-700">
@@ -565,6 +591,13 @@ const PayrollEngine = () => {
                             <p className="font-medium text-red-600">-{formatMoney(row.totalDeduction || 0)}</p>
                           </div>
                           <div className="col-span-2">
+                            <p className="text-xs uppercase text-gray-400">Điều chỉnh</p>
+                            <p className="font-medium text-purple-600">
+                              {formatMoney((row.totalAdjustmentEarnings || 0) - (row.totalAdjustmentDeductions || 0))}
+                            </p>
+                            <BreakdownList items={adjustmentBreakdown} formatter={formatMoney} align="left" />
+                          </div>
+                          <div className="col-span-2">
                             <p className="text-xs uppercase text-gray-400">Nghỉ phép</p>
                             <p className="font-medium text-gray-700">{Number(row.paidLeaveDays || 0).toFixed(2)} ngày có lương</p>
                             <BreakdownList items={leaveBreakdown} formatter={formatMoney} align="left" />
@@ -575,17 +608,27 @@ const PayrollEngine = () => {
                             <BreakdownList items={allowanceBreakdown} formatter={formatMoney} align="left" />
                           </div>
                         </div>
+                        <div className="mt-4 border-t border-gray-100 pt-3">
+                          <button
+                            type="button"
+                            onClick={() => setAdjustmentModalPayroll(row)}
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-sm font-semibold text-purple-700 transition hover:bg-purple-100"
+                          >
+                            <CircleDollarSign size={16} />
+                            Quản lý điều chỉnh
+                          </button>
+                        </div>
                       </article>
                     )})}
                   </div>
                 )}
               </div>
-            </div>
+               </div>
           )}
 
           {/* STEP 3: FINALIZE */}
           {currentStep === 3 && (
-            <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="flex min-h-0 flex-1 flex-col animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="flex-1 overflow-y-auto p-8 max-w-4xl mx-auto w-full space-y-8">
                 <div className="text-center">
                   <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
@@ -665,7 +708,7 @@ const PayrollEngine = () => {
                     variant="secondary"
                     className="border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
                   >
-                    <Send size={18} className="mr-2" /> Gửi phiếu lương (Email)
+                    <Send size={18} className="mr-2" /> Gửi email phiếu lương
                   </Button>
                   <Button
                     onClick={handleFinalize}
@@ -688,9 +731,7 @@ const PayrollEngine = () => {
                 <Button
                   onClick={handleNext}
                   disabled={isProcessing}
-                  className={`bg-blue-600 hover:bg-blue-700 text-white min-w-[140px] disabled:opacity-70 disabled:cursor-not-allowed ${
-                    currentStep === 2 ? "hidden" : ""
-                  }`}
+                  className="bg-blue-600 hover:bg-blue-700 text-white min-w-[140px] disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isProcessing ? (
                     <div className="flex items-center gap-2">
@@ -699,7 +740,7 @@ const PayrollEngine = () => {
                     </div>
                   ) : (
                     <>
-                      Tiếp theo <ArrowRight size={18} className="ml-2" />
+                      {currentStep === 2 ? "Sang bước chốt lương" : "Tính lương & xem số liệu"} <ArrowRight size={18} className="ml-2" />
                     </>
                   )}
                 </Button>
@@ -708,34 +749,48 @@ const PayrollEngine = () => {
           </div>
         </Card>
       </div>
+      <PayrollAdjustmentModal
+        isOpen={Boolean(adjustmentModalPayroll)}
+        onClose={() => setAdjustmentModalPayroll(null)}
+        payroll={adjustmentModalPayroll}
+        selectedMonth={selectedMonth}
+      />
     </div>
   );
 };
 
 // --- SUB COMPONENTS ---
 
-const BreakdownList = ({ items, formatter, align = "right" }) => {
+const BreakdownList = ({ items, formatter, align = "right", compact = false, maxItems = 99 }) => {
   if (!items.length) {
     return <p className={`mt-1 text-[10px] text-gray-400 ${align === "right" ? "text-right" : ""}`}>Không có</p>;
   }
 
+  const visibleItems = compact ? items.slice(0, maxItems) : items;
+  const hiddenCount = items.length - visibleItems.length;
+
   return (
-    <div className={`mt-1 space-y-1 text-[10px] text-gray-500 ${align === "right" ? "text-right" : ""}`}>
-      {items.map((item) => (
+    <div className={`mt-1 space-y-0.5 text-[10px] text-gray-500 ${align === "right" ? "text-right" : ""}`}>
+      {visibleItems.map((item) => (
         <div key={item.key} className="flex items-start justify-between gap-2">
-          <span className="min-w-0 flex-1">
-            <span className="block truncate">{item.label}</span>
-            {item.formulaText && (
+          <span className="min-w-0 flex-1 truncate">
+            {item.label}
+            {!compact && item.formulaText && (
               <span className="block truncate font-mono text-[10px] text-gray-400">
                 {item.formulaText}
               </span>
             )}
           </span>
-          <span className="shrink-0 font-mono font-medium text-gray-700">
+          <span className="shrink-0 whitespace-nowrap font-mono font-medium text-gray-700">
             {formatter(item.value)}
           </span>
         </div>
       ))}
+      {hiddenCount > 0 && (
+        <div className="text-[10px] font-medium text-gray-400">
+          +{hiddenCount} khoản khác
+        </div>
+      )}
     </div>
   );
 };

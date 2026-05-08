@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { X, Users, Crown, User, Loader2, Plus, UserPlus, CalendarSync, Trash2, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Users, Crown, User, Loader2, Plus, UserPlus, CalendarSync, Trash2, RotateCcw, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
+import { toast } from "react-toastify";
 import { teamAPI } from "../../apis/teamAPI";
 import { employeeApi } from "../../apis/employeeApi";
 import { saturdayRotations } from "../../apis/saturday-rotations";
@@ -29,6 +30,16 @@ const getCurrentMonthYear = () => {
     };
 };
 
+const getRotationSyncSummary = (response) =>
+    response?.data?.data?.syncSummary || response?.data?.syncSummary || null;
+
+const formatPayrollReviewList = (items) =>
+    items
+        .slice(0, 3)
+        .map((item) => item.employeeCode || item.fullName || item.employeeId)
+        .filter(Boolean)
+        .join(", ");
+
 const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
     const [loading, setLoading] = useState(false);
     const [teamDetail, setTeamDetail] = useState(null);
@@ -44,6 +55,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
     const [selectedRotationId, setSelectedRotationId] = useState(null);
     const [selectedRotationEmployees, setSelectedRotationEmployees] = useState([]);
     const [manualRotationSelections, setManualRotationSelections] = useState({});
+    const [rotationPayrollReviews, setRotationPayrollReviews] = useState([]);
     
     // State cho việc chọn tháng/năm xem lịch luân phiên
     const [selectedMonth, setSelectedMonth] = useState(() => getCurrentMonthYear().month);
@@ -59,6 +71,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
 
     useEffect(() => {
         dataEmplyee();
+        setRotationPayrollReviews([]);
 
         if (teamId) {
             rotationCall();
@@ -80,6 +93,23 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
         }
     };
 
+    const handleRotationMutationResponse = (response, successMessage) => {
+        const syncSummary = getRotationSyncSummary(response);
+        const reviews = syncSummary?.finalizedPayrollsRequireReview || [];
+        setRotationPayrollReviews(reviews);
+
+        if (reviews.length > 0) {
+            const names = formatPayrollReviewList(reviews);
+            toast.warning(
+                `Lịch nghỉ đã cập nhật. Có ${reviews.length} phiếu lương đã chốt cần review${names ? `: ${names}` : ""}.`,
+                { autoClose: 8000 }
+            );
+            return;
+        }
+
+        toast.success(successMessage);
+    };
+
     const rotationadd = async () => {
         try {
             const payload = {
@@ -90,10 +120,12 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
             }
             console.log("PAYLOAD_CHECK :", payload)
             const res = await saturdayRotations.post(payload);
-            rotationCall();
+            handleRotationMutationResponse(res, "Đã tạo lịch nghỉ luân phiên");
+            await rotationCall();
             console.log("addrotation res :", res);
         } catch (error) {
             console.log("addrotation error :", error);
+            toast.error(error.normalizedMessage || "Tạo lịch nghỉ luân phiên thất bại");
         }
     }
 
@@ -188,11 +220,13 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                 })),
             };
 
-            await saturdayRotations.post(payload);
+            const res = await saturdayRotations.post(payload);
+            handleRotationMutationResponse(res, "Đã lưu lịch nghỉ thủ công");
             await rotationCall();
             closeManualRotationModal();
         } catch (error) {
             console.error("submit manual rotations error:", error);
+            toast.error(error.normalizedMessage || "Lưu lịch nghỉ thủ công thất bại");
         }
     };
 
@@ -204,9 +238,11 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
         try {
             const res = await saturdayRotations.deleteByMonth(teamId, selectedMonth, selectedYear);
             console.log("Delete month rotations res:", res);
+            handleRotationMutationResponse(res, "Đã xóa lịch nghỉ luân phiên trong tháng");
             await rotationCall(); // Refresh data
         } catch (error) {
             console.log("Delete month rotations error:", error);
+            toast.error(error.normalizedMessage || "Xóa lịch nghỉ luân phiên thất bại");
         }
     }
 
@@ -351,10 +387,12 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
         if (!window.confirm("Xoa lich nghi luan phien nay?")) return;
 
         try {
-            await saturdayRotations.deleteById(rotationId);
+            const res = await saturdayRotations.deleteById(rotationId);
+            handleRotationMutationResponse(res, "Đã xóa lịch nghỉ luân phiên");
             await rotationCall();
         } catch (error) {
             console.error("Error deleting rotation:", error);
+            toast.error(error.normalizedMessage || "Xóa lịch nghỉ luân phiên thất bại");
         }
     };
 
@@ -408,6 +446,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
 
             const res = await saturdayRotations.patch(selectedRotationId, payload)
             console.log("CHECK_LOG RES", res)
+            handleRotationMutationResponse(res, "Đã cập nhật lịch nghỉ luân phiên");
 
             // Sau khi API thành công, refresh data
             await rotationCall();
@@ -416,6 +455,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
         } catch (error) {
             console.log("CHECK_LOG error", error)
             console.error("Error adding to rotation:", error);
+            toast.error(error.normalizedMessage || "Cập nhật lịch nghỉ luân phiên thất bại");
         }
     };
 
@@ -510,6 +550,45 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                     {teamDetail.isActive ? "Hoạt động" : "Không hoạt động"}
                                 </span>
                             </div>
+
+                            {rotationPayrollReviews.length > 0 && (
+                                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-sm">
+                                    <div className="flex items-start gap-3">
+                                        <AlertTriangle size={18} className="mt-0.5 flex-shrink-0 text-amber-600" />
+                                        <div className="min-w-0 flex-1">
+                                            <div className="font-semibold">
+                                                Có {rotationPayrollReviews.length} phiếu lương đã chốt cần review
+                                            </div>
+                                            <p className="mt-1 text-amber-800">
+                                                Lịch nghỉ đã được đồng bộ lại với chấm công. Các phiếu đã chốt/đã thanh toán không tự tính lại, cần mở bảng lương để kiểm tra và xử lý thủ công.
+                                            </p>
+                                            <div className="mt-2 flex flex-wrap gap-2">
+                                                {rotationPayrollReviews.slice(0, 8).map((item) => (
+                                                    <span
+                                                        key={`${item.employeeId || item.employeeCode}-${item.month}-${item.year}`}
+                                                        className="rounded-md border border-amber-200 bg-white px-2 py-1 text-xs font-medium text-amber-900"
+                                                    >
+                                                        {item.employeeCode || item.fullName || item.employeeId}
+                                                    </span>
+                                                ))}
+                                                {rotationPayrollReviews.length > 8 && (
+                                                    <span className="rounded-md border border-amber-200 bg-white px-2 py-1 text-xs font-medium text-amber-900">
+                                                        +{rotationPayrollReviews.length - 8}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setRotationPayrollReviews([])}
+                                            className="rounded-md p-1 text-amber-700 transition-colors hover:bg-amber-100"
+                                            aria-label="Ẩn cảnh báo"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="grid grid-cols-1 gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
                             {/* Left Column - Team Info */}

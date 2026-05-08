@@ -31,7 +31,15 @@ export const payrollAPI = {
     return apiClient.patch("/payrolls/mark-paid", payload);
   },
 
+  reopen: (id, payload = {}) => {
+    return apiClient.patch(`/payrolls/${id}/reopen`, payload);
+  },
+
   sendEmail: (id) => {
     return apiClient.post(`/payrolls/${id}/send-email`);
+  },
+
+  sendEmailsBulk: (payload) => {
+    return apiClient.post("/payrolls/send-emails", payload);
   },
 };

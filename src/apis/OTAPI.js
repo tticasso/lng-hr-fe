@@ -5,8 +5,8 @@ export const OTApi = {
     return apiClient.get("/overtimes", { params: { page, limit } });
   },
 
-  getALL: (page, limit) => {
-    return apiClient.get("/overtimes", { params: { page, limit } });
+  getALL: (page, limit, params = {}) => {
+    return apiClient.get("/overtimes", { params: { page, limit, ...params } });
   },
 
   getMy: (params) => {
