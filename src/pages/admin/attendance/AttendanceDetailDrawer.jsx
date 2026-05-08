@@ -6,6 +6,8 @@ import {
   X,
 } from "lucide-react";
 
+import { formatStandardWorkday } from "./attendanceUtils";
+
 const SOURCE_META = {
   WEB_APP: {
     label: "Web",
@@ -16,7 +18,7 @@ const SOURCE_META = {
     className: "border-sky-200 bg-sky-50 text-sky-700",
   },
   MACHINE: {
-    label: "May cham cong",
+    label: "Máy chấm công",
     className: "border-gray-200 bg-gray-50 text-gray-700",
   },
   IMPORT_EXCEL: {
@@ -24,15 +26,15 @@ const SOURCE_META = {
     className: "border-blue-200 bg-blue-50 text-blue-700",
   },
   SYSTEM_SYNC: {
-    label: "He thong",
+    label: "Hệ thống",
     className: "border-purple-200 bg-purple-50 text-purple-700",
   },
   MANUAL: {
-    label: "Sua tay",
+    label: "Sửa tay",
     className: "border-amber-200 bg-amber-50 text-amber-700",
   },
   AUTO_DETECT: {
-    label: "Tu dong",
+    label: "Tự động",
     className: "border-red-200 bg-red-50 text-red-700",
   },
 };
@@ -43,6 +45,24 @@ const getSourceMeta = (source) => (
     className: "border-gray-200 bg-gray-50 text-gray-500",
   }
 );
+
+const getWorkValue = (log) =>
+  log?.payableWorkDayValue ??
+  log?.effectiveWorkDayValue ??
+  log?.workValue ??
+  log?.workvalue ??
+  log?.work_value ??
+  log?.workDayValue ??
+  log?.dayWorkValue ??
+  log?.workdayValue;
+
+const formatWorkValue = (log) => {
+  const value = getWorkValue(log);
+  if (value === undefined || value === null || value === "") return "--";
+
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue.toFixed(2) : String(value);
+};
 
 const AttendanceDetailDrawer = ({
   selectedEmployee,
@@ -85,11 +105,17 @@ const AttendanceDetailDrawer = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-2 border-b border-gray-100 sm:grid-cols-4">
+        <div className="grid grid-cols-2 border-b border-gray-100 sm:grid-cols-5">
           <div className="border-r border-gray-100 p-4 text-center">
             <p className="text-xs uppercase text-gray-500">Ngày công</p>
             <p className="text-xl font-bold text-blue-600">
               {selectedEmployee.totalWorkDays?.toFixed(2) || 0}
+            </p>
+          </div>
+          <div className="border-r border-gray-100 p-4 text-center">
+            <p className="text-xs uppercase text-gray-500">Công chuẩn</p>
+            <p className="text-xl font-bold text-blue-600">
+              {formatStandardWorkday(selectedEmployee)}
             </p>
           </div>
           <div className="border-r border-gray-100 p-4 text-center">
@@ -124,13 +150,16 @@ const AttendanceDetailDrawer = ({
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[860px] text-left text-sm">
+              <table className="w-full min-w-[940px] text-left text-sm">
                 <thead className="sticky top-0 z-10 border-b border-gray-100 bg-white shadow-sm">
                   <tr>
                     <th className="p-4 font-medium text-gray-500">Ngày</th>
+                    <th className="p-4 text-center font-medium text-gray-500">
+                      Công giá trị
+                    </th>
                     <th className="p-4 text-center font-medium text-gray-500">Vào</th>
                     <th className="p-4 text-center font-medium text-gray-500">Ra</th>
-                    <th className="p-4 text-center font-medium text-gray-500">Nguon</th>
+                    <th className="p-4 text-center font-medium text-gray-500">Nguồn</th>
                     <th className="p-4 text-center font-medium text-gray-500">
                       OT (h)
                     </th>
@@ -173,6 +202,12 @@ const AttendanceDetailDrawer = ({
                             {statusText}
                           </span>
                         );
+                      } else if (log.status === "HOLIDAY") {
+                        statusBadge = (
+                          <span className="rounded bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">
+                            Nghỉ lễ có công
+                          </span>
+                        );
                       } else if (!log.checkOut) {
                         statusBadge = (
                           <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-bold text-red-600">
@@ -209,6 +244,9 @@ const AttendanceDetailDrawer = ({
                         <tr key={log._id || idx} className="group hover:bg-gray-50">
                           <td className="p-4 font-medium text-gray-800">
                             {formattedDate}
+                          </td>
+                          <td className="p-4 text-center font-mono font-bold text-blue-600">
+                            {formatWorkValue(log)}
                           </td>
                           <td className="p-4 text-center font-mono text-gray-600">
                             <div>{log.checkIn || "--:--"}</div>
@@ -352,7 +390,7 @@ const AttendanceDetailDrawer = ({
                     })
                   ) : (
                     <tr>
-                      <td colSpan="7" className="p-8 text-center text-gray-400">
+                      <td colSpan="8" className="p-8 text-center text-gray-400">
                         <Clock size={32} className="mx-auto mb-2 opacity-50" />
                         <p className="text-sm">Không có dữ liệu chấm công</p>
                       </td>

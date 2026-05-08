@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import * as XLSX from "xlsx";
 import {
   Search,
   Eye,
@@ -21,6 +20,7 @@ import StatusBadge from "../../components/common/StatusBadge";
 import { employeeApi } from "../../apis/employeeApi";
 import { departmentApi } from "../../apis/departmentApi";
 import { toast } from "react-toastify";
+import { getListData, getPagination, hasPaginationMetadata } from "../../shared/apiResponse";
 
 // Import Modal vừa tạo
 import EditEmployeeModal from "../../components/modals/EditEmployeeModal";
@@ -29,8 +29,7 @@ const EmployeeList = () => {
   const navigate = useNavigate();
 
   // --- STATE ---
-  const [allEmployees, setAllEmployees] = useState([]); // Toàn bộ data từ API
-  const [filteredEmployees, setFilteredEmployees] = useState([]); // Data sau khi filter
+  const [employees, setEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [includeDeleted, setIncludeDeleted] = useState(false);
@@ -38,10 +37,14 @@ const EmployeeList = () => {
   // State cho Modal Edit
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-
-  // Pagination State (áp dụng trên filteredEmployees)
-  const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: itemsPerPage,
+    total: 0,
+    totalPages: 1,
+    mode: "server",
+  });
 
   // Filter State
   const [filters, setFilters] = useState({
@@ -72,7 +75,7 @@ const EmployeeList = () => {
   // --- FETCH DEPARTMENTS ---
   const fetchDepartments = async () => {
     try {
-      const res = await departmentApi.getAll();
+      const res = await departmentApi.getAllCached();
       const deptData = res.data?.data || res.data || [];
       setDepartments(Array.isArray(deptData) ? deptData : []);
     } catch (error) {
@@ -80,60 +83,45 @@ const EmployeeList = () => {
     }
   };
 
-  // --- FETCH ALL EMPLOYEES (1 lần) ---
-  const fetchEmployees = async () => {
+  const buildEmployeeParams = useCallback(
+    (overrides = {}) => ({
+      page: overrides.page ?? 1,
+      limit: overrides.limit ?? itemsPerPage,
+      includeDeleted,
+      search: filters.search.trim() || undefined,
+      department: filters.department || undefined,
+      departmentId: filters.department || undefined,
+      status: filters.status || undefined,
+    }),
+    [filters, includeDeleted],
+  );
+
+  // --- FETCH EMPLOYEES (server-side pagination/filter) ---
+  const fetchEmployees = useCallback(async (overrides = {}) => {
     try {
       setLoading(true);
-      const res = await employeeApi.getAll({ limit: 1000, includeDeleted });
+      const params = buildEmployeeParams(overrides);
+      const res = await employeeApi.getAll(params);
+      const listData = getListData(res);
+      const hasServerPagination = hasPaginationMetadata(res);
+      const pageMeta = getPagination(res, {
+        page: params.page,
+        limit: params.limit,
+        total: listData.length,
+      });
 
-      const responseBody = res.data || {};
-      const listData = Array.isArray(responseBody)
-        ? responseBody
-        : responseBody.data || [];
-
-      setAllEmployees(Array.isArray(listData) ? listData : []);
+      setEmployees(listData);
+      setPagination({ ...pageMeta, mode: hasServerPagination ? "server" : "client" });
     } catch (error) {
-      console.error("Lỗi tải danh sách:", error);
+      console.error("L?i t?i danh s?ch:", error);
       if (error.response?.status !== 500) {
-        toast.error("Không thể tải danh sách nhân viên.");
+        toast.error("Kh?ng th? t?i danh s?ch nh?n vi?n.");
       }
+      setEmployees([]);
     } finally {
       setLoading(false);
     }
-  };
-
-  // --- FILTER LOGIC (Local) ---
-  useEffect(() => {
-    let result = [...allEmployees];
-
-    // Filter by search
-    if (filters.search.trim()) {
-      const searchLower = filters.search.toLowerCase();
-      result = result.filter(
-        (emp) =>
-          emp.fullName?.toLowerCase().includes(searchLower) ||
-          emp.name?.toLowerCase().includes(searchLower) ||
-          emp.employeeCode?.toLowerCase().includes(searchLower) ||
-          emp.accountId?.username?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Filter by department
-    if (filters.department) {
-      result = result.filter((emp) => {
-        const deptId = emp.departmentId?._id || emp.departmentId;
-        return deptId === filters.department;
-      });
-    }
-
-    // Filter by status
-    if (filters.status) {
-      result = result.filter((emp) => emp.status === filters.status);
-    }
-
-    setFilteredEmployees(result);
-    setCurrentPage(1); // Reset về trang 1 khi filter
-  }, [allEmployees, filters]);
+  }, [buildEmployeeParams]);
 
   // --- INIT DATA ---
   useEffect(() => {
@@ -141,29 +129,40 @@ const EmployeeList = () => {
   }, []);
 
   useEffect(() => {
-    fetchEmployees();
-  }, [includeDeleted]);
+      const timeoutId = window.setTimeout(() => {
+      fetchEmployees({ page: 1 });
+    }, filters.search ? 300 : 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [fetchEmployees, filters.search]);
 
   // --- HANDLERS ---
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters((prev) => ({ ...prev, [name]: value }));
+    setPagination((prev) => ({ ...prev, page: 1 }));
   };
-
-  // --- PAGINATION LOGIC (Local) ---
-  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentEmployees = filteredEmployees.slice(startIndex, endIndex);
+  // --- PAGINATION LOGIC (server-side) ---
+  const totalPages = pagination.totalPages;
+  const currentPage = pagination.page;
+  const startIndex = (currentPage - 1) * pagination.limit;
+  const currentEmployees =
+    pagination.mode === "client"
+      ? employees.slice(startIndex, startIndex + pagination.limit)
+      : employees;
+  const endIndex = startIndex + currentEmployees.length;
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
+      if (pagination.mode === "client") {
+        setPagination((prev) => ({ ...prev, page: newPage }));
+      } else {
+        fetchEmployees({ page: newPage });
+      }
     }
   };
 
   const handleOpenEdit = (employee) => {
-    console.log("click edit:", employee);
     setSelectedEmployee(employee);
     setIsEditModalOpen(true);
   };
@@ -171,7 +170,7 @@ const EmployeeList = () => {
   const handleUpdateSuccess = () => {
     setIsEditModalOpen(false);
     setSelectedEmployee(null);
-    fetchEmployees(); // Reload data
+    fetchEmployees({ page: pagination.page }); // Reload data
   };
 
   const handleDownloadTemplate = async () => {
@@ -185,9 +184,9 @@ const EmployeeList = () => {
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      toast.success("Da tai template nhan vien");
+      toast.success("Đã tải template nhân viên");
     } catch (error) {
-      toast.error(error.normalizedMessage || "Khong the tai template");
+      toast.error(error.normalizedMessage || "Không thể tải template");
     }
   };
 
@@ -197,30 +196,30 @@ const EmployeeList = () => {
       payload.endDate = new Date().toISOString();
     }
 
-    if (!window.confirm(`Cap nhat trang thai ${employee.fullName || employee.employeeCode} sang ${nextStatus}?`)) {
+    if (!window.confirm(`Cập nhật trạng thái ${employee.fullName || employee.employeeCode} sang ${nextStatus}?`)) {
       return;
     }
 
     try {
       await employeeApi.updateStatus(employee._id || employee.id, payload);
-      toast.success("Cap nhat trang thai thanh cong");
-      fetchEmployees();
+      toast.success("Cập nhật trạng thái thành công");
+      fetchEmployees({ page: pagination.page });
     } catch (error) {
-      toast.error(error.normalizedMessage || "Cap nhat trang thai that bai");
+      toast.error(error.normalizedMessage || "Cập nhật trạng thái thất bại");
     }
   };
 
   const handleRestoreEmployee = async (employee) => {
-    if (!window.confirm(`Khoi phuc nhan vien ${employee.fullName || employee.employeeCode}?`)) {
+    if (!window.confirm(`Khôi phục nhân viên ${employee.fullName || employee.employeeCode}?`)) {
       return;
     }
 
     try {
       await employeeApi.restore(employee._id || employee.id, { status: "Active" });
-      toast.success("Khoi phuc nhan vien thanh cong");
-      fetchEmployees();
+      toast.success("Khôi phục nhân viên thành công");
+      fetchEmployees({ page: pagination.page });
     } catch (error) {
-      toast.error(error.normalizedMessage || "Khoi phuc nhan vien that bai");
+      toast.error(error.normalizedMessage || "Khôi phục nhân viên thất bại");
     }
   };
 
@@ -266,10 +265,18 @@ const EmployeeList = () => {
   };
 
   // --- EXPORT TO EXCEL ---
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     try {
+      const exportRes = await employeeApi.getAll(
+        buildEmployeeParams({
+          page: 1,
+          limit: Math.max(pagination.total || pagination.limit, pagination.limit),
+        }),
+      );
+      const exportEmployees = getListData(exportRes);
+      const XLSX = await import("xlsx");
       // Chuẩn bị dữ liệu xuất
-      const exportData = filteredEmployees.map((emp, index) => ({
+      const exportData = exportEmployees.map((emp, index) => ({
         STT: index + 1,
         "Mã nhân viên": emp.employeeCode || "",
         "Họ và tên": emp.fullName || emp.name || "",
@@ -431,7 +438,7 @@ const EmployeeList = () => {
               Quản lý nhân viên
             </h1>
             <p className="text-sm text-gray-500">
-              Quản lý hồ sơ nhân sự ({filteredEmployees.length} bản ghi)
+              Quản lý hồ sơ nhân sự ({pagination.total} bản ghi)
             </p>
           </div>
           <div className="flex flex-wrap gap-3 w-full md:w-auto">
@@ -446,7 +453,7 @@ const EmployeeList = () => {
               variant="secondary"
               className="flex items-center gap-2 w-full sm:w-auto"
               onClick={handleExportExcel}
-              disabled={filteredEmployees.length === 0}
+              disabled={pagination.total === 0}
             >
               <Download size={18} /> Xuất Excel
             </Button>
@@ -522,7 +529,7 @@ const EmployeeList = () => {
             <Button
               variant="secondary"
               className="px-3"
-              onClick={fetchEmployees}
+              onClick={() => fetchEmployees({ page: pagination.page })}
               title="Tải lại dữ liệu"
             >
               <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
@@ -652,7 +659,7 @@ const EmployeeList = () => {
                           <button
                             onClick={() => handleRestoreEmployee(emp)}
                             className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition"
-                            title="Khoi phuc nhan vien"
+                            title="Khôi phục nhân viên"
                           >
                             <RotateCcw size={18} />
                           </button>
@@ -685,9 +692,9 @@ const EmployeeList = () => {
             Hiển thị{" "}
             <strong>
               {currentEmployees.length > 0 ? startIndex + 1 : 0}-
-              {Math.min(endIndex, filteredEmployees.length)}
+              {Math.min(endIndex, pagination.total)}
             </strong>{" "}
-            trong tổng số <strong>{filteredEmployees.length}</strong> nhân viên
+            trong tổng số <strong>{pagination.total}</strong> nhân viên
           </div>
 
           <div className="flex items-center gap-2">

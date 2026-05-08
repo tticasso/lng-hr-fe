@@ -26,9 +26,9 @@ export const attendancesAPI = {
     return apiClient.get("/attendances", { params });
   },
 
-  getall: (month, year) => {
+  getall: (month, year, params = {}) => {
     return apiClient.get("/attendances/report", {
-      params: { month, year, limit: 100 },
+      params: { month, year, ...params },
     });
   },
 

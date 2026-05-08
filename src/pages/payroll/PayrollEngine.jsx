@@ -50,11 +50,10 @@ const PayrollEngine = () => {
   useEffect(() => {
     const fech = async () => {
       try {
-        const res = await employeeApi.getAll();
-        console.log("API RES :", res.data.pagination.totalRecords)
+        const res = await employeeApi.getAll({ limit: 1 });
         setTotalUser(res.data.pagination.totalRecords)  
-      } catch (error) {
-        console.log("API ERROR :", error)
+      } catch {
+        setTotalUser(0);
       }
     }
     fech()
@@ -110,14 +109,12 @@ const PayrollEngine = () => {
           const [year, month] = selectedMonth.split("-");
 
           const res = await payrollAPI.getall(month, year);
-          console.log("Payroll data loaded successfully:", res);
 
           // Extract data từ response
           const apiData = res.data?.data?.data || res.data?.data || [];
           setPayrollData(apiData);
 
           toast.success("Tải dữ liệu lương thành công");
-          console.log("Mapped payroll data:", apiData);
         } catch (error) {
           console.error("Error fetching payroll data:", error);
           toast.error("Không thể tải dữ liệu lương. Vui lòng thử lại.");
@@ -135,11 +132,9 @@ const PayrollEngine = () => {
   const handleNext = async () => {
     if (currentStep === 1) {
       // Log ra ngày đã chọn (không phải ngày chi trả)
-      console.log("Tháng/Năm đã chọn:", selectedMonth);
 
       // Parse để log chi tiết hơn
       const [year, month] = selectedMonth.split("-");
-      console.log(`Kỳ lương: Tháng ${month}/${year}`);
 
       try {
         setIsProcessing(true);
@@ -149,11 +144,9 @@ const PayrollEngine = () => {
           year: parseInt(year, 10),
         };
 
-        console.log("Gửi payload tính lương:", payload);
 
         const res = await payrollAPI.calcalculate(payload);
 
-        console.log("API Response:", res);
         toast.success("Tính lương thành công!");
 
         // Chỉ chuyển tab khi API thành công
@@ -194,7 +187,6 @@ const PayrollEngine = () => {
     try {
       setIsProcessing(true);
       const res = await payrollAPI.calculateBatch(payload);
-      console.log("Batch payroll response:", res);
       toast.success("Tính lương batch thành công");
       setCurrentStep(2);
     } catch (error) {
@@ -220,10 +212,8 @@ const PayrollEngine = () => {
         year: parseInt(year, 10),
       };
 
-      console.log("Gửi payload finalize:", payload);
 
       const res = await payrollAPI.finalize(payload);
-      console.log("API finalize SUCCESS:", res);
 
       toast.success(`Đã chốt kỳ lương thành công!`);
 
@@ -854,4 +844,3 @@ const SummaryStat = ({ label, value, icon, theme }) => {
 };
 
 export default PayrollEngine;
-

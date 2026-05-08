@@ -7,6 +7,21 @@ export const OT_TYPE_LABELS = {
   holiday_night: "Đêm ngày lễ",
 };
 
+export const getStandardWorkday = (employee) =>
+  employee?.standardworkday ??
+  employee?.standardWorkday ??
+  employee?.standard_workday ??
+  employee?.standardWorkDays ??
+  employee?.standard_workdays;
+
+export const formatStandardWorkday = (employee) => {
+  const value = getStandardWorkday(employee);
+  if (value === undefined || value === null || value === "") return "--";
+
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue.toFixed(2) : String(value);
+};
+
 export const getCurrentPeriod = () => {
   const now = new Date();
   const year = now.getFullYear();

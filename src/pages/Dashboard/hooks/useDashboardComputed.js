@@ -62,7 +62,6 @@ export const useDashboardComputed = (mySheetData, leaveRequests, otRequests) => 
 
   // Counts (pending và approved)
   const { pendingCount, approvedCount } = useMemo(() => {
-    console.log("otRequests :",otRequests)
     const allRequests = [
       ...leaveRequests.map((leave) => ({
         status: leave.status,

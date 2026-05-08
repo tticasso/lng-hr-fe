@@ -44,7 +44,7 @@ const CreateTeamModal = ({ isOpen, onClose, onSuccess, teamData = null }) => {
         setLoadingData(true);
         try {
             const [deptRes, empRes] = await Promise.all([
-                departmentApi.getAll(),
+                departmentApi.getAllCached(),
                 employeeApi.getAll()
             ]);
 
@@ -127,16 +127,13 @@ const CreateTeamModal = ({ isOpen, onClose, onSuccess, teamData = null }) => {
                 description: formData.description.trim(),
             };
 
-            console.log(`${isEditMode ? 'Update' : 'Create'} Team Payload:`, payload);
 
             let response;
             if (isEditMode) {
                 response = await teamAPI.update(teamData._id, payload);
-                console.log("Update Team Response:", response);
                 toast.success("Cập nhật team thành công!");
             } else {
                 response = await teamAPI.post(payload);
-                console.log("Create Team Response:", response);
                 toast.success("Tạo team thành công!");
             }
 

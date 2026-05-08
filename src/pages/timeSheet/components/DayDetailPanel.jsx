@@ -8,9 +8,6 @@ import { statusMap } from "../utils/constants";
 const DayDetailPanel = memo(
   ({
     selectedDate,
-    todayInfo,
-    selectedMonth,
-    selectedYear,
     onLeaveRequest,
     onOTRequest,
   }) => {
@@ -26,14 +23,6 @@ const DayDetailPanel = memo(
         </Card>
       );
     }
-
-    // Kiểm tra xem ngày được chọn có phải là ngày trong quá khứ không
-    const isCurrentMonth =
-      selectedYear === todayInfo.year && selectedMonth === todayInfo.month;
-    const isPastDay = isCurrentMonth
-      ? selectedDate?.day < todayInfo.day
-      : selectedYear < todayInfo.year ||
-        (selectedYear === todayInfo.year && selectedMonth < todayInfo.month);
 
     // Chỉ kiểm tra ngày lễ PUBLIC_HOLIDAY (bỏ chủ nhật và ngày làm việc bù)
     const isHoliday = selectedDate?.type === "holiday";
@@ -307,7 +296,7 @@ const OtherDayContent = memo(({ selectedDate }) => {
         : selectedDate.type === "substitute_work"
           ? `Ngày làm việc bù: ${selectedDate.holidayName}`
           : selectedDate.type === "rotation_off"
-            ? `Nghỉ luân phiên${selectedDate.apiData?.note ? ` - ${selectedDate.apiData.note}` : ""}`
+            ? "Lịch nghỉ luân phiên"
             : "Không có thông tin";
 
   if (!hasOT && !hasCheckInOut) {
@@ -523,12 +512,6 @@ const OTInfo = memo(({ selectedDate }) => {
           </div>
         </div>
       )}
-
-      {selectedDate.apiData?.note && (
-        <p className="text-xs text-orange-600/80 mt-2">
-          {selectedDate.apiData.note}
-        </p>
-      )}
     </div>
   );
 });
@@ -542,3 +525,5 @@ OTInfo.displayName = "OTInfo";
 DayDetailPanel.displayName = "DayDetailPanel";
 
 export default DayDetailPanel;
+
+

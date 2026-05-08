@@ -13,11 +13,6 @@ import OTDetailModal from "../../components/modals/OTDetailModal";
 import { toast } from "react-toastify";
 import { leaveTypeLabel, leaveTypeOptions } from "./shared";
 
-const leaveScopeLabel = {
-    FULL_DAY: "Cả ngày",
-    MORNING: "Ca sáng (08:00 - 12:00)",
-    AFTERNOON: "Ca chiều (13:30 - 17:30)",
-};
 
 const otTypeLabel = {
     WEEKDAY: "Ngày thường",
@@ -50,22 +45,6 @@ const formatDateRange = (fromDate, toDate) => {
     return `${from} - ${to}`;
 };
 
-const formatDateTime = (isoString) => {
-    if (!isoString) return "--";
-    return new Date(isoString).toLocaleString("vi-VN", {
-        hour: "2-digit",
-        minute: "2-digit",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-    });
-};
-
-const formatHours = (n) => {
-    if (n === null || n === undefined) return "--";
-    // Làm tròn đến 2 chữ số thập phân
-    return Number(n).toFixed(2);
-};
 
 const normalizeStatus = (st) => {
     if (st === "CANCELED") return "CANCELLED";
@@ -115,8 +94,6 @@ const actionButtonClass =
 const menuButtonClass =
     "inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700";
 
-const tableHeaderClass = "px-3 py-3 text-xs uppercase text-gray-500 font-semibold";
-const tableCellClass = "px-3 py-3";
 
 const MyLeave = () => {
     const location = useLocation();
@@ -421,39 +398,6 @@ const MyLeave = () => {
             const totalPages =
                 paginationData.totalPages ?? Math.max(1, Math.ceil(total / (paginationData.limit ?? limit)));
 
-            // ✅ Lấy employee_ID từ localStorage
-            const accountID = localStorage.getItem("employee_ID");
-            console.log("employee_ID:", accountID);
-
-            // ✅ Kiểm tra level duyệt của user hiện tại
-            let currentUserLevel = null;
-
-            rows.forEach((leave) => {
-                if (leave.approvalChain && Array.isArray(leave.approvalChain)) {
-                    // Kiểm tra level 1
-                    const level1 = leave.approvalChain.find(a => a.level === 1);
-                    if (level1?.approver?._id === accountID) {
-                        currentUserLevel = 1;
-                        console.log(`[Approver] User là cấp duyệt level 1 cho đơn ${leave._id}`);
-                    }
-
-                    // Kiểm tra level 2
-                    const level2 = leave.approvalChain.find(a => a.level === 2);
-                    if (level2?.approver?._id === accountID) {
-                        currentUserLevel = 2;
-                        console.log(`[Approver] User là cấp duyệt level 2 cho đơn ${leave._id}`);
-                    }
-                }
-            });
-
-            // Lưu level vào state
-            // setUserApprovalLevel(currentUserLevel);
-
-            if (currentUserLevel) {
-                console.log(`[Approver] User hiện tại có quyền duyệt ở level ${currentUserLevel}`);
-            } else {
-                console.log("[Approver] User hiện tại KHÔNG có quyền duyệt");
-            }
 
 
             const normalizedRows = rows.map((lv) => ({
@@ -493,7 +437,6 @@ const MyLeave = () => {
             setOts(safeRows);
             setOtPagination((p) => ({ ...p, total, totalPages }));
         } catch (error) {
-            console.log("DỮ LIỆU OT Lỗi :", error);
             setOts([]);
         } finally {
             setOtLoading(false);
@@ -591,9 +534,7 @@ const MyLeave = () => {
                 status: "APPROVED",
             };
 
-            console.log("[handleApprove] Payload:", payload);
             const res = await leaveAPI.APPROVED(leaveId, payload);
-            console.log("[handleApprove] res:", res);
 
             toast.success(`Đã duyệt đơn nghỉ (Level ${approvalContext.approvalLevel})`);
             await fetchLeaves();
@@ -669,11 +610,8 @@ const MyLeave = () => {
         }
     };
     const handleApproveOT = async (otId, payload) => {
-        console.log("RES otId: ", otId);
-        console.log("RES payload: ", payload);
         try {
             const res = await OTApi.put(otId, payload);
-            console.log("RESPONSE :", res)
             toast.success("DUYỆT THÀNH CÔNG")
             setApproveOTModal({ isOpen: false, otData: null });
             fetchOTs();

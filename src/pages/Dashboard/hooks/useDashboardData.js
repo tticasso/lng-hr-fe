@@ -3,24 +3,26 @@ import { attendancesAPI } from "../../../apis/attendancesAPI";
 import { leaveAPI } from "../../../apis/leaveAPI";
 import { OTApi } from "../../../apis/OTAPI";
 import { announcementAPI } from "../../../apis/announcements";
+import { dashboardAPI } from "../../../apis/dashboardAPI";
 import { getAnnouncementDashboardMeta } from "../../../shared/announcementSchedule";
 
-/**
- * Custom hook để fetch tất cả data cho Dashboard
- * Gộp tất cả API calls chạy song song
- */
+const DASHBOARD_REQUEST_LIMIT = 5;
+const DASHBOARD_ANNOUNCEMENT_LIMIT = 3;
+const DASHBOARD_EVENT_LIMIT = 4;
+
 export const useDashboardData = () => {
   const [mySheetData, setMySheetData] = useState(null);
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [otRequests, setOTRequests] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
 
-    const fetchAllDashboardData = async () => {
+    const fetchDashboardData = async () => {
       try {
         setLoading(true);
         setError(null);
@@ -29,22 +31,33 @@ export const useDashboardData = () => {
         const month = now.getMonth() + 1;
         const year = now.getFullYear();
 
-        // Chạy song song tất cả API calls
-        const [resMySheet, resLeave, resOT, resAnnouncement] = await Promise.all([
-          attendancesAPI.getdatamoth(month, year),
-          leaveAPI.getbyUSER(),
-          OTApi.get(),
-          announcementAPI.get(),
+        // Critical data for above-the-fold widgets. Do not block the dashboard on secondary lists.
+        const resMySheet = await attendancesAPI.getdatamoth(month, year);
+        if (!isMounted) return;
+
+        setMySheetData(resMySheet.data.data);
+        setLoading(false);
+
+        const [leaveResult, otResult, announcementResult, eventResult] = await Promise.allSettled([
+          leaveAPI.getbyUSER(1, DASHBOARD_REQUEST_LIMIT),
+          OTApi.getMy({ page: 1, limit: DASHBOARD_REQUEST_LIMIT }),
+          announcementAPI.get({ page: 1, limit: DASHBOARD_ANNOUNCEMENT_LIMIT }),
+          dashboardAPI.getUpcomingEvents({ limit: DASHBOARD_EVENT_LIMIT, days: 90 }),
         ]);
 
-        if (isMounted) {
-          setMySheetData(resMySheet.data.data);
-          setLeaveRequests(resLeave.data.data || []);
-          setOTRequests(resOT.data.data || []);
+        if (!isMounted) return;
 
-          // Process announcements
-          const latestAnnouncements = (resAnnouncement.data.data || [])
-            .slice(0, 3)
+        if (leaveResult.status === "fulfilled") {
+          setLeaveRequests(leaveResult.value.data?.data || []);
+        }
+
+        if (otResult.status === "fulfilled") {
+          setOTRequests(otResult.value.data?.data || []);
+        }
+
+        if (announcementResult.status === "fulfilled") {
+          const latestAnnouncements = (announcementResult.value.data?.data || [])
+            .slice(0, DASHBOARD_ANNOUNCEMENT_LIMIT)
             .map((item) => {
               const { tag, type } = getAnnouncementDashboardMeta(item);
 
@@ -52,13 +65,19 @@ export const useDashboardData = () => {
                 id: item._id,
                 title: item.title,
                 date: new Date(item.createdAt).toLocaleDateString("vi-VN"),
-                tag: tag,
-                type: type,
+                tag,
+                type,
                 rawData: item,
               };
             });
 
           setAnnouncements(latestAnnouncements);
+        }
+
+        if (eventResult.status === "fulfilled") {
+          setUpcomingEvents(eventResult.value.data?.data || []);
+        } else {
+          setUpcomingEvents([]);
         }
       } catch (err) {
         console.error("Dashboard API ERROR:", err);
@@ -68,6 +87,7 @@ export const useDashboardData = () => {
           setLeaveRequests([]);
           setOTRequests([]);
           setAnnouncements([]);
+          setUpcomingEvents([]);
         }
       } finally {
         if (isMounted) {
@@ -76,7 +96,7 @@ export const useDashboardData = () => {
       }
     };
 
-    fetchAllDashboardData();
+    fetchDashboardData();
 
     return () => {
       isMounted = false;
@@ -88,6 +108,7 @@ export const useDashboardData = () => {
     leaveRequests,
     otRequests,
     announcements,
+    upcomingEvents,
     loading,
     error,
   };

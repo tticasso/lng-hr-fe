@@ -18,7 +18,6 @@ function NotificationViewer() {
 
     // Xử lý data từ socket
     const handleNotification = useCallback((data) => {
-        console.log("📩 Nhận được data:", data);
 
         // Lưu data mới nhất
         setLatestData(data);

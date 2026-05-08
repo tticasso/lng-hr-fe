@@ -235,9 +235,9 @@ const Holiday = () => {
     try {
       const res = await holidayAPI.getTemplates();
       setHolidayTemplates(res.data?.data || res.data || []);
-      toast.success("Da tai template ngay nghi");
+      toast.success("Đã tải template ngày nghỉ");
     } catch (error) {
-      toast.error(error.normalizedMessage || "Khong the tai template ngay nghi");
+      toast.error(error.normalizedMessage || "Không thể tải template ngày nghỉ");
     }
   };
 
@@ -246,32 +246,32 @@ const Holiday = () => {
       const [year] = selectedMonthYear.split("-");
       const res = await holidayAPI.getYearSummary(year);
       setHolidaySummary(res.data?.data || res.data);
-      toast.success("Da tai tong hop nam");
+      toast.success("Đã tải tổng hợp năm");
     } catch (error) {
-      toast.error(error.normalizedMessage || "Khong the tai tong hop nam");
+      toast.error(error.normalizedMessage || "Không thể tải tổng hợp năm");
     }
   };
 
   const handleCheckHoliday = async () => {
     if (!checkDate) {
-      toast.warning("Chon ngay can kiem tra");
+      toast.warning("Chọn ngày cần kiểm tra");
       return;
     }
     try {
       const res = await holidayAPI.checkDate({ date: checkDate });
       setCheckResult(res.data?.data || res.data);
     } catch (error) {
-      toast.error(error.normalizedMessage || "Kiem tra ngay nghi that bai");
+      toast.error(error.normalizedMessage || "Kiểm tra ngày nghỉ thất bại");
     }
   };
 
   const handleCreateAttendanceForHoliday = async (holidayId) => {
-    if (!window.confirm("Tao attendance records cho ngay nghi nay?")) return;
+    if (!window.confirm("Tạo attendance records cho ngày nghỉ này?")) return;
     try {
       await holidayAPI.createAttendance(holidayId);
-      toast.success("Da tao attendance cho ngay nghi");
+      toast.success("Đã tạo attendance cho ngày nghỉ");
     } catch (error) {
-      toast.error(error.normalizedMessage || "Tao attendance that bai");
+      toast.error(error.normalizedMessage || "Tạo attendance thất bại");
     }
   };
 
@@ -280,16 +280,16 @@ const Holiday = () => {
     try {
       payload = JSON.parse(bulkPayload);
     } catch {
-      toast.error("JSON import khong hop le");
+      toast.error("JSON import không hợp lệ");
       return;
     }
-    if (!window.confirm("Import hang loat ngay nghi?")) return;
+    if (!window.confirm("Import hàng loạt ngày nghỉ?")) return;
     try {
       await holidayAPI.bulkImport(payload);
-      toast.success("Import ngay nghi thanh cong");
+      toast.success("Import ngày nghỉ thành công");
       fetchHolidays();
     } catch (error) {
-      toast.error(error.normalizedMessage || "Import ngay nghi that bai");
+      toast.error(error.normalizedMessage || "Import ngày nghỉ thất bại");
     }
   };
 

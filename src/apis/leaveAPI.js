@@ -30,12 +30,8 @@ export const leaveAPI = {
   },
 
   post: async (data) => {
-    try {
-      const res = await apiClient.post("/leaves", data);
-      return res.data;
-    } catch (error) {
-      throw error;
-    }
+    const res = await apiClient.post("/leaves", data);
+    return res.data;
   },
 
   APPROVED: (id, payload) => {

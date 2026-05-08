@@ -109,8 +109,6 @@ const LeaveTable = ({
   handleReject,
   handleDelete,
 }) => {
-  const colSpanCount = 5;
-
   if (loading) {
     return (
       <div className="flex min-h-0 flex-1 flex-col">

@@ -1,5 +1,6 @@
 // src/components/modals/ModalOT.jsx
 import React, { useEffect, useMemo, useState } from "react";
+import "antd/dist/reset.css";
 import { X, Clock, AlertCircle } from "lucide-react";
 import { DatePicker, TimePicker } from "antd";
 import dayjs from "../../untils/dayjs";
@@ -44,12 +45,9 @@ const ModalOT = ({
   const [reason, setReason] = useState("");
 
   useEffect(() => {
-    console.log("[ModalOT] mounted / open =", open);
-    return () => console.log("[ModalOT] unmounted");
   }, []);
 
   useEffect(() => {
-    console.log("[ModalOT] open changed:", open);
   }, [open]);
 
   // reset/init when open

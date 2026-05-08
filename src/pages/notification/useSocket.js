@@ -1,5 +1,5 @@
 // src/hooks/useSocket.js
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 
 // Tạo socket instance duy nhất cho toàn app
@@ -25,8 +25,6 @@ const getSocketInstance = () => {
     const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:3000";
     const token = getAuthToken();
     
-    console.log("🔌 Connecting to WebSocket:", SOCKET_URL);
-    console.log("🔑 Token:", token ? "✅ Found" : "❌ Not found");
     
     socketInstance = io(SOCKET_URL, {
       // Cấu hình kết nối
@@ -43,15 +41,6 @@ const getSocketInstance = () => {
       // Nếu backend có CORS
       withCredentials: false,
     });
-
-    socketInstance.on("connect", () => {
-      console.log("✅ Connected to WebSocket:", socketInstance.id);
-    });
-
-    socketInstance.on("disconnect", (reason) => {
-      console.log("❌ Disconnected from WebSocket:", reason);
-    });
-
     socketInstance.on("connect_error", (error) => {
       console.error("🔴 WebSocket connection error:", error.message);
       console.error("🔴 Error details:", error);
@@ -107,7 +96,6 @@ export const disconnectSocket = () => {
 export const reconnectSocket = () => {
   if (socketInstance) {
     const token = getAuthToken();
-    console.log("🔄 Reconnecting with new token...");
     
     // Update auth token
     socketInstance.auth = { token };

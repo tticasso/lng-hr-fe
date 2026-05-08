@@ -66,7 +66,7 @@ const MyTimesheet = () => {
 
   const handleLeaveRequest = () => {
     if (!selectedDate?.inMonth || !selectedDate?.isoDate) {
-      toast.info("Vui long chon ngay tren lich truoc khi xin nghi.");
+      toast.info("Vui lòng chọn ngày trên lịch trước khi xin nghỉ.");
       return;
     }
 
@@ -75,7 +75,7 @@ const MyTimesheet = () => {
 
   const handleOTRequest = () => {
     if (!selectedDate?.inMonth || !selectedDate?.isoDate) {
-      toast.info("Vui long chon ngay tren lich truoc khi dang ky OT.");
+      toast.info("Vui lòng chọn ngày trên lịch trước khi đăng ký OT.");
       return;
     }
 

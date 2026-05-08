@@ -4,7 +4,6 @@ import { Loader2 } from "lucide-react";
 
 const RequireAuth = ({ children, roles: allowedRoles }) => {
   const { user, loading } = useAuth();
-  console.log("RequireAuth/ user: ", user);
   const location = useLocation();
 
   if (loading) {

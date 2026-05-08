@@ -25,7 +25,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import logoLNG from "../assets/LNG.png";
+import logoLNG from "../assets/LNG-sm.webp";
 import { useAuth } from "../context/AuthContext";
 import { useSidebar } from "../context/SidebarContext";
 

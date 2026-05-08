@@ -17,7 +17,6 @@ function SocketDataViewer() {
     const [isExpanded, setIsExpanded] = useState(false);
 
     const handleNotification = useCallback((newData) => {
-        console.log("📩 Socket data:", newData);
         setData(newData);
         setCount(prev => prev + 1);
     }, []);

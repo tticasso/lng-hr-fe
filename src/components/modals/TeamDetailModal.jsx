@@ -84,11 +84,9 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
         try {
             const res = await saturdayRotations.get(teamId, selectedMonth, selectedYear);
 
-            console.log("getRotation res :", res);
             const rotationList = res?.data?.data || [];
             setRotationData(rotationList);
         } catch (error) {
-            console.log("getRotation error :", error);
             setRotationData([]);
         }
     };
@@ -118,13 +116,11 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                 year: selectedYear,
                 minPresent: memBer
             }
-            console.log("PAYLOAD_CHECK :", payload)
             const res = await saturdayRotations.post(payload);
             handleRotationMutationResponse(res, "Đã tạo lịch nghỉ luân phiên");
             await rotationCall();
-            console.log("addrotation res :", res);
         } catch (error) {
-            console.log("addrotation error :", error);
+            console.error("Team detail action failed:", error);
             toast.error(error.normalizedMessage || "Tạo lịch nghỉ luân phiên thất bại");
         }
     }
@@ -237,11 +233,10 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
         
         try {
             const res = await saturdayRotations.deleteByMonth(teamId, selectedMonth, selectedYear);
-            console.log("Delete month rotations res:", res);
             handleRotationMutationResponse(res, "Đã xóa lịch nghỉ luân phiên trong tháng");
-            await rotationCall(); // Refresh data
+            await rotationCall();
         } catch (error) {
-            console.log("Delete month rotations error:", error);
+            console.error("Team detail action failed:", error);
             toast.error(error.normalizedMessage || "Xóa lịch nghỉ luân phiên thất bại");
         }
     }
@@ -291,11 +286,10 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
     const dataEmplyee = async () => {
         try {
             const res = await employeeApi.getAll();
-            console.log("EMPLOYEE RES :", res);
             const employeeData = res?.data?.data || [];
             setEmployees(employeeData);
         } catch (error) {
-            console.log("EMPLOYEE error :", error);
+            console.error("Team detail action failed:", error);
         }
     }
 
@@ -303,11 +297,9 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
         setLoading(true);
         try {
             const response = await teamAPI.getbyID(teamId);
-            console.log("Team Detail Response:", response);
             const data = response?.data?.data || response?.data;
             setTeamDetail(data);
             const member = Math.max(1, Math.floor((response.data.data.members.length + 1) / 2));
-            console.log("member_lenght :", member)
             setMemBer(member)
         } catch (error) {
             console.error("Error fetching team detail:", error);
@@ -351,10 +343,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
             };
 
             // TODO: Gọi API thêm thành viên vào team
-            console.log("Add members payload:", payload);
-            console.log("Team ID:", teamId);
             const res = await teamAPI.addmember(teamId, payload);
-            console.log("TEAM_API RES :", res)
             // Sau khi API thành công, reset và đóng modal
             setSelectedEmployees([]);
             setShowAddMemberModal(false);
@@ -364,7 +353,6 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
             await fetchTeamDetail();
 
         } catch (error) {
-            console.log("TEAM_API error :", error)
             console.error("Error adding members:", error);
         } finally {
             setAddMemberLoading(false);
@@ -372,7 +360,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
     };
 
     const handleRemoveMember = async (member) => {
-        if (!window.confirm(`Xoa ${member.fullName || member.employeeCode} khoi team?`)) return;
+        if (!window.confirm(`Xóa ${member.fullName || member.employeeCode} khỏi team?`)) return;
 
         try {
             await teamAPI.removeMembers(teamId, { employeeIds: [member._id] });
@@ -384,7 +372,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
     };
 
     const handleDeleteRotationById = async (rotationId) => {
-        if (!window.confirm("Xoa lich nghi luan phien nay?")) return;
+        if (!window.confirm("Xóa lịch nghỉ luân phiên này?")) return;
 
         try {
             const res = await saturdayRotations.deleteById(rotationId);
@@ -441,11 +429,8 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                 employeesOff: selectedRotationEmployees
             };
 
-            console.log("Add to rotation payload:", payload);
-            console.log("Rotation ID:", selectedRotationId);
 
             const res = await saturdayRotations.patch(selectedRotationId, payload)
-            console.log("CHECK_LOG RES", res)
             handleRotationMutationResponse(res, "Đã cập nhật lịch nghỉ luân phiên");
 
             // Sau khi API thành công, refresh data
@@ -453,7 +438,6 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
             closeAddToRotationModal();
 
         } catch (error) {
-            console.log("CHECK_LOG error", error)
             console.error("Error adding to rotation:", error);
             toast.error(error.normalizedMessage || "Cập nhật lịch nghỉ luân phiên thất bại");
         }
@@ -694,7 +678,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                                             <button
                                                                 onClick={() => handleDeleteRotationById(rotation._id)}
                                                                 className="p-1 bg-red-100 hover:bg-red-200 text-red-600 rounded-full transition-colors"
-                                                                title="Xoa lich nghi"
+                                                                title="Xóa lịch nghỉ"
                                                             >
                                                                 <Trash2 size={12} />
                                                             </button>
@@ -803,7 +787,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                                             <button
                                                                 onClick={() => handleRemoveMember(member)}
                                                                 className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                                title="Xoa khoi team"
+                                                                title="Xóa khỏi team"
                                                             >
                                                                 <Trash2 size={14} />
                                                             </button>

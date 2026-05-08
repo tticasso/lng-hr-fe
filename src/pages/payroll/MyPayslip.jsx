@@ -1,6 +1,4 @@
 ﻿import React, { useState, useRef, useEffect } from "react";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
 import {
   Download,
   HelpCircle,
@@ -18,7 +16,7 @@ import {
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import StatusBadge from "../../components/common/StatusBadge";
-import logo from "../../assets/logo.png";
+import logo from "../../assets/logo-sm.webp";
 import { payrollAPI } from "../../apis/payrollAPI";
 import { employeeApi } from "../../apis/employeeApi";
 import { toast } from "react-toastify";
@@ -88,7 +86,6 @@ const MyPayslip = () => {
           setEmployeeDetail(empData);
         }
 
-        console.log("Payroll data:", payrolls);
       } catch (error) {
         console.error("Error fetching payroll:", error);
         toast.error("Không thể tải dữ liệu phiếu lương");
@@ -140,6 +137,11 @@ const MyPayslip = () => {
     element.style.backgroundColor = "#ffffff";
 
     try {
+      const [{ default: html2canvas }, jsPdfModule] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+      const jsPDF = jsPdfModule.default || jsPdfModule.jsPDF;
       const canvas = await html2canvas(element, {
         scale: 4,
         useCORS: true,

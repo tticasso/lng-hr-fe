@@ -1,9 +1,10 @@
 import { useEditor, EditorContent } from "@tiptap/react";
+import "antd/dist/reset.css";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import DOMPurify from "dompurify";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { TimePicker } from "antd";
 import dayjs from "../../untils/dayjs";
@@ -38,6 +39,7 @@ import AnnouncementDetailModal from "../../components/modals/AnnouncementDetailM
 import { departmentApi } from "../../apis/departmentApi";
 import {
   ANNOUNCEMENT_SCHEDULE_TYPE,
+  ANNOUNCEMENT_CATEGORY,
   ANNOUNCEMENT_STATUS,
   buildScheduledDateTime,
   getAnnouncementStatusLabel,
@@ -61,6 +63,51 @@ const buildPageList = (current, total) => {
   if (current < total - 2) pages.push("...");
   if (total > 1) pages.push(total);
   return pages;
+};
+
+const mapAnnouncement = (item) => ({
+  id: item._id,
+  title: item.title,
+  category: item.category,
+  tag: getAnnouncementTag(item.category),
+  author: item.authorId?.username || "Unknown",
+  avatar: getAvatarInitials(item.authorId?.username || "Unknown"),
+  date: formatDate(item.publishedAt || item.createdAt),
+  status: item.status,
+  statusLabel: getAnnouncementStatusLabel(item.status),
+  scheduleDate: item.scheduledAt ? formatDateTime(item.scheduledAt) : null,
+  views: item.readBy?.length || 0,
+  isPinned: item.isPinned,
+  priority: item.priority,
+  content: item.content,
+  eventDetails: item.eventDetails,
+});
+
+const getAvatarInitials = (username) => {
+  if (!username) return "??";
+  const words = username.split(" ");
+  if (words.length >= 2) {
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+  return username.substring(0, 2).toUpperCase();
+};
+
+const formatDate = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  return date.toLocaleDateString("vi-VN");
+};
+
+const formatDateTime = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  return date.toLocaleString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
 
 const Announcements = () => {
@@ -94,6 +141,7 @@ const Announcements = () => {
   // State quản lý màn hình: 'list' | 'create' | 'edit'
   const [currentView, setCurrentView] = useState("list");
   const [announcements, setAnnouncements] = useState([]);
+  const [totalAnnouncements, setTotalAnnouncements] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editingAnnouncementId, setEditingAnnouncementId] = useState(null);
@@ -118,7 +166,7 @@ const Announcements = () => {
   ); // "now" ho?c "schedule"
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
-  const [category, setCategory] = useState("NEWS"); // NEWS, EVENT, SCHEDULED
+  const [category, setCategory] = useState(ANNOUNCEMENT_CATEGORY.NEWS);
   const [priority, setPriority] = useState("LOW"); // HIGH, NORMAL, LOW, URGENT
 
   // Handler mở modal chi tiết
@@ -139,11 +187,10 @@ const Announcements = () => {
       const res = await announcementAPI.getById(announcementId);
       const data = res.data.data;
       
-      console.log("Edit announcement data:", data);
 
       // Fill dữ liệu vào form
       setTitle(data.title || "");
-      setCategory(data.category || "NEWS");
+      setCategory(data.category || ANNOUNCEMENT_CATEGORY.NEWS);
       setPriority(data.priority || "LOW");
       
       // Set content vào editor
@@ -158,9 +205,6 @@ const Announcements = () => {
         const isoString = data.scheduledAt;
         const { date: datePart, time: timeHHMM } = parseScheduledAt(isoString);
 
-        console.log("[DEBUG] scheduledAt from API:", isoString);
-        console.log("[DEBUG] Extracted date:", datePart);
-        console.log("[DEBUG] Extracted time:", timeHHMM);
 
         setScheduledDate(datePart);
         setScheduledTime(timeHHMM);
@@ -198,11 +242,8 @@ const Announcements = () => {
 
     try {
       await announcementAPI.delete(announcementId);
-      
-      // Cập nhật danh sách sau khi xóa thành công
-      setAnnouncements(announcements.filter(item => item.id !== announcementId));
-      
-      toast.success("Đã xóa thông báo thành công!");
+      await reloadAnnouncements();
+      toast.success("?? x?a th?ng b?o th?nh c?ng!");
     } catch (error) {
       console.error("Error deleting announcement:", error);
       toast.error("Có lỗi xảy ra khi xóa thông báo. Vui lòng thử lại!");
@@ -232,7 +273,7 @@ const Announcements = () => {
     if (editor) {
       editor.commands.setContent("");
     }
-    setCategory("NEWS");
+    setCategory(ANNOUNCEMENT_CATEGORY.NEWS);
     setPriority("LOW");
     setScheduleType(ANNOUNCEMENT_SCHEDULE_TYPE.NOW);
     setScheduledDate("");
@@ -243,34 +284,35 @@ const Announcements = () => {
     setEditingAnnouncementId(null);
   };
 
+  const buildAnnouncementParams = useCallback(
+    () => ({
+      page: pagination.page,
+      limit: pagination.limit,
+      ...(filterType !== "all" ? { category: filterType } : {}),
+      ...(filterStatus !== "all" ? { status: filterStatus } : {}),
+      ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
+    }),
+    [filterStatus, filterType, pagination.limit, pagination.page, searchQuery],
+  );
+
   // Helper reload announcements
-  const reloadAnnouncements = async () => {
+  const reloadAnnouncements = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await announcementAPI.get();
-      const mappedData = res.data.data.map((item) => ({
-        id: item._id,
-        title: item.title,
-        tag: getAnnouncementTag(item.category),
-        author: item.authorId?.username || "Unknown",
-        avatar: getAvatarInitials(item.authorId?.username || "Unknown"),
-        date: formatDate(item.publishedAt || item.createdAt),
-        status: getAnnouncementStatusLabel(item.status),
-        scheduleDate: item.remindAt ? formatDateTime(item.remindAt) : null,
-        views: item.readBy?.length || 0,
-        totalUsers: 150,
-        isPinned: item.isPinned,
-        priority: item.priority,
-        content: item.content,
-        eventDetails: item.eventDetails,
-      }));
+      const res = await announcementAPI.get(buildAnnouncementParams());
+      const mappedData = (res.data.data || []).map(mapAnnouncement);
       setAnnouncements(mappedData);
+      setTotalAnnouncements(res.data.total || 0);
+      setError(null);
     } catch (error) {
       console.error("Error reloading announcements:", error);
+      setError("Không thể tải dữ liệu thông báo");
+      setAnnouncements([]);
+      setTotalAnnouncements(0);
     } finally {
       setLoading(false);
     }
-  };
+  }, [buildAnnouncementParams]);
 
   // Handler publish
   const handlePublish = async () => {
@@ -318,27 +360,14 @@ const Announcements = () => {
       // User chọn 10:30 → Backend lưu 10:30 (không convert)
       scheduledDateTime = buildScheduledDateTime(scheduledDate, scheduledTime);
       
-      console.log("[DEBUG] Scheduled Date:", scheduledDate);
-      console.log("[DEBUG] Scheduled Time:", scheduledTime);
-      console.log("[DEBUG] Scheduled DateTime (No Timezone):", scheduledDateTime);
     }
 
-    // Chuyển HTML content sang plain text
-    const contentText = editor?.getText() || "";
+    const content = contentHtml || editor?.getHTML() || "";
 
     // Xác định status dựa trên schedule type
     const status = scheduleType === ANNOUNCEMENT_SCHEDULE_TYPE.NOW ? ANNOUNCEMENT_STATUS.PUBLISHED : ANNOUNCEMENT_STATUS.SCHEDULED;
 
     // Log dữ liệu
-    console.log("Publishing announcement with data:");
-    console.log("Title:", title);
-    console.log("Content (Text):", contentText);
-    console.log("Category:", category);
-    console.log("Priority:", priority);
-    console.log("Status:", status);
-    console.log("Scheduled DateTime (ISO):", scheduledDateTime);
-    console.log("Target Type:", targetType);
-    console.log("Selected Department IDs:", selectedDepartments);
 
     // Xác định sendToAll
     const sendToAll = selectedDepartments.length === 0;
@@ -349,7 +378,7 @@ const Announcements = () => {
     // Tạo payload
     const payload = {
       title: title,
-      content: contentText,
+      content,
       category: category,
       priority: priority,
       sendToAll: sendToAll,
@@ -362,19 +391,16 @@ const Announcements = () => {
       payload.targetDepartments = selectedDepartments;
     }
 
-    console.log("[ABZ]PAYLOAD : ", payload);
 
     try {
       let res;
       if (editingAnnouncementId) {
         // Nếu đang edit, gọi API update
         res = await announcementAPI.update(editingAnnouncementId, payload);
-        console.log("[ABZ]UPDATE RESPONSE :", res);
         toast.success("Thông báo đã được cập nhật thành công!");
       } else {
         // Nếu tạo mới, gọi API post
         res = await announcementAPI.post(payload);
-        console.log("[ABZ]CREATE RESPONSE :", res);
         toast.success("Thông báo đã được đăng thành công!");
       }
       
@@ -385,7 +411,6 @@ const Announcements = () => {
       // Reload danh sách thông báo
       await reloadAnnouncements();
     } catch (error) {
-      console.log("[ABZ]ERROR :", error);
       toast.error(editingAnnouncementId 
         ? "Có lỗi xảy ra khi cập nhật thông báo!" 
         : "Có lỗi xảy ra khi đăng thông báo!");
@@ -395,11 +420,10 @@ const Announcements = () => {
   useEffect(() => {
     const callDepartments = async () => {
       try {
-        const res = await departmentApi.getAll();
-        console.log("Departments API RES:", res);
+        const res = await departmentApi.getAllCached();
         setDepartments(res.data.data);
-      } catch (error) {
-        console.log("Departments API ERROR:", error);
+      } catch {
+        setDepartments([]);
       }
     };
     callDepartments();
@@ -408,102 +432,16 @@ const Announcements = () => {
 
 
   useEffect(() => {
-    const callAPIAnnouncement = async () => {
-      try {
-        setLoading(true);
-        const res = await announcementAPI.get();
-        console.log("announcementAPI res :", res);
-
-        // Map dữ liệu API sang format hiển thị
-        const mappedData = res.data.data.map((item) => ({
-          id: item._id,
-          title: item.title,
-          tag: getAnnouncementTag(item.category),
-          author: item.authorId?.username || "Unknown",
-          avatar: getAvatarInitials(item.authorId?.username || "Unknown"),
-          date: formatDate(item.publishedAt || item.createdAt),
-          status: getAnnouncementStatusLabel(item.status),
-          scheduleDate: item.remindAt ? formatDateTime(item.remindAt) : null,
-          views: item.readBy?.length || 0,
-          totalUsers: 150, // Có thể lấy từ API khác hoặc tính toán
-          isPinned: item.isPinned,
-          priority: item.priority,
-          content: item.content,
-          eventDetails: item.eventDetails,
-        }));
-
-        setAnnouncements(mappedData);
-        setError(null);
-      } catch (error) {
-        console.log("announcementAPI error :", error);
-        setError("Không thể tải dữ liệu thông báo");
-      } finally {
-        setLoading(false);
-      }
-    };
-    callAPIAnnouncement();
-  }, []);
-
-  const getAvatarInitials = (username) => {
-    if (!username) return "??";
-    const words = username.split(" ");
-    if (words.length >= 2) {
-      return (words[0][0] + words[1][0]).toUpperCase();
-    }
-    return username.substring(0, 2).toUpperCase();
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("vi-VN");
-  };
-
-  const formatDateTime = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    return date.toLocaleString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  // Filtered announcements based on search and filters
-  const filteredAnnouncements = useMemo(() => {
-    return announcements.filter((item) => {
-      // Search filter - tìm trong title và author
-      const matchesSearch =
-        searchQuery === "" ||
-        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.author.toLowerCase().includes(searchQuery.toLowerCase());
-
-      // Type filter
-      const matchesType =
-        filterType === "all" ||
-        item.tag.toLowerCase() === filterType.toLowerCase();
-
-      // Status filter
-      const matchesStatus =
-        filterStatus === "all" ||
-        item.status.toLowerCase() === filterStatus.toLowerCase();
-
-      return matchesSearch && matchesType && matchesStatus;
-    });
-  }, [announcements, searchQuery, filterType, filterStatus]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredAnnouncements.length / pagination.limit));
-  const currentPage = Math.min(pagination.page, totalPages);
-  const paginatedAnnouncements = useMemo(() => {
-    const start = (currentPage - 1) * pagination.limit;
-    return filteredAnnouncements.slice(start, start + pagination.limit);
-  }, [currentPage, filteredAnnouncements, pagination.limit]);
+    reloadAnnouncements();
+  }, [reloadAnnouncements]);
 
   useEffect(() => {
     setPagination((prev) => ({ ...prev, page: 1 }));
   }, [searchQuery, filterType, filterStatus]);
+
+  const totalPages = Math.max(1, Math.ceil(totalAnnouncements / pagination.limit));
+  const currentPage = Math.min(pagination.page, totalPages);
+  const paginatedAnnouncements = announcements;
 
   useEffect(() => {
     if (pagination.page > totalPages) {
@@ -512,55 +450,55 @@ const Announcements = () => {
   }, [pagination.page, totalPages]);
 
   // Helper render Tag Badge
-  const renderTag = (tag) => {
+  const renderTag = (categoryValue) => {
     const tagMapping = {
-      Holiday: "Ngày Lễ",
-      Policy: "Chính Sách",
-      Event: "Sự Kiện",
-      "HR Notice": "Thông Báo HR",
-      Others: "Khác",
+      [ANNOUNCEMENT_CATEGORY.NEWS]: "Tin tức",
+      [ANNOUNCEMENT_CATEGORY.POLICY]: "Chính sách",
+      [ANNOUNCEMENT_CATEGORY.EVENT]: "Sự kiện",
+      [ANNOUNCEMENT_CATEGORY.OTHER]: "Khác",
     };
     const styles = {
-      Holiday: "bg-red-50 text-red-600 border-red-100",
-      Policy: "bg-blue-50 text-blue-600 border-blue-100",
-      Event: "bg-orange-50 text-orange-600 border-orange-100",
-      "HR Notice": "bg-purple-50 text-purple-600 border-purple-100",
-      Others: "bg-gray-50 text-gray-600 border-gray-100",
+      [ANNOUNCEMENT_CATEGORY.NEWS]: "bg-purple-50 text-purple-600 border-purple-100",
+      [ANNOUNCEMENT_CATEGORY.POLICY]: "bg-blue-50 text-blue-600 border-blue-100",
+      [ANNOUNCEMENT_CATEGORY.EVENT]: "bg-orange-50 text-orange-600 border-orange-100",
+      [ANNOUNCEMENT_CATEGORY.OTHER]: "bg-gray-50 text-gray-600 border-gray-100",
     };
     return (
       <span
-        className={`px-2.5 py-0.5 rounded text-[11px] font-bold border uppercase tracking-wide ${styles[tag] || styles["Others"]
-          }`}
+        className={`px-2.5 py-0.5 rounded text-[11px] font-bold border uppercase tracking-wide ${
+          styles[categoryValue] || styles[ANNOUNCEMENT_CATEGORY.OTHER]
+        }`}
       >
-        {tagMapping[tag] || tagMapping["Others"]}
+        {tagMapping[categoryValue] || tagMapping[ANNOUNCEMENT_CATEGORY.OTHER]}
       </span>
     );
   };
 
-  // Helper render Status Badge
   const renderStatus = (status) => {
     const statusMapping = {
-      Published: "Đã Đăng",
-      Scheduled: "Đã Lên Lịch",
-      Draft: "Bản Nháp",
-      Archived: "Đã Lưu Trữ",
+      [ANNOUNCEMENT_STATUS.PUBLISHED]: "Đã đăng",
+      [ANNOUNCEMENT_STATUS.SCHEDULED]: "Đã lên lịch",
+      [ANNOUNCEMENT_STATUS.DRAFT]: "Bản nháp",
+      [ANNOUNCEMENT_STATUS.ARCHIVED]: "Đã lưu trữ",
     };
     const styles = {
-      Published: "bg-green-100 text-green-700",
-      Scheduled: "bg-indigo-50 text-indigo-600",
-      Draft: "bg-gray-100 text-gray-500",
-      Archived: "bg-slate-100 text-slate-500 line-through",
+      [ANNOUNCEMENT_STATUS.PUBLISHED]: "bg-green-100 text-green-700",
+      [ANNOUNCEMENT_STATUS.SCHEDULED]: "bg-indigo-50 text-indigo-600",
+      [ANNOUNCEMENT_STATUS.DRAFT]: "bg-gray-100 text-gray-500",
+      [ANNOUNCEMENT_STATUS.ARCHIVED]: "bg-slate-100 text-slate-500 line-through",
     };
     const icons = {
-      Published: <CheckCircle2 size={12} />,
-      Scheduled: <Clock size={12} />,
-      Draft: <FileText size={12} />,
-      Archived: <FileText size={12} />,
+      [ANNOUNCEMENT_STATUS.PUBLISHED]: <CheckCircle2 size={12} />,
+      [ANNOUNCEMENT_STATUS.SCHEDULED]: <Clock size={12} />,
+      [ANNOUNCEMENT_STATUS.DRAFT]: <FileText size={12} />,
+      [ANNOUNCEMENT_STATUS.ARCHIVED]: <FileText size={12} />,
     };
 
     return (
       <span
-        className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium ${styles[status]}`}
+        className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium ${
+          styles[status] || styles[ANNOUNCEMENT_STATUS.DRAFT]
+        }`}
       >
         {icons[status]} {statusMapping[status] || status}
       </span>
@@ -605,31 +543,40 @@ const Announcements = () => {
                 type="text"
                 placeholder="Tìm kiếm thông báo..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPagination((prev) => ({ ...prev, page: 1 }));
+                }}
                 className="pl-9 pr-4 py-2 w-full bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <select
               value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
+              onChange={(e) => {
+                setFilterType(e.target.value);
+                setPagination((prev) => ({ ...prev, page: 1 }));
+              }}
               className="bg-white border border-gray-300 text-gray-700 text-sm rounded-lg p-2 min-w-[140px] focus:border-blue-500 outline-none"
             >
               <option value="all">Tất cả loại</option>
-              <option value="holiday">Ngày lễ</option>
-              <option value="policy">Chính sách</option>
-              <option value="event">Sự kiện</option>
-              <option value="hr notice">Thông báo HR</option>
+              <option value={ANNOUNCEMENT_CATEGORY.NEWS}>Tin tức</option>
+              <option value={ANNOUNCEMENT_CATEGORY.POLICY}>Chính sách</option>
+              <option value={ANNOUNCEMENT_CATEGORY.EVENT}>Sự kiện</option>
+              <option value={ANNOUNCEMENT_CATEGORY.OTHER}>Khác</option>
             </select>
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+              onChange={(e) => {
+                setFilterStatus(e.target.value);
+                setPagination((prev) => ({ ...prev, page: 1 }));
+              }}
               className="bg-white border border-gray-300 text-gray-700 text-sm rounded-lg p-2 min-w-[140px] focus:border-blue-500 outline-none"
             >
               <option value="all">Tất cả trạng thái</option>
-              <option value="published">Đã đăng</option>
-              <option value="draft">Bản nháp</option>
-              <option value="scheduled">Đã lên lịch</option>
-              <option value="archived">Đã lưu trữ</option>
+              <option value={ANNOUNCEMENT_STATUS.PUBLISHED}>Đã đăng</option>
+              <option value={ANNOUNCEMENT_STATUS.DRAFT}>Bản nháp</option>
+              <option value={ANNOUNCEMENT_STATUS.SCHEDULED}>Đã lên lịch</option>
+              <option value={ANNOUNCEMENT_STATUS.ARCHIVED}>Đã lưu trữ</option>
             </select>
           </div>
           <Button
@@ -656,7 +603,7 @@ const Announcements = () => {
             <div className="flex items-center justify-center h-64">
               <div className="text-red-500">{error}</div>
             </div>
-          ) : filteredAnnouncements.length === 0 ? (
+          ) : announcements.length === 0 ? (
             <div className="flex items-center justify-center h-64">
               <div className="text-gray-500">
                 {searchQuery || filterType !== "all" || filterStatus !== "all"
@@ -672,7 +619,7 @@ const Announcements = () => {
                   <th className="p-4">Người tạo</th>
                   <th className="p-4">Ngày đăng / Lên lịch</th>
                   <th className="p-4 text-center">Trạng thái</th>
-                  <th className="p-4">Lượt xem (Reach)</th>
+                  <th className="p-4">Lượt xem</th>
                   <th className="p-4 text-center">Action</th>
                 </tr>
               </thead>
@@ -690,7 +637,7 @@ const Announcements = () => {
                         >
                           {item.title}
                         </span>
-                        <div>{renderTag(item.tag)}</div>
+                        <div>{renderTag(item.category)}</div>
                       </div>
                     </td>
                     <td className="p-4">
@@ -702,7 +649,7 @@ const Announcements = () => {
                       </div>
                     </td>
                     <td className="p-4 text-gray-500 font-mono text-xs">
-                      {item.status === "Scheduled" ? (
+                      {item.status === ANNOUNCEMENT_STATUS.SCHEDULED ? (
                         <span className="text-indigo-600 flex items-center gap-1">
                           <Clock size={12} /> {item.scheduleDate}
                         </span>
@@ -714,26 +661,11 @@ const Announcements = () => {
                       {renderStatus(item.status)}
                     </td>
                     <td className="p-4">
-                      {item.status === "Published" ||
-                        item.status === "Archived" ? (
-                        <div className="w-full max-w-[120px]">
-                          <div className="flex justify-between text-xs mb-1">
-                            <span className="font-bold text-gray-700">
-                              {item.views}/{item.totalUsers}
-                            </span>
-                            <span className="text-gray-400">
-                              {Math.round((item.views / item.totalUsers) * 100)}%
-                            </span>
-                          </div>
-                          <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-blue-500 rounded-full"
-                              style={{
-                                width: `${(item.views / item.totalUsers) * 100}%`,
-                              }}
-                            ></div>
-                          </div>
-                        </div>
+                      {item.status === ANNOUNCEMENT_STATUS.PUBLISHED ||
+                        item.status === ANNOUNCEMENT_STATUS.ARCHIVED ? (
+                        <span className="font-bold text-gray-700">
+                          {item.views}
+                        </span>
                       ) : (
                         <span className="text-xs text-gray-400 italic">--</span>
                       )}
@@ -782,13 +714,13 @@ const Announcements = () => {
           )}
         </div>
 
-        {!loading && !error && filteredAnnouncements.length > 0 && (
+        {!loading && !error && announcements.length > 0 && (
           <div className="flex flex-col gap-3 border-t border-gray-200 bg-gray-50 p-4 text-sm text-gray-500 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
               <span>
                 Hiển thị <strong>{(currentPage - 1) * pagination.limit + 1}</strong>-
-                <strong>{Math.min(currentPage * pagination.limit, filteredAnnouncements.length)}</strong> trong tổng số{" "}
-                <strong>{filteredAnnouncements.length}</strong> thông báo
+                <strong>{Math.min(currentPage * pagination.limit, totalAnnouncements)}</strong> trong tổng số{" "}
+                <strong>{totalAnnouncements}</strong> thông báo
               </span>
               <label className="flex items-center gap-2">
                 <span>Mỗi trang</span>
@@ -1052,9 +984,10 @@ const Announcements = () => {
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full bg-white border border-gray-300 rounded-lg p-2.5 text-sm focus:border-blue-500 outline-none"
                 >
-                  <option value="NEWS">Tin tức</option>
-                  <option value="EVENT">Sự kiện</option>
-                  {/* <option value="SCHEDULED">Lên lịch</option> */}
+                  <option value={ANNOUNCEMENT_CATEGORY.NEWS}>Tin tức</option>
+                  <option value={ANNOUNCEMENT_CATEGORY.POLICY}>Chính sách</option>
+                  <option value={ANNOUNCEMENT_CATEGORY.EVENT}>Sự kiện</option>
+                  <option value={ANNOUNCEMENT_CATEGORY.OTHER}>Khác</option>
                 </select>
               </div>
 
@@ -1297,7 +1230,6 @@ const Announcements = () => {
 };
 
 export default Announcements;
-
 
 
 

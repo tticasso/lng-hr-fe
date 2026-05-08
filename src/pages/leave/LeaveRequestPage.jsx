@@ -46,16 +46,16 @@ const LeaveRequestPage = ({ mode, title, description }) => {
           {mode === "mine" && leaveSummary?.annualLeave && (
             <div className="mt-2 flex flex-wrap gap-2 text-xs">
               <span className="rounded-full bg-blue-50 px-2.5 py-1 font-semibold text-blue-700">
-                Phep con: {leaveSummary.annualLeave.currentBalance ?? 0}
+                Phép còn: {leaveSummary.annualLeave.currentBalance ?? 0}
               </span>
               <span className="rounded-full bg-green-50 px-2.5 py-1 font-semibold text-green-700">
-                Da tich: {leaveSummary.annualLeave.totalAccrued ?? 0}
+                Đã tích: {leaveSummary.annualLeave.totalAccrued ?? 0}
               </span>
               <span className="rounded-full bg-orange-50 px-2.5 py-1 font-semibold text-orange-700">
-                Da dung: {leaveSummary.annualLeave.totalUsed ?? 0}
+                Đã dùng: {leaveSummary.annualLeave.totalUsed ?? 0}
               </span>
               <span className="rounded-full bg-gray-50 px-2.5 py-1 font-semibold text-gray-700">
-                Khong luong: {leaveSummary.otherLeaves?.unpaidUsed ?? 0}
+                Không lương: {leaveSummary.otherLeaves?.unpaidUsed ?? 0}
               </span>
             </div>
           )}

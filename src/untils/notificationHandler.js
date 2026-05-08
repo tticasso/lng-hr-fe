@@ -12,12 +12,10 @@ import { toast } from "react-toastify";
  * useSocket((data) => {
  *   handleSocketNotification(data, (processedData) => {
  *     // Xử lý thêm nếu cần
- *     console.log(processedData);
  *   });
  * });
  */
 export const handleSocketNotification = (data, onNotification) => {
-    console.log("📩 Socket notification:", data);
 
     // Validate data
     if (!data || typeof data !== "object") {
@@ -25,7 +23,7 @@ export const handleSocketNotification = (data, onNotification) => {
         return;
     }
 
-    const { type, title, message, id, relatedId } = data;
+    const { type, title, message } = data;
 
     // Xử lý theo type
     switch (type) {

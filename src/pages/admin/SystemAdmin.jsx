@@ -24,6 +24,7 @@ import { officeNetworkApi } from "../../apis/officeNetworkApi";
 import { toast } from "react-toastify";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button"; // Đảm bảo component này tồn tại
+import AuditLogsPanel from "./audit/AuditLogsPanel";
 
 const APPROVER_TYPES = [
   { value: "TEAM_LEADER", label: "Team leader" },
@@ -173,26 +174,6 @@ const SystemAdmin = () => {
     return candidates.find(Array.isArray) || [];
   };
 
-  const getAuditActionName = (log) => {
-    return (
-      log?.action?.actionName ||
-      log?.actionName ||
-      log?.action?.permissionId?.name ||
-      log?.event ||
-      "--"
-    );
-  };
-
-  const getAuditUserName = (log) => {
-    return (
-      log?.userId?.fullName ||
-      log?.userId?.username ||
-      log?.user?.fullName ||
-      log?.user?.username ||
-      "--"
-    );
-  };
-
   // --- STATE ---
   const [roles, setRoles] = useState([]);
   const [permissions, setPermissions] = useState([]);
@@ -250,8 +231,8 @@ const SystemAdmin = () => {
     try {
       setLoading(true);
       const [rolesRes, permsRes] = await Promise.all([
-        roleApi.getAll(),
-        permissionApi.getAll(),
+        roleApi.getAllCached(),
+        permissionApi.getAllCached(),
       ]);
 
       // Xử lý dữ liệu trả về an toàn
@@ -312,7 +293,6 @@ const SystemAdmin = () => {
     if (!newRoleName.trim()) return;
     try {
       const res = await roleApi.create({ name: newRoleName });
-      console.log('API: ', res)
       toast.success("Create Role Success");
 
       // Xử lý response linh hoạt
@@ -399,7 +379,7 @@ const SystemAdmin = () => {
       } else {
         await roleApi.addPermissions(selectedRole._id, [permId]);
       }
-      // eslint-disable-next-line no-unused-vars
+       
     } catch (error) {
       setSelectedRole(originalRole);
       setRoles(
@@ -420,7 +400,7 @@ const SystemAdmin = () => {
     try {
       return payload.trim() ? JSON.parse(payload) : {};
     } catch {
-      toast.error("JSON khong hop le");
+      toast.error("JSON không hợp lệ");
       return null;
     }
   };
@@ -428,9 +408,9 @@ const SystemAdmin = () => {
   const renderAdminTabs = () => (
     <div className="flex flex-wrap gap-2 mb-4">
       {[
-        { id: "roles", label: "Vai tro & quyen" },
-        { id: "settings", label: "Cau hinh he thong" },
-        { id: "officeNetworks", label: "Mang van phong" },
+        { id: "roles", label: "Vai trò & quyền" },
+        { id: "settings", label: "Cấu hình hệ thống" },
+        { id: "officeNetworks", label: "Mạng văn phòng" },
         { id: "audit", label: "Audit logs" },
       ].map((tab) => (
         <button
@@ -458,7 +438,7 @@ const SystemAdmin = () => {
       const data = res.data?.data || res.data || [];
       setSettings(Array.isArray(data) ? data : Object.values(data || {}));
     } catch (error) {
-      toast.error(error.normalizedMessage || "Khong the tai cau hinh he thong");
+      toast.error(error.normalizedMessage || "Không thể tải cấu hình hệ thống");
     } finally {
       setSettingsLoading(false);
     }
@@ -467,18 +447,18 @@ const SystemAdmin = () => {
   const updateSystemSetting = async () => {
     const payload = parseJsonPayload(settingPayload);
     if (!payload || !settingKey.trim()) {
-      if (!settingKey.trim()) toast.warning("Vui long nhap setting key");
+      if (!settingKey.trim()) toast.warning("Vui lòng nhập setting key");
       return;
     }
-    if (!window.confirm("Cap nhat cau hinh he thong nay?")) return;
+    if (!window.confirm("Cập nhật cấu hình hệ thống này?")) return;
 
     try {
       setSettingsLoading(true);
       await systemSettingApi.updateByKey(settingKey.trim(), payload);
-      toast.success("Cap nhat cau hinh thanh cong");
+      toast.success("Cập nhật cấu hình thành công");
       await fetchSystemSettings();
     } catch (error) {
-      toast.error(error.normalizedMessage || "Cap nhat cau hinh that bai");
+      toast.error(error.normalizedMessage || "Cập nhật cấu hình thất bại");
     } finally {
       setSettingsLoading(false);
     }
@@ -514,7 +494,7 @@ const SystemAdmin = () => {
 
       setApprovalPolicies(next);
     } catch (error) {
-      toast.error(error.normalizedMessage || "Khong the tai cau hinh duyet don");
+      toast.error(error.normalizedMessage || "Không thể tải cấu hình duyệt đơn");
     } finally {
       setApprovalLoading(false);
     }
@@ -548,7 +528,7 @@ const SystemAdmin = () => {
   const saveApprovalPolicy = async (key) => {
     const policy = approvalPolicies[key];
     if (!policy?.levels?.length) {
-      toast.warning("Can co it nhat 1 tang duyet");
+      toast.warning("Cần có ít nhất 1 tầng duyệt");
       return;
     }
 
@@ -566,10 +546,10 @@ const SystemAdmin = () => {
           })),
         },
       });
-      toast.success("Da cap nhat cau hinh duyet don");
+      toast.success("Đã cập nhật cấu hình duyệt đơn");
       await Promise.all([fetchApprovalPolicies(), fetchSystemSettings()]);
     } catch (error) {
-      toast.error(error.normalizedMessage || "Cap nhat cau hinh duyet that bai");
+      toast.error(error.normalizedMessage || "Cập nhật cấu hình duyệt thất bại");
     } finally {
       setApprovalLoading(false);
     }
@@ -591,7 +571,7 @@ const SystemAdmin = () => {
       const data = res.data?.data || res.data || [];
       setOfficeNetworks(Array.isArray(data) ? data : []);
     } catch (error) {
-      toast.error(error.normalizedMessage || "Khong the tai danh sach mang van phong");
+      toast.error(error.normalizedMessage || "Không thể tải danh sách mạng văn phòng");
     } finally {
       setOfficeNetworksLoading(false);
     }
@@ -605,7 +585,7 @@ const SystemAdmin = () => {
     };
 
     if (!payload.officeName || !payload.ipAddress) {
-      toast.warning("Vui long nhap ten van phong va dia chi IP");
+      toast.warning("Vui lòng nhập tên văn phòng và địa chỉ IP");
       return;
     }
 
@@ -613,15 +593,15 @@ const SystemAdmin = () => {
       setOfficeNetworksLoading(true);
       if (officeNetworkForm.editingId) {
         await officeNetworkApi.update(officeNetworkForm.editingId, payload);
-        toast.success("Cap nhat mang van phong thanh cong");
+        toast.success("Cập nhật mạng văn phòng thành công");
       } else {
         await officeNetworkApi.create(payload);
-        toast.success("Them mang van phong thanh cong");
+        toast.success("Thêm mạng văn phòng thành công");
       }
       resetOfficeNetworkForm();
       await fetchOfficeNetworks();
     } catch (error) {
-      toast.error(error.normalizedMessage || "Luu mang van phong that bai");
+      toast.error(error.normalizedMessage || "Lưu mạng văn phòng thất bại");
     } finally {
       setOfficeNetworksLoading(false);
     }
@@ -640,25 +620,25 @@ const SystemAdmin = () => {
     try {
       setOfficeNetworksLoading(true);
       await officeNetworkApi.update(network._id, { isActive: !network.isActive });
-      toast.success("Cap nhat trang thai mang thanh cong");
+      toast.success("Cập nhật trạng thái mạng thành công");
       await fetchOfficeNetworks();
     } catch (error) {
-      toast.error(error.normalizedMessage || "Cap nhat trang thai that bai");
+      toast.error(error.normalizedMessage || "Cập nhật trạng thái thất bại");
     } finally {
       setOfficeNetworksLoading(false);
     }
   };
 
   const disableOfficeNetwork = async (network) => {
-    if (!window.confirm(`Tat mang van phong "${network.officeName}"?`)) return;
+    if (!window.confirm(`Tắt mạng văn phòng "${network.officeName}"?`)) return;
 
     try {
       setOfficeNetworksLoading(true);
       await officeNetworkApi.disable(network._id);
-      toast.success("Da tat mang van phong");
+      toast.success("Đã tắt mạng văn phòng");
       await fetchOfficeNetworks();
     } catch (error) {
-      toast.error(error.normalizedMessage || "Tat mang van phong that bai");
+      toast.error(error.normalizedMessage || "Tắt mạng văn phòng thất bại");
     } finally {
       setOfficeNetworksLoading(false);
     }
@@ -671,7 +651,7 @@ const SystemAdmin = () => {
       const res = await auditLogApi.getAll({ limit: 100 });
       setAuditLogs(extractAuditLogList(res.data));
     } catch (error) {
-      toast.error(error.normalizedMessage || "Khong the tai audit logs");
+      toast.error(error.normalizedMessage || "Không thể tải audit logs");
     } finally {
       setAuditLoading(false);
     }
@@ -679,7 +659,7 @@ const SystemAdmin = () => {
 
   const fetchAuditLogDetail = async (id = auditLogId) => {
     if (!id) {
-      toast.warning("Vui long chon audit log");
+      toast.warning("Vui lòng chọn audit log");
       return;
     }
     try {
@@ -687,11 +667,18 @@ const SystemAdmin = () => {
       const res = await auditLogApi.getById(id);
       setSelectedAuditLog(res.data?.data?.log || res.data?.data || res.data);
     } catch (error) {
-      toast.error(error.normalizedMessage || "Khong the tai chi tiet audit log");
+      toast.error(error.normalizedMessage || "Không thể tải chi tiết audit log");
     } finally {
       setAuditLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (activeAdminTab === "audit" && auditLogs.length === 0) {
+      fetchAuditLogs();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeAdminTab]);
 
   const renderApprovalPolicyCard = (key, title, description) => {
     const policy = approvalPolicies[key] || DEFAULT_APPROVAL_POLICIES[key];
@@ -705,21 +692,21 @@ const SystemAdmin = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-[160px_1fr] gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">So tang duyet</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Số tầng duyệt</label>
             <select
               value={policy.levels.length}
               onChange={(event) => setApprovalLevelCount(key, Number(event.target.value))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value={1}>1 tang</option>
-              <option value={2}>2 tang</option>
+              <option value={1}>1 tầng</option>
+              <option value={2}>2 tầng</option>
             </select>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {policy.levels.map((level, index) => (
               <div key={`${key}-${index}`}>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Tang {index + 1}</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Tầng {index + 1}</label>
                 <select
                   value={level.type}
                   onChange={(event) => updateApprovalLevelType(key, index, event.target.value)}
@@ -772,7 +759,7 @@ const SystemAdmin = () => {
           </div>
           <Button type="button" variant="secondary" onClick={fetchSystemSettings} disabled={settingsLoading}>
             {settingsLoading ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
-            Tai cau hinh
+            Tải cấu hình
           </Button>
         </div>
       </Card>
@@ -782,7 +769,7 @@ const SystemAdmin = () => {
           <div className="p-4 border-b bg-gray-50 font-semibold text-gray-800">Danh sach cau hinh</div>
           <div className="max-h-[520px] overflow-auto">
             {settings.length === 0 ? (
-              <div className="p-8 text-center text-gray-400">Chua co du lieu. Nhan tai cau hinh de xem.</div>
+              <div className="p-8 text-center text-gray-400">Chưa có dữ liệu. Nhấn tải cấu hình để xem.</div>
             ) : (
               <table className="w-full min-w-[720px] text-sm">
                 <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
@@ -814,7 +801,7 @@ const SystemAdmin = () => {
         </Card>
 
         <Card className="p-5 space-y-3">
-          <h3 className="font-semibold text-gray-800">Cap nhat setting</h3>
+          <h3 className="font-semibold text-gray-800">Cập nhật setting</h3>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Setting key</label>
             <input
@@ -834,7 +821,7 @@ const SystemAdmin = () => {
             />
           </div>
           <Button type="button" onClick={updateSystemSetting} disabled={settingsLoading} className="w-full">
-            Cap nhat
+            Cập nhật
           </Button>
         </Card>
       </div>
@@ -851,8 +838,8 @@ const SystemAdmin = () => {
             <Wifi size={20} />
           </div>
           <div>
-            <h2 className="font-bold text-gray-800">Mang van phong</h2>
-            <p className="text-sm text-gray-500">Quan ly IP duoc phep cham cong bang web.</p>
+            <h2 className="font-bold text-gray-800">Mạng văn phòng</h2>
+            <p className="text-sm text-gray-500">Quản lý IP được phép chấm công bằng web.</p>
           </div>
         </div>
 
@@ -884,7 +871,7 @@ const SystemAdmin = () => {
               onChange={(e) => setOfficeNetworkForm((prev) => ({ ...prev, isActive: e.target.checked }))}
               className="h-4 w-4 rounded text-blue-600"
             />
-            Dang hoat dong
+            Đang hoạt động
           </label>
 
           <div className="flex gap-2">
@@ -895,7 +882,7 @@ const SystemAdmin = () => {
             )}
             <Button type="button" onClick={submitOfficeNetwork} disabled={officeNetworksLoading}>
               {officeNetworksLoading ? <Loader2 size={16} className="mr-2 animate-spin" /> : null}
-              {officeNetworkForm.editingId ? "Cap nhat" : "Them IP"}
+              {officeNetworkForm.editingId ? "Cập nhật" : "Thêm IP"}
             </Button>
           </div>
         </div>
@@ -906,22 +893,22 @@ const SystemAdmin = () => {
           <div className="font-semibold text-gray-800">Danh sach IP</div>
           <Button type="button" variant="secondary" onClick={fetchOfficeNetworks} disabled={officeNetworksLoading}>
             {officeNetworksLoading ? <Loader2 size={16} className="mr-2 animate-spin" /> : null}
-            Tai danh sach
+            Tải danh sách
           </Button>
         </div>
 
         {officeNetworks.length === 0 ? (
-          <div className="p-8 text-center text-gray-400">Chua co IP nao. Nhan "Tai danh sach" hoac them IP moi.</div>
+          <div className="p-8 text-center text-gray-400">Chưa có IP nào. Nhấn "Tải danh sách" hoặc thêm IP mới.</div>
         ) : (
           <div className="overflow-auto">
             <table className="w-full min-w-[760px] text-sm">
               <thead className="bg-gray-50 text-xs uppercase text-gray-500">
                 <tr>
-                  <th className="p-3 text-left">Van phong</th>
+                  <th className="p-3 text-left">Văn phòng</th>
                   <th className="p-3 text-left">IP</th>
-                  <th className="p-3 text-left">Trang thai</th>
-                  <th className="p-3 text-left">Cap nhat</th>
-                  <th className="p-3 text-right">Thao tac</th>
+                  <th className="p-3 text-left">Trạng thái</th>
+                  <th className="p-3 text-left">Cập nhật</th>
+                  <th className="p-3 text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -948,14 +935,14 @@ const SystemAdmin = () => {
                           onClick={() => editOfficeNetwork(network)}
                           className="rounded-md border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
                         >
-                          Sua
+                          Sửa
                         </button>
                         <button
                           type="button"
                           onClick={() => toggleOfficeNetwork(network)}
                           className="rounded-md border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50"
                         >
-                          {network.isActive ? "Tat" : "Bat"}
+                          {network.isActive ? "Tắt" : "Bật"}
                         </button>
                         <button
                           type="button"
@@ -977,83 +964,25 @@ const SystemAdmin = () => {
   );
 
   const renderAuditLogs = () => (
-    <div className="space-y-4">
-      {renderAdminTabs()}
-      <Card className="p-4 flex justify-between items-center">
-        <div>
-          <h2 className="font-bold text-gray-800">Audit logs</h2>
-          <p className="text-sm text-gray-500">Theo doi cac thay doi quan trong trong he thong.</p>
-        </div>
-        <Button type="button" variant="secondary" onClick={fetchAuditLogs} disabled={auditLoading}>
-          {auditLoading ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
-          Tai logs
-        </Button>
-      </Card>
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <Card className="xl:col-span-2 p-0 overflow-hidden">
-          <div className="max-h-[580px] overflow-auto">
-            {auditLogs.length === 0 ? (
-              <div className="p-8 text-center text-gray-400">Chua co du lieu. Nhan tai logs de xem.</div>
-            ) : (
-              <table className="w-full min-w-[840px] text-sm">
-                <thead className="bg-gray-50 text-xs text-gray-500 uppercase sticky top-0">
-                  <tr>
-                    <th className="p-3 text-left">Action</th>
-                    <th className="p-3 text-left">Module</th>
-                    <th className="p-3 text-left">User</th>
-                    <th className="p-3 text-left">Status</th>
-                    <th className="p-3 text-left">Time</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {auditLogs.map((log, index) => (
-                    <tr
-                      key={log._id || index}
-                      className="hover:bg-blue-50/40 cursor-pointer"
-                      onClick={() => {
-                        setAuditLogId(log._id);
-                        fetchAuditLogDetail(log._id);
-                      }}
-                    >
-                      <td className="p-3 font-medium">{getVietnameseName(getAuditActionName(log))}</td>
-                      <td className="p-3 text-gray-600">{getVietnameseModule(log.module) || "--"}</td>
-                      <td className="p-3 text-gray-600">{getAuditUserName(log)}</td>
-                      <td className="p-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          log.status === "FAILED"
-                            ? "bg-red-100 text-red-700"
-                            : "bg-emerald-100 text-emerald-700"
-                        }`}>
-                          {log.status || "--"}
-                        </span>
-                      </td>
-                      <td className="p-3 text-gray-500">{log.createdAt ? new Date(log.createdAt).toLocaleString("vi-VN") : "--"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </Card>
-        <Card className="p-5">
-          <h3 className="font-semibold text-gray-800 mb-3">Chi tiet log</h3>
-          <input
-            value={auditLogId}
-            onChange={(e) => setAuditLogId(e.target.value)}
-            placeholder="Audit log ID"
-            className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-          />
-          <Button type="button" variant="secondary" onClick={() => fetchAuditLogDetail()} disabled={auditLoading} className="w-full mb-4">
-            Xem chi tiet
-          </Button>
-          <pre className="text-xs bg-gray-950 text-gray-100 rounded-lg p-3 max-h-[420px] overflow-auto">
-            {selectedAuditLog ? JSON.stringify(selectedAuditLog, null, 2) : "Chua chon log."}
-          </pre>
-        </Card>
-      </div>
-    </div>
+    <AuditLogsPanel
+      auditLogId={auditLogId}
+      auditLoading={auditLoading}
+      auditLogs={auditLogs}
+      onRefresh={fetchAuditLogs}
+      onSelectLog={(log) => {
+        const id = log?._id || log?.id;
+        setAuditLogId(id || "");
+        if (id) {
+          setSelectedAuditLog(log);
+          fetchAuditLogDetail(id);
+        } else {
+          setSelectedAuditLog(log || null);
+        }
+      }}
+      renderAdminTabs={renderAdminTabs}
+      selectedAuditLog={selectedAuditLog}
+    />
   );
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">

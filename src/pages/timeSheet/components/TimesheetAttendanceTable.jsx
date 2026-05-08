@@ -15,28 +15,28 @@ const hasMissingCheck = (day) =>
 const getStatusMeta = (day) => {
   if (day.type === "holiday") {
     return {
-      label: day.holidayName || "Nghi le",
+      label: day.holidayName || "Nghỉ lễ",
       className: "bg-red-50 text-red-700 border-red-100",
     };
   }
 
   if (day.type === "weekend") {
     return {
-      label: "Cuoi tuan",
+      label: "Cuối tuần",
       className: "bg-orange-50 text-orange-700 border-orange-100",
     };
   }
 
   if (day.type === "substitute_work") {
     return {
-      label: "Lam bu",
+      label: "Làm bù",
       className: "bg-yellow-50 text-yellow-700 border-yellow-100",
     };
   }
 
   if (day.type === "rotation_off") {
     return {
-      label: "Nghi luan phien",
+      label: "Nghỉ luân phiên",
       className: "bg-teal-50 text-teal-700 border-teal-100",
     };
   }
@@ -44,7 +44,7 @@ const getStatusMeta = (day) => {
   if (day.type === "leave") {
     const isPaid = day.apiData?.status === "PAID_LEAVE";
     return {
-      label: isPaid ? "Nghi co luong" : "Nghi khong luong",
+      label: isPaid ? "Nghỉ có lương" : "Nghỉ không lương",
       className: isPaid
         ? "bg-purple-50 text-purple-700 border-purple-100"
         : "bg-orange-50 text-orange-700 border-orange-100",
@@ -53,27 +53,27 @@ const getStatusMeta = (day) => {
 
   if (day.status?.includes("absent")) {
     return {
-      label: "Vang",
+      label: "Vắng",
       className: "bg-red-50 text-red-700 border-red-100",
     };
   }
 
   if (hasMissingCheck(day) || day.apiData?.status === "ERROR") {
     return {
-      label: "Thieu du lieu",
+      label: "Thiếu dữ liệu",
       className: "bg-amber-50 text-amber-700 border-amber-100",
     };
   }
 
   if (day.checkIn || day.checkOut) {
     return {
-      label: "Da cham cong",
+      label: "Đã chấm công",
       className: "bg-green-50 text-green-700 border-green-100",
     };
   }
 
   return {
-    label: "Chua cham cong",
+    label: "Chưa chấm công",
     className: "bg-gray-50 text-gray-600 border-gray-100",
   };
 };
@@ -111,7 +111,7 @@ const getWarnings = (day) => {
   }
 
   if (hasMissingCheck(day)) {
-    warnings.push("Thieu check-in/check-out");
+    warnings.push("Thiếu check-in/check-out");
   }
 
   return warnings;
@@ -166,9 +166,9 @@ const TimesheetAttendanceTable = memo(({ calendarDays, loading }) => {
     <Card className="w-full overflow-hidden border border-gray-200 p-0 shadow-sm">
       <div className="flex items-center justify-between border-b border-gray-100 px-3 py-3 sm:px-5 sm:py-4">
         <div>
-          <h2 className="text-base font-bold text-gray-900">Bang cong</h2>
+          <h2 className="text-base font-bold text-gray-900">Bảng công</h2>
           <p className="mt-0.5 hidden text-sm text-gray-500 sm:block">
-            Theo doi check-in, check-out va trang thai tung ngay.
+            Theo dõi check-in, check-out và trạng thái từng ngày.
           </p>
         </div>
         <CalendarDays className="hidden text-blue-600 sm:block" size={22} />
@@ -178,7 +178,7 @@ const TimesheetAttendanceTable = memo(({ calendarDays, loading }) => {
         <div className="flex h-72 items-center justify-center bg-white">
           <div className="flex flex-col items-center gap-3">
             <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-blue-600" />
-            <p className="text-sm text-gray-500">Dang tai du lieu cham cong...</p>
+            <p className="text-sm text-gray-500">Đang tải dữ liệu chấm công...</p>
           </div>
         </div>
       ) : (
@@ -188,10 +188,10 @@ const TimesheetAttendanceTable = memo(({ calendarDays, loading }) => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500">
-                    Ngay
+                    Ngày
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500">
-                    Trang thai
+                    Trạng thái
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500">
                     Check In

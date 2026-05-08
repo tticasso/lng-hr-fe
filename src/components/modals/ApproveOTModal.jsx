@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import "antd/dist/reset.css";
 import { CheckCircle2, Clock, UserCheck, X, XCircle } from "lucide-react";
 import { TimePicker } from "antd";
 import dayjs from "../../untils/dayjs";

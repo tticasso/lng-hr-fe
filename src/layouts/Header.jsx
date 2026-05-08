@@ -1,18 +1,16 @@
-﻿import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Bell, Menu, Search, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import NotificationDetailModal from "../components/modals/NotificationDetailModal";
 import useSocket from "../pages/notification/useSocket";
 import { notificationApi } from "../apis/notificationAPI";
-import logoImage from "../assets/logo.png";
 import { toast } from "react-toastify";
 import { useNotification } from "../context/NotificationContext";
 import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "../context/AuthContext";
 import AnnouncementDetailModal from "../components/modals/AnnouncementDetailModal";
-import { announcementAPI } from "../apis/announcements";
 
-// âœ… Format thá»i gian thĂ´ng bĂ¡o: rĂµ rĂ ng + chuyĂªn nghiá»‡p
+// âœ… Format thá»i gian thĂ´ng bĂ¡o: rĂµ rĂ ng + chuyĂªn nghiá»‡p
 const formatNotifyTime = (dateInput) => {
   if (!dateInput) return "--";
 
@@ -41,6 +39,23 @@ const formatNotifyTime = (dateInput) => {
     "vi-VN",
     { hour: "2-digit", minute: "2-digit" }
   )}`;
+};
+
+const toNotificationItem = (item) => ({
+  id: item._id,
+  title: item.title,
+  content: item.message,
+  createdAt: item.createdAt,
+  unread: !item.isRead,
+  type: item.type,
+  relatedId: item.relatedId,
+  relatedModel: item.relatedModel,
+});
+
+const getUnreadCountFromResponse = (res) => {
+  const payload = res?.data?.data ?? res?.data;
+  if (typeof payload === "number") return payload;
+  return payload?.count ?? payload?.unreadCount ?? payload?.total ?? 0;
 };
 
 const Header = () => {
@@ -76,56 +91,60 @@ const Header = () => {
 
   // âœ… áº¢nh logo cho táº¥t cáº£ thĂ´ng bĂ¡o
   const NOTIFICATION_AVATAR = "https://res.cloudinary.com/dplhdyxgl/image/upload/v1772177306/logo_j0iody.jpg";
-
-  // âœ… notifications state Ä‘á»ƒ thao tĂ¡c read/unread local
+  // Notification badge is cheap; full list is loaded only when the panel opens.
   const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [notificationsLoaded, setNotificationsLoaded] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  // Load notifications tá»« API khi mount
   useEffect(() => {
-    const loadNotifications = async () => {
+    const loadUnreadCount = async () => {
       try {
-        setLoading(true);
-        const res = await notificationApi.getAll();
-        console.log("NOTIFICATION API:", res);
-
-        // Parse data tá»« API response
-        const apiNotifications = res.data?.data || [];
-
-        // Transform data tá»« API sang format cá»§a UI
-        const transformedNotifications = apiNotifications.map((item) => ({
-          id: item._id,
-          title: item.title,
-          content: item.message,
-          createdAt: item.createdAt,
-          unread: !item.isRead, // isRead = false â†’ unread = true
-          type: item.type,
-          relatedId: item.relatedId,
-          relatedModel: item.relatedModel,
-        }));
-
-        setNotifications(transformedNotifications);
+        const res = await notificationApi.getUnreadCount();
+        setUnreadCount(getUnreadCountFromResponse(res));
       } catch (error) {
-        console.error("Error loading notifications:", error);
-      } finally {
-        setLoading(false);
+        console.error("Error loading unread notification count:", error);
       }
     };
 
-    loadNotifications();
+    loadUnreadCount();
   }, []);
 
+  const loadNotifications = useCallback(async ({ force = false } = {}) => {
+    if (notificationsLoaded && !force) return;
+
+    try {
+      setLoading(true);
+      const res = await notificationApi.getAll();
+      const apiNotifications = res.data?.data || [];
+      const transformedNotifications = apiNotifications.map(toNotificationItem);
+
+      setNotifications(transformedNotifications);
+      setNotificationsLoaded(true);
+      setUnreadCount(transformedNotifications.filter((n) => n.unread).length);
+    } catch (error) {
+      console.error("Error loading notifications:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [notificationsLoaded]);
+
+  useEffect(() => {
+    if (openNotify) {
+      loadNotifications();
+    }
+  }, [loadNotifications, openNotify]);
+
   // âœ… State Ä‘á»ƒ track toast Ä‘Ă£ hiá»ƒn thá»‹ (trĂ¡nh duplicate)
-  const [shownToasts, setShownToasts] = useState(new Set());
+  const [, setShownToasts] = useState(new Set());
 
   // âœ… Láº¯ng nghe socket Ä‘á»ƒ nháº­n thĂ´ng bĂ¡o real-time
   const handleSocketNotification = useCallback((data) => {
-    console.log("đŸ“© [HEADER] Nháº­n thĂ´ng bĂ¡o tá»« socket:", data);
 
     // Táº¡o notification object tá»« data socket
     const newNotification = {
       id: data._id || data.id || Date.now(),
-      title: data.title || "ThĂ´ng bĂ¡o má»›i",
+      title: data.title || "Thông báo mới",
       content: data.message || data.content || "",
       createdAt: data.createdAt || new Date().toISOString(),
       unread: true,
@@ -133,23 +152,22 @@ const Header = () => {
       relatedId: data.relatedId,
       relatedModel: data.relatedModel,
     };
-    console.log("data.type :",data.type)
+    setUnreadCount((count) => count + 1);
     // Kiá»ƒm tra xem notification Ä‘Ă£ tá»“n táº¡i chÆ°a (trĂ¡nh duplicate)
     setNotifications((prev) => {
       const exists = prev.some((n) => n.id === newNotification.id);
       if (exists) {
-        console.log("â ï¸ Notification already exists, skipping...");
+        setUnreadCount((count) => Math.max(0, count - 1));
         return prev;
       }
 
       // Kiá»ƒm tra xem toast Ä‘Ă£ hiá»ƒn thá»‹ chÆ°a
       setShownToasts((prevShown) => {
         if (prevShown.has(newNotification.id)) {
-          console.log("â ï¸ Toast already shown, skipping...");
           return prevShown;
         }
 
-        // XĂ¡c Ä‘á»‹nh route vĂ  tab dá»±a trĂªn type
+        // XĂ¡c Ä‘á»‹nh route vĂ  tab dá»±a trĂªn type
         const handleToastClick = () => {
           if (data.type === "LEAVE_CREATED") {
             navigate("/leave/my");
@@ -185,24 +203,19 @@ const Header = () => {
           }
         );
 
-        // ThĂªm vĂ o set Ä‘Ă£ hiá»ƒn thá»‹
+        // ThĂªm vĂ o set Ä‘Ă£ hiá»ƒn thá»‹
         const newSet = new Set(prevShown);
         newSet.add(newNotification.id);
         return newSet;
       });
 
-      // ThĂªm vĂ o Ä‘áº§u danh sĂ¡ch
+      // ThĂªm vĂ o Ä‘áº§u danh sĂ¡ch
       return [newNotification, ...prev];
     });
   }, [navigate]);
 
   // Káº¿t ná»‘i socket
   useSocket(handleSocketNotification);
-
-  const unreadCount = useMemo(
-    () => notifications.filter((n) => n.unread).length,
-    [notifications]
-  );
 
   const filteredNotifications = useMemo(() => {
     if (notifyTab === "unread") return notifications.filter((n) => n.unread);
@@ -217,28 +230,32 @@ const Header = () => {
 
       // Update local state
       setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+      setUnreadCount(0);
     } catch (error) {
       console.error("Error marking all as read:", error);
       // Váº«n update local state náº¿u API fail
       setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+      setUnreadCount(0);
     }
   };
 
   const handleClickNotification = async (notification) => {
-    const { relatedModel, relatedId } = notification;
+    const { relatedModel } = notification;
 
-    // âœ… ÄĂ¡nh dáº¥u Ä‘Ă£ Ä‘á»c náº¿u lĂ  thĂ´ng bĂ¡o chÆ°a Ä‘á»c
+    // âœ… ÄĂ¡nh dáº¥u Ä‘Ă£ Ä‘á»c náº¿u lĂ  thĂ´ng bĂ¡o chÆ°a Ä‘á»c
     if (notification.unread) {
       try {
         await notificationApi.markAsRead(notification.id);
         setNotifications((prev) =>
           prev.map((n) => (n.id === notification.id ? { ...n, unread: false } : n))
         );
+        setUnreadCount((count) => Math.max(0, count - 1));
       } catch (error) {
         console.error("Error marking as read:", error);
         setNotifications((prev) =>
           prev.map((n) => (n.id === notification.id ? { ...n, unread: false } : n))
         );
+        setUnreadCount((count) => Math.max(0, count - 1));
       }
     }
 
@@ -288,43 +305,43 @@ const Header = () => {
     const isEmployee = role === "EMPLOYEE";
 
     const pages = [
-      { path: "/", label: "Tá»•ng quan", keywords: ["tong quan", "dashboard", "home"] },
-      { path: "/timesheet", label: "Lá»‹ch lĂ m viá»‡c", keywords: ["lich lam viec", "timesheet", "cham cong"] },
-      { path: "/payroll", label: "Báº£ng lÆ°Æ¡ng", keywords: ["bang luong", "payroll", "luong"] },
+      { path: "/", label: "Tổng quan", keywords: ["tong quan", "dashboard", "home"] },
+      { path: "/timesheet", label: "Lịch làm việc", keywords: ["lich lam viec", "timesheet", "cham cong"] },
+      { path: "/payroll", label: "Bảng lương", keywords: ["bang luong", "payroll", "luong"] },
     ];
 
     // Employee pages
     if (isEmployee) {
-      pages.push({ path: "/leave/my", label: "ÄÆ¡n nghá»‰ cá»§a tĂ´i", keywords: ["yeu cau", "nghi phep", "leave", "request"] });
-      pages.push({ path: "/ot/my", label: "ÄÆ¡n OT cá»§a tĂ´i", keywords: ["ot", "overtime", "tang ca"] });
+      pages.push({ path: "/leave/my", label: "Đơn nghỉ của tôi", keywords: ["yeu cau", "nghi phep", "leave", "request"] });
+      pages.push({ path: "/ot/my", label: "Đơn OT của tôi", keywords: ["ot", "overtime", "tang ca"] });
     }
 
     // Admin, HR, Manager pages
     if (isAdmin || isHR || isManager || isLeader) {
-      pages.push({ path: "/leave/approvals", label: "PhĂª duyá»‡t Ä‘Æ¡n nghá»‰", keywords: ["quan ly yeu cau", "duyet don", "leave management"] });
-      pages.push({ path: "/leave/my", label: "ÄÆ¡n nghá»‰ cá»§a tĂ´i", keywords: ["don nghi cua toi", "leave request"] });
-      pages.push({ path: "/ot/my", label: "ÄÆ¡n OT cá»§a tĂ´i", keywords: ["ot", "overtime", "tang ca"] });
-      pages.push({ path: "/ot/approvals", label: "PhĂª duyá»‡t Ä‘Æ¡n OT", keywords: ["duyet ot", "overtime approvals", "duyet tang ca"] });
+      pages.push({ path: "/leave/approvals", label: "Phê duyệt đơn nghỉ", keywords: ["quan ly yeu cau", "duyet don", "leave management"] });
+      pages.push({ path: "/leave/my", label: "Đơn nghỉ của tôi", keywords: ["don nghi cua toi", "leave request"] });
+      pages.push({ path: "/ot/my", label: "Đơn OT của tôi", keywords: ["ot", "overtime", "tang ca"] });
+      pages.push({ path: "/ot/approvals", label: "Phê duyệt đơn OT", keywords: ["duyet ot", "overtime approvals", "duyet tang ca"] });
     }
 
-    // Admin vĂ  HR pages
+    // Admin vĂ  HR pages
     if (isAdmin || isHR) {
       pages.push(
-        { path: "/hr/employees", label: "NhĂ¢n viĂªn", keywords: ["nhan vien", "employee", "staff"] },
-        { path: "/hr/attendance-admin", label: "Quáº£n lĂ½ cháº¥m cĂ´ng", keywords: ["quan ly cham cong", "attendance", "checkin"] },
-        { path: "/hr/announcements", label: "ThĂ´ng bĂ¡o", keywords: ["thong bao", "announcement", "notice"] },
-        { path: "/hr/recruitment", label: "Tuyá»ƒn dá»¥ng", keywords: ["tuyen dung", "recruitment", "hiring"] },
+        { path: "/hr/employees", label: "Nhân viên", keywords: ["nhan vien", "employee", "staff"] },
+        { path: "/hr/attendance-admin", label: "Quản lý chấm công", keywords: ["quan ly cham cong", "attendance", "checkin"] },
+        { path: "/hr/announcements", label: "Thông báo", keywords: ["thong bao", "announcement", "notice"] },
+        { path: "/hr/recruitment", label: "Tuyển dụng", keywords: ["tuyen dung", "recruitment", "hiring"] },
         { path: "/hr/boarding", label: "On/Off Boarding", keywords: ["onboarding", "offboarding", "nhan vien moi"] },
-        { path: "/hr/reports", label: "BĂ¡o cĂ¡o", keywords: ["bao cao", "report", "thong ke"] },
-        { path: "/hr/payroll-engine", label: "CĂ´ng cá»¥ tĂ­nh lÆ°Æ¡ng", keywords: ["cong cu tinh luong", "payroll engine", "tinh luong"] }
+        { path: "/hr/reports", label: "Báo cáo", keywords: ["bao cao", "report", "thong ke"] },
+        { path: "/hr/payroll-engine", label: "Công cụ tính lương", keywords: ["cong cu tinh luong", "payroll engine", "tinh luong"] }
       );
     }
 
     // Admin only pages
     if (isAdmin) {
       pages.push(
-        { path: "/admin/user-management", label: "Quáº£n lĂ½ ngÆ°á»i dĂ¹ng", keywords: ["quan ly nguoi dung", "user management", "account"] },
-        { path: "/admin/system-admin", label: "CĂ i Ä‘áº·t há»‡ thá»‘ng", keywords: ["cai dat he thong", "system admin", "settings"] }
+        { path: "/admin/user-management", label: "Quản lý người dùng", keywords: ["quan ly nguoi dung", "user management", "account"] },
+        { path: "/admin/system-admin", label: "Cài đặt hệ thống", keywords: ["cai dat he thong", "system admin", "settings"] }
       );
     }
 
@@ -356,7 +373,7 @@ const Header = () => {
   };
 
   const handleSearchBlur = () => {
-    // Delay Ä‘á»ƒ click vĂ o káº¿t quáº£ cĂ³ thá»i gian xá»­ lĂ½
+    // Delay Ä‘á»ƒ click vĂ o káº¿t quáº£ cĂ³ thá»i gian xá»­ lĂ½
     setTimeout(() => setShowSearchResults(false), 200);
   };
 

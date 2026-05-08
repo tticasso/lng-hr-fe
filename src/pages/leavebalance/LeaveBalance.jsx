@@ -57,11 +57,10 @@ const LeaveBalance = () => {
         setLoading(true);
         try {
             const res = await leavebalanceAPI.get();
-            console.log("res :", res);
             const data = res?.data?.data || [];
             setLeaveBalances(data);
-        } catch (error) {
-            console.log("error :", error);
+        } catch {
+            setLeaveBalances([]);
         } finally {
             setLoading(false);
         }
@@ -161,21 +160,17 @@ const LeaveBalance = () => {
     };
 
     const handleUpdateLeaveBalance = async () => {
-        console.log("handleUpdateLeaveBalance called"); // Debug log
         
         if (!selectedLeaveBalance) {
-            console.log("No selected leave balance");
             return;
         }
         
         // Validate form
         if (!validateEditForm()) {
-            console.log("Validation failed");
             toast.error("Vui lòng kiểm tra lại thông tin nhập vào");
             return;
         }
 
-        console.log("Starting API call...");
         setEditLoading(true);
         try {
             const payload = {
@@ -183,11 +178,8 @@ const LeaveBalance = () => {
                 reason: editForm.reason.trim()
             };
 
-            console.log("Update payload:", payload);
-            console.log("Leave Balance ID:", selectedLeaveBalance._id);
 
             await leavebalanceAPI.put(selectedLeaveBalance._id, payload);
-            console.log("API call successful");
             toast.success("Cập nhật số dư phép thành công!");
             closeEditModal();
             await callAPI(); // Refresh data
@@ -281,8 +273,6 @@ const LeaveBalance = () => {
                 action: adjustForm.action
             };
 
-            console.log("Adjust payload:", payload);
-            console.log("Leave Balance ID:", selectedLeaveBalance._id);
 
             await leavebalanceAPI.patch(selectedLeaveBalance._id, payload);
             toast.success("Điều chỉnh số dư phép thành công!");
@@ -1031,5 +1021,4 @@ const LeaveBalance = () => {
 };
 
 export default LeaveBalance;
-
 

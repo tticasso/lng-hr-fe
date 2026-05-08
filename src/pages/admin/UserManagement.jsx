@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Search,
   Filter,
@@ -13,7 +13,6 @@ import {
   RefreshCw,
   Upload,
 } from "lucide-react";
-import * as XLSX from "xlsx";
 
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
@@ -30,21 +29,24 @@ import CreateAccountModal from "../../components/modals/CreateAccountModal";
 import UserDetailModal from "../../components/modals/UserDetailModal";
 import ActionModal from "../../components/modals/ActionModal";
 import { useAuth } from "../../context/AuthContext";
+import { getListData, getPagination, hasPaginationMetadata } from "../../shared/apiResponse";
+
+const USER_PAGE_SIZE = 50;
+const MAX_USER_PREFETCH = 500;
 
 const UserManagement = () => {
   // State
   const { user } = useAuth();
   const userInfo = user;
-  console.log("userManagement, user: ", user);
   const [users, setUsers] = useState([]);
-  const [allUsers, setAllUsers] = useState([]); // Lưu toàn bộ data gốc
   const [rolesList, setRolesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 10,
+    limit: USER_PAGE_SIZE,
     total: 0,
     totalPages: 1,
+    mode: "server",
   });
   const [filters, setFilters] = useState({ search: "", role: "", status: "" });
 
@@ -71,109 +73,162 @@ const UserManagement = () => {
       year: "numeric",
     });
   };
-  // --- 1. Init Data ---
+  const normalizeAccountEmployee = (account, employeesByAccount) => {
+    const directEmployee = account.employee || account.employeeId;
+    if (directEmployee && typeof directEmployee === "object") return directEmployee;
+    return employeesByAccount.get(account._id) || null;
+  };
+
+  const buildUserParams = useCallback(
+    (overrides = {}) => ({
+      page: overrides.page ?? 1,
+      limit: overrides.limit ?? USER_PAGE_SIZE,
+      pageSize: overrides.limit ?? USER_PAGE_SIZE,
+      perPage: overrides.limit ?? USER_PAGE_SIZE,
+      search: filters.search.trim() || undefined,
+      role: filters.role || undefined,
+      roleId: filters.role || undefined,
+      status: filters.status || undefined,
+      isActive:
+        filters.status === "Active"
+          ? true
+          : filters.status === "Locked"
+            ? false
+            : undefined,
+      includeEmployee: true,
+      populate: "employee",
+    }),
+    [filters],
+  );
+
+  // --- 1. Init metadata ---
   useEffect(() => {
     const fetchRoles = async () => {
       try {
-        const res = await roleApi.getAll();
+        const res = await roleApi.getAllCached();
         setRolesList(res.data?.data || []);
       } catch (e) {
         console.error(e);
       }
     };
     fetchRoles();
-    fetchUsers(); // Gọi fetch users khi mount
   }, []);
 
-  // --- 2. Fetch Users (Chỉ gọi 1 lần khi mount) ---
-  const fetchUsers = async () => {
+  // --- 2. Fetch Users (server-side pagination/filter) ---
+  const fetchUsers = useCallback(async (overrides = {}) => {
     setLoading(true);
     try {
-      // Parallel Fetch: Accounts + Employees
-      const [accRes, empRes] = await Promise.all([
-        accountApi.getAll({ limit: 1000 }), // Lấy tất cả
-        employeeApi.getAll({ limit: 1000 }), // Lấy cache employee để map
-      ]);
-
-      const accounts = accRes.data?.data || [];
-      const employees = empRes.data?.data || [];
-
-      // Merge Data Logic
-      const merged = accounts.map((acc) => {
-        // Tìm employee có account._id trùng với acc._id
-        const emp = employees.find((e) => e.accountId?._id === acc._id);
-        return { ...acc, employee: emp };
-
+      const params = buildUserParams(overrides);
+      const accRes = await accountApi.getAll(params);
+      let accounts = getListData(accRes);
+      const hasServerPagination = hasPaginationMetadata(accRes);
+      let pageMeta = getPagination(accRes, {
+        page: params.page,
+        limit: params.limit,
+        total: accounts.length,
       });
-      console.log('ID USER :', merged)
-      console.log("user management, merged: ", merged);
-      setAllUsers(merged); // Lưu data gốc
-      setUsers(merged); // Hiển thị ban đầu
-      setPagination((prev) => ({
-        ...prev,
-        total: merged.length,
-        totalPages: Math.ceil(merged.length / prev.limit) || 1,
+
+      if (
+        hasServerPagination &&
+        params.page === 1 &&
+        pageMeta.totalPages > 1 &&
+        pageMeta.total <= MAX_USER_PREFETCH
+      ) {
+        const restPages = Array.from(
+          { length: pageMeta.totalPages - 1 },
+          (_, index) => index + 2,
+        );
+        const restResponses = await Promise.all(
+          restPages.map((page) => accountApi.getAll(buildUserParams({ ...overrides, page }))),
+        );
+
+        accounts = [
+          ...accounts,
+          ...restResponses.flatMap((response) => getListData(response)),
+        ];
+        pageMeta = {
+          page: 1,
+          limit: params.limit,
+          total: accounts.length,
+          totalPages: Math.max(1, Math.ceil(accounts.length / params.limit)),
+        };
+      }
+
+      const accountsMissingEmployee = accounts.filter(
+        (acc) => !(acc.employee && typeof acc.employee === "object") &&
+          !(acc.employeeId && typeof acc.employeeId === "object"),
+      );
+      const employeesByAccount = new Map();
+
+      if (accountsMissingEmployee.length > 0) {
+        const accountIds = accountsMissingEmployee.map((acc) => acc._id).filter(Boolean);
+        if (accountIds.length > 0) {
+          try {
+            const empRes = await employeeApi.getAll({
+              accountIds: accountIds.join(","),
+              limit: accountIds.length,
+            });
+            getListData(empRes).forEach((employee) => {
+              const accountId = employee.accountId?._id || employee.accountId;
+              if (accountId) employeesByAccount.set(accountId, employee);
+            });
+          } catch (error) {
+            console.error("Cannot load employee mapping for accounts:", error);
+          }
+        }
+      }
+
+      const merged = accounts.map((account) => ({
+        ...account,
+        employee: normalizeAccountEmployee(account, employeesByAccount),
       }));
+
+      setUsers(merged);
+      setPagination({
+        ...pageMeta,
+        mode:
+          hasServerPagination && pageMeta.total > MAX_USER_PREFETCH
+            ? "server"
+            : "client",
+      });
     } catch (error) {
       console.error(error);
-      toast.error("Lỗi tải dữ liệu");
+      toast.error("L?i t?i d? li?u");
+      setUsers([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [buildUserParams]);
 
-  // --- 3. Local Filter Logic ---
   useEffect(() => {
-    let filtered = [...allUsers];
+    const timeoutId = window.setTimeout(() => {
+      fetchUsers({ page: 1 });
+    }, filters.search ? 300 : 0);
 
-    // Filter by search (username, fullName, email, employeeCode)
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      filtered = filtered.filter((user) => {
-        const username = user.username?.toLowerCase() || "";
-        const fullName = user.employee?.fullName?.toLowerCase() || "";
-        const email = (user.email || user.employee?.workEmail || user.employee?.personalEmail || "").toLowerCase();
-        const empCode = user.employee?.employeeCode?.toLowerCase() || "";
+    return () => window.clearTimeout(timeoutId);
+  }, [fetchUsers, filters.search]);
 
-        return (
-          username.includes(searchLower) ||
-          fullName.includes(searchLower) ||
-          email.includes(searchLower) ||
-          empCode.includes(searchLower)
-        );
-      });
-    }
-
-    // Filter by role
-    if (filters.role) {
-      filtered = filtered.filter((user) => user.role?._id === filters.role);
-    }
-
-    // Filter by status
-    if (filters.status === "Active") {
-      filtered = filtered.filter((user) => user.isActive === true);
-    } else if (filters.status === "Locked") {
-      filtered = filtered.filter((user) => user.isActive === false);
-    }
-
-    // Update pagination
-    setPagination((prev) => ({
-      ...prev,
-      page: 1, // Reset về trang 1 khi filter
-      total: filtered.length,
-      totalPages: Math.ceil(filtered.length / prev.limit) || 1,
-    }));
-
-    setUsers(filtered);
-  }, [filters, allUsers]);
-
-  // --- 4. Paginated Data ---
-  const paginatedUsers = users.slice(
-    (pagination.page - 1) * pagination.limit,
-    pagination.page * pagination.limit
-  );
+  // --- 3. Current page data ---
+  const paginatedUsers =
+    pagination.mode === "client"
+      ? users.slice((pagination.page - 1) * pagination.limit, pagination.page * pagination.limit)
+      : users;
 
   // --- Handlers ---
+  const handleFilterChange = (field, value) => {
+    setFilters((prev) => ({ ...prev, [field]: value }));
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
+  const handlePageChange = (page) => {
+    if (page < 1 || page > pagination.totalPages) return;
+    if (pagination.mode === "client") {
+      setPagination((prev) => ({ ...prev, page }));
+      return;
+    }
+    fetchUsers({ page });
+  };
+
   const handleConfirmAction = async () => {
     if (!actionData.user) return;
     setIsProcessing(true);
@@ -189,12 +244,12 @@ const UserManagement = () => {
           isActive: !actionData.user.isActive,
         });
         toast.success("Cập nhật trạng thái thành công");
-        fetchUsers();
+        fetchUsers({ page: pagination.page });
         setActionData({ type: null, user: null });
       } else if (actionData.type === "delete") {
         await accountApi.delete(userId);
         toast.success("Xóa tài khoản thành công");
-        fetchUsers();
+        fetchUsers({ page: pagination.page });
         setActionData({ type: null, user: null });
       }
     } catch (error) {
@@ -227,17 +282,14 @@ const UserManagement = () => {
   const handleImportExcel = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    console.log("📤 Uploading:", file);
-    console.log("📤 Uploading file:", file.name);
     setIsImporting(true);
 
     try {
       const response = await employeeApi.import_profile(file);
-      console.log("✅ Response:", response);
 
       const message = response.data?.message || "Import thành công!";
       toast.success(message);
-      await fetchUsers();
+      await fetchUsers({ page: pagination.page });
     } catch (error) {
       console.error("❌ Error:", error);
       const errorMessage = error.response?.data?.message || "Lỗi khi import file!";
@@ -251,9 +303,7 @@ const UserManagement = () => {
   };
 
   // Handler Download Template
-  const handleDownloadTemplate = () => {
-    console.log("📥 Download Template button clicked");
-    console.log("Available roles for template:", rolesList);
+  const handleDownloadTemplate = async () => {
 
     const template = [
       {
@@ -272,8 +322,8 @@ const UserManagement = () => {
       },
     ];
 
-    console.log("Template data:", template);
 
+    const XLSX = await import("xlsx");
     const worksheet = XLSX.utils.json_to_sheet(template);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Users");
@@ -288,7 +338,6 @@ const UserManagement = () => {
     ];
 
     XLSX.writeFile(workbook, "user_import_template.xlsx");
-    console.log("✅ Template file downloaded: user_import_template.xlsx");
     toast.success("Đã tải xuống file mẫu!");
   };
 
@@ -314,8 +363,6 @@ const UserManagement = () => {
             variant="secondary"
             className="flex gap-2 items-center w-full sm:w-auto"
             onClick={() => {
-              console.log("🔘 Import Excel button clicked");
-              console.log("Available roles:", rolesList);
               fileInputRef.current?.click();
             }}
             disabled={isImporting}
@@ -357,14 +404,14 @@ const UserManagement = () => {
             <input
               className="pl-9 pr-4 py-2 w-full border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Tìm kiếm người dùng..."
-              onChange={(e) =>
-                setFilters({ ...filters, search: e.target.value })
-              }
+              value={filters.search}
+              onChange={(e) => handleFilterChange("search", e.target.value)}
             />
           </div>
           <select
             className="border rounded-lg px-3 py-2 text-sm outline-none w-full md:w-auto"
-            onChange={(e) => setFilters({ ...filters, role: e.target.value })}
+            value={filters.role}
+            onChange={(e) => handleFilterChange("role", e.target.value)}
           >
             <option value="">Tất cả vai trò</option>
             {rolesList.map((r) => (
@@ -375,13 +422,14 @@ const UserManagement = () => {
           </select>
           <select
             className="border rounded-lg px-3 py-2 text-sm outline-none w-full md:w-auto"
-            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            value={filters.status}
+            onChange={(e) => handleFilterChange("status", e.target.value)}
           >
             <option value="">Tất cả trạng thái</option>
             <option value="Active">Hoạt động</option>
             <option value="Locked">Đã khóa</option>
           </select>
-          <Button variant="secondary" className="px-3" onClick={fetchUsers}>
+          <Button variant="secondary" className="px-3" onClick={() => fetchUsers({ page: pagination.page })}>
             {loading ? (
               <Loader2 size={16} className="animate-spin" />
             ) : (
@@ -525,9 +573,7 @@ const UserManagement = () => {
             <div className="flex gap-2">
               <Button
                 variant="secondary"
-                onClick={() =>
-                  setPagination((prev) => ({ ...prev, page: prev.page - 1 }))
-                }
+                onClick={() => handlePageChange(pagination.page - 1)}
                 disabled={pagination.page === 1}
                 className="px-3 py-1 text-sm"
               >
@@ -549,9 +595,7 @@ const UserManagement = () => {
                         <span className="px-2 py-1 text-gray-400">...</span>
                       )}
                       <button
-                        onClick={() =>
-                          setPagination((prev) => ({ ...prev, page: p }))
-                        }
+                        onClick={() => handlePageChange(p)}
                         className={`px-3 py-1 text-sm rounded ${pagination.page === p
                             ? "bg-blue-600 text-white"
                             : "bg-white border hover:bg-gray-100"
@@ -564,9 +608,7 @@ const UserManagement = () => {
               </div>
               <Button
                 variant="secondary"
-                onClick={() =>
-                  setPagination((prev) => ({ ...prev, page: prev.page + 1 }))
-                }
+                onClick={() => handlePageChange(pagination.page + 1)}
                 disabled={pagination.page === pagination.totalPages}
                 className="px-3 py-1 text-sm"
               >
@@ -585,7 +627,7 @@ const UserManagement = () => {
           onClose={() => setIsCreateOpen(false)}
           onSuccess={() => {
             setIsCreateOpen(false);
-            fetchUsers();
+            fetchUsers({ page: pagination.page });
           }}
           rolesList={rolesList}
         />
@@ -621,3 +663,4 @@ const UserManagement = () => {
 };
 
 export default UserManagement;
+

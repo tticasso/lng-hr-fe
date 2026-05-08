@@ -14,7 +14,6 @@ function SocketDataExample() {
 
     // ✅ Callback để xử lý data từ socket
     const handleSocketData = useCallback((data) => {
-        console.log("📩 Nhận được data từ socket:", data);
 
         // Lưu data mới nhất
         setSocketData(data);

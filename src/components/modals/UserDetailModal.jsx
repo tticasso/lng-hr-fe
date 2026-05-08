@@ -57,19 +57,15 @@ const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh }) => {
       return;
     }
     
-    console.log("Đổi vai trò thành:", roleName);
-    console.log("Role ID:", selectedRole);
-    console.log("User ID:", user._id);
     
     setIsUpdatingRole(true);
     try {
       // Gọi API update với roleName
       const res = await accountApi.updateRole(user._id, roleName);
-      console.log("API RES:", res);
       toast.success(`Cập nhật vai trò thành công! Vai trò mới: ${roleName}`);
       onRefresh();
       onClose(); // Đóng modal sau khi cập nhật thành công
-      // eslint-disable-next-line no-unused-vars
+       
     } catch (error) {
       console.error("Lỗi cập nhật vai trò:", error);
       toast.error("Cập nhật vai trò thất bại");

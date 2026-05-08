@@ -30,6 +30,7 @@ const DataTableShell = ({
   emptyDescription,
   mobileContent,
   desktopContent,
+  footer,
   className = "",
 }) => {
   return (
@@ -57,6 +58,8 @@ const DataTableShell = ({
           desktopContent
         )}
       </div>
+
+      {!loading && !isEmpty ? footer : null}
     </Card>
   );
 };

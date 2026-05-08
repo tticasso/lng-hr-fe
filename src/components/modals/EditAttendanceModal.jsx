@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import "antd/dist/reset.css";
 import { X, Save, Paperclip, Trash2, Zap } from "lucide-react";
 import { TimePicker } from "antd";
 import Button from "../common/Button";
@@ -60,9 +61,6 @@ const EditAttendanceModal = ({ isOpen, onClose, attendanceLog, employee, onSave,
     }
 
     console.group("💾 [EDIT ATTENDANCE] Saving changes");
-    console.log("📋 Form Data:", formData);
-    console.log("👤 Employee:", employee);
-    console.log("📝 Attendance Log:", attendanceLog);
     console.groupEnd();
 
     if (onSave) {

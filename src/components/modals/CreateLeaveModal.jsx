@@ -138,7 +138,7 @@ const LeaveRequestModal = ({
       setPreviewError(
         error.normalizedMessage ||
         error.response?.data?.message ||
-        "Khong the xem truoc don nghi"
+        "Không thể xem trước đơn nghỉ"
       );
     } finally {
       setPreviewLoading(false);
@@ -313,9 +313,9 @@ const LeaveRequestModal = ({
           <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-semibold text-blue-900">Kiem tra truoc khi gui</p>
+                <p className="text-sm font-semibold text-blue-900">Kiểm tra trước khi gửi</p>
                 <p className="text-xs text-blue-700">
-                  Tinh so ngay nghi thuc te, ngay le va lich bi trung.
+                  Tính số ngày nghỉ thực tế, ngày lễ và lịch bị trùng.
                 </p>
               </div>
               <Button
@@ -326,7 +326,7 @@ const LeaveRequestModal = ({
                 className="shrink-0"
               >
                 {previewLoading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                Xem truoc
+                Xem trước
               </Button>
             </div>
 
@@ -339,26 +339,26 @@ const LeaveRequestModal = ({
             {preview && (
               <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
                 <div className="rounded-md bg-white p-2">
-                  <p className="text-xs text-gray-500">So ngay tinh phep</p>
+                  <p className="text-xs text-gray-500">Số ngày tính phép</p>
                   <p className="font-bold text-blue-700">{preview.totalDays ?? 0}</p>
                 </div>
                 <div className="rounded-md bg-white p-2">
-                  <p className="text-xs text-gray-500">Co the tao</p>
+                  <p className="text-xs text-gray-500">Có thể tạo</p>
                   <p className={`font-bold ${preview.isPossible ? "text-green-700" : "text-red-700"}`}>
-                    {preview.isPossible ? "Co" : "Khong"}
+                    {preview.isPossible ? "Có" : "Không"}
                   </p>
                 </div>
                 <div className="rounded-md bg-white p-2">
-                  <p className="text-xs text-gray-500">Ngay le</p>
+                  <p className="text-xs text-gray-500">Ngày lễ</p>
                   <p className="font-bold text-gray-800">{preview.holidayCount ?? 0}</p>
                 </div>
                 <div className="rounded-md bg-white p-2">
-                  <p className="text-xs text-gray-500">Trung lich</p>
+                  <p className="text-xs text-gray-500">Trùng lịch</p>
                   <p className="font-bold text-gray-800">{preview.conflictCount ?? 0}</p>
                 </div>
                 {Array.isArray(preview.holidays) && preview.holidays.length > 0 && (
                   <p className="col-span-2 text-xs text-gray-600 sm:col-span-4">
-                    Ngay le: {preview.holidays.join(", ")}
+                    Ngày lễ: {preview.holidays.join(", ")}
                   </p>
                 )}
                 {Array.isArray(preview.conflicts) && preview.conflicts.length > 0 && (

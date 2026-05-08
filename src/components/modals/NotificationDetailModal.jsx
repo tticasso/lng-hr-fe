@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { X, Clock, CheckCircle } from "lucide-react";
-import logoImage from "../../assets/logo.png";
+import logoImage from "../../assets/logo-sm.webp";
 import { announcementAPI } from "../../apis/announcements";
 
 const formatDetailTime = (dateInput) => {
@@ -19,28 +19,26 @@ const formatDetailTime = (dateInput) => {
 };
 
 const NotificationDetailModal = ({ notification, onClose }) => {
-  const [content,setContent]=useState("");
-  
-  if (!notification) return null;
-
+  const [content, setContent] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
-      console.log("notification :", notification.relatedId);
       try {
         const res = await announcementAPI.getById(notification.relatedId);
-        console.log("notification API :", res.data.data.content);
-        setContent(res.data.data.content)
-      } catch (error) {
-        console.log("notification error :", error);
+        setContent(res.data.data.content);
+      } catch {
+        setContent("");
       }
     };
 
     if (notification?.relatedId) {
       fetchData();
+    } else {
+      setContent("");
     }
   }, [notification]);
 
+  if (!notification) return null;
 
   return (
     <>

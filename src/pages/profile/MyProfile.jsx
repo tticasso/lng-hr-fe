@@ -101,7 +101,6 @@ const MyProfile = () => {
 
 
   useEffect(() => {
-    console.log("userData :", user)
   }, [user])
 
 
@@ -243,10 +242,8 @@ const MyProfile = () => {
         confirmPassword: pwForm.confirmPassword,
       };
 
-      console.log("ĐỔI MK : ", payload)
 
       const res = await authApi.changepasswork(payload)
-      console.log("DỮ LIỆU API TRẢ VỀ : ", res)
       toast.success("Đổi mật khẩu thành công!");
       setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
       setPwErrors({});

@@ -15,13 +15,12 @@ import { Bell, Wifi, WifiOff, Trash2 } from "lucide-react";
  * - Test emit data lên server
  */
 function SocketTest() {
-    const [isConnected, setIsConnected] = useState(true);
+    const [isConnected] = useState(true);
     const [notifications, setNotifications] = useState([]);
     const [lastData, setLastData] = useState(null);
 
     // ✅ Xử lý data từ socket
     const handleSocketData = useCallback((data) => {
-        console.log("📩 Socket data received:", data);
 
         // Lưu data mới nhất
         setLastData(data);
@@ -47,7 +46,6 @@ function SocketTest() {
             message: `Test ${type} notification`,
         };
 
-        console.log("📤 Emitting test data:", testData);
         socket.emit("new_notification", testData);
     };
 

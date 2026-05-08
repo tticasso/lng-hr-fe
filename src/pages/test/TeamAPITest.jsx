@@ -14,7 +14,6 @@ const TeamAPITest = () => {
         setLoading(true);
         try {
             const res = await teamAPI.get();
-            console.log("TEAM_API res:", res);
             
             // Store raw response for debugging
             setRawData(res);

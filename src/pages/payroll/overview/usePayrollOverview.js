@@ -1,6 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 
-import * as XLSX from "xlsx";
 import { toast } from "react-toastify";
 
 import { payrollAPI } from "../../../apis/payrollAPI";
@@ -158,7 +157,7 @@ export const usePayrollOverview = () => {
     }
   };
 
-  const handleReopenPayroll = async (payroll) => {
+const handleReopenPayroll = async (payroll) => {
     if (!payroll?._id) return;
 
     const employeeName = payroll.employeeId?.fullName || payroll.employeeId?.employeeCode || "nhân viên này";
@@ -237,8 +236,9 @@ export const usePayrollOverview = () => {
     }
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     try {
+      const XLSX = await import("xlsx");
       const otKeys = Object.keys(OT_TYPE_LABELS);
       const allowanceKeys = Object.keys(ALLOWANCE_TYPE_LABELS);
 

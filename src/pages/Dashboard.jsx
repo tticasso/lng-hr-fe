@@ -1,5 +1,4 @@
 import { useCallback, useEffect, lazy, Suspense, useState } from "react";
-import "antd/dist/reset.css";
 import { useNavigate } from "react-router-dom";
 import { AlertTriangle, X } from "lucide-react";
 import { toast } from "react-toastify";
@@ -40,7 +39,7 @@ const Dashboard = () => {
   const [showNetworkRestrictedAlert, setShowNetworkRestrictedAlert] = useState(false);
 
   // Custom hooks
-  const { mySheetData, leaveRequests, otRequests, announcements, loading } = useDashboardData();
+  const { mySheetData, leaveRequests, otRequests, announcements, upcomingEvents, loading } = useDashboardData();
   
   const {
     isLeaveModalOpen,
@@ -232,7 +231,7 @@ const Dashboard = () => {
 
         {/* 3. Next Important Date (Chiếm 3/12 cột) */}
         <div className="hidden md:contents">
-          <UpcomingEvents />
+          <UpcomingEvents events={upcomingEvents} />
         </div>
       </div>
 

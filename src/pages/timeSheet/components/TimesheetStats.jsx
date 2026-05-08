@@ -54,6 +54,13 @@ const toHours = (value) => {
   return Number.isFinite(numberValue) ? numberValue : 0;
 };
 
+const toDays = (value) => {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : 0;
+};
+
+const formatDays = (value) => `${toDays(value).toFixed(2)} công`;
+
 const addOTHours = (target, key, hours) => {
   const normalizedKey = normalizeOTTypeKey(key);
   if (!normalizedKey || IGNORED_OT_KEYS.has(normalizedKey.replace(/_/g, ""))) {
@@ -147,7 +154,7 @@ const getOTBreakdown = (timesheetData, attendanceData) => {
 };
 
 const StatCard = memo(
-  ({ icon, label, value, sub, color, isWarning, detailContent }) => {
+  ({ icon, label, value, sub, color, isWarning, detailContent, detailTitle }) => {
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const detailRef = useRef(null);
 
@@ -190,8 +197,8 @@ const StatCard = memo(
               type="button"
               onClick={() => setIsDetailOpen((prev) => !prev)}
               className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-orange-50 hover:text-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-200"
-              title="Xem chi tiết OT"
-              aria-label="Xem chi tiết OT"
+              title={detailTitle || "Xem chi tiết"}
+              aria-label={detailTitle || "Xem chi tiết"}
             >
               <HelpCircle size={15} />
             </button>
@@ -232,6 +239,89 @@ const OTDetailPopover = memo(({ totalHours, details }) => (
 ));
 
 OTDetailPopover.displayName = "OTDetailPopover";
+
+const WORK_BREAKDOWN_LABELS = {
+  attendance: "Công chấm thực tế",
+  holiday_paid: "Ngày lễ có công",
+  paid_leave: "Nghỉ phép có lương",
+  statutory_leave: "Nghỉ chế độ",
+  rest_day: "Ngày nghỉ luân phiên",
+  other: "Điều chỉnh khác",
+  excluded_holiday_raw: "Công ngày lễ đã loại trừ",
+};
+
+const getWorkBreakdownLabel = (item) =>
+  WORK_BREAKDOWN_LABELS[item?.key] || item?.label || "Khác";
+
+const WorkDetailPopover = memo(({ work }) => {
+  const breakdown =
+    work?.breakdown?.length > 0
+      ? work.breakdown
+      : [
+          {
+            key: "attendance",
+            label: "Công chấm thực tế",
+            days: work?.workedDaysOnly || 0,
+            included: true,
+          },
+          {
+            key: "holiday_paid",
+            label: "Ngày lễ có công",
+            days: work?.holidayPaidDays || 0,
+            included: true,
+          },
+          {
+            key: "paid_leave",
+            label: "Nghỉ phép có lương",
+            days: work?.paidLeaveDays || 0,
+            included: true,
+          },
+        ].filter((item) => toDays(item.days) > 0);
+
+  const includedItems = breakdown.filter((item) => item.included !== false);
+  const excludedItems = breakdown.filter((item) => item.included === false);
+
+  return (
+    <>
+      <div className="mb-2 flex items-center justify-between border-b border-gray-100 pb-2">
+        <span className="text-xs font-bold uppercase text-gray-700">
+          Chi tiết tổng công
+        </span>
+        <span className="font-mono text-xs font-bold text-blue-600">
+          {formatDays(work?.payableWorkDays ?? work?.actualWorkDays)}
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        {includedItems.map((item) => (
+          <div key={item.key} className="flex items-center justify-between gap-3 rounded-md bg-gray-50 px-2 py-1.5 text-xs">
+            <span className="text-gray-700">{getWorkBreakdownLabel(item)}</span>
+            <span className="font-mono font-bold text-blue-600">
+              +{formatDays(item.days)}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {excludedItems.length > 0 && (
+        <div className="mt-2 border-t border-gray-100 pt-2">
+          {excludedItems.map((item) => (
+            <div key={item.key} className="flex items-center justify-between gap-3 text-xs">
+              <span className="text-gray-500">
+                Không tính: {getWorkBreakdownLabel(item)}
+              </span>
+              <span className="font-mono font-bold text-gray-400">
+                {formatDays(item.days)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+});
+
+WorkDetailPopover.displayName = "WorkDetailPopover";
 
 StatCard.displayName = "StatCard";
 
@@ -288,6 +378,12 @@ const TimesheetStats = memo(({ timesheetData, attendanceData = [] }) => {
         value={`${timesheetData?.work?.totalHours || 0}h`}
         sub={`${timesheetData?.work?.actualWorkDays}/ ${timesheetData?.work?.standardWorkDays} công`}
         color="blue"
+        detailTitle="Xem chi tiết công"
+        detailContent={
+          timesheetData?.work ? (
+            <WorkDetailPopover work={timesheetData.work} />
+          ) : null
+        }
       />
 
       {/* OT Hours */}

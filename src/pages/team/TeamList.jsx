@@ -23,7 +23,6 @@ const TeamList = () => {
         setLoading(true);
         try {
             const res = await teamAPI.get();
-            console.log("TEAM_API res:", res);
             
             const teamsData = res?.data?.data || [];
             setTeams(teamsData);

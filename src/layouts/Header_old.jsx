@@ -43,14 +43,13 @@ const Header = () => {
   const [notifyTab, setNotifyTab] = useState("all");
 
   // ✅ State để lưu ID thông báo đang được expand (hiển thị nội dung)
-  const [expandedNotifyId, setExpandedNotifyId] = useState(null);
+  const [, setExpandedNotifyId] = useState(null);
 
   useEffect(() => {
     const callAPI = async () => {
       try {
         const res = await employeeApi.getMe();
         const emp = res?.data?.data?.employee;
-        console.log("EMPLOYEE + 1")
         setFullName(emp?.fullName || "");
         setJobTitle(emp?.jobTitle || "");
       } catch (error) {
@@ -339,3 +338,4 @@ const Header = () => {
 };
 
 export default Header;
+

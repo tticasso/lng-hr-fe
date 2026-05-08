@@ -14,28 +14,28 @@ export const ANNOUNCEMENT_CATEGORY = {
   NEWS: "NEWS",
   EVENT: "EVENT",
   POLICY: "POLICY",
-  HOLIDAY: "HOLIDAY",
+  OTHER: "OTHER",
 };
 
 const ANNOUNCEMENT_TAG_MAP = {
-  [ANNOUNCEMENT_CATEGORY.HOLIDAY]: "Holiday",
-  [ANNOUNCEMENT_CATEGORY.POLICY]: "Policy",
-  [ANNOUNCEMENT_CATEGORY.EVENT]: "Event",
-  [ANNOUNCEMENT_CATEGORY.NEWS]: "HR Notice",
+  [ANNOUNCEMENT_CATEGORY.NEWS]: "Tin tức",
+  [ANNOUNCEMENT_CATEGORY.POLICY]: "Chính sách",
+  [ANNOUNCEMENT_CATEGORY.EVENT]: "Sự kiện",
+  [ANNOUNCEMENT_CATEGORY.OTHER]: "Khác",
 };
 
 const ANNOUNCEMENT_STATUS_LABEL_MAP = {
-  [ANNOUNCEMENT_STATUS.PUBLISHED]: "Published",
-  [ANNOUNCEMENT_STATUS.DRAFT]: "Draft",
-  [ANNOUNCEMENT_STATUS.SCHEDULED]: "Scheduled",
-  [ANNOUNCEMENT_STATUS.ARCHIVED]: "Archived",
+  [ANNOUNCEMENT_STATUS.PUBLISHED]: "Đã đăng",
+  [ANNOUNCEMENT_STATUS.DRAFT]: "Bản nháp",
+  [ANNOUNCEMENT_STATUS.SCHEDULED]: "Đã lên lịch",
+  [ANNOUNCEMENT_STATUS.ARCHIVED]: "Đã lưu trữ",
 };
 
 export const getAnnouncementTag = (category) =>
-  ANNOUNCEMENT_TAG_MAP[category] || "Others";
+  ANNOUNCEMENT_TAG_MAP[category] || "Khác";
 
 export const getAnnouncementStatusLabel = (status) =>
-  ANNOUNCEMENT_STATUS_LABEL_MAP[status] || "Draft";
+  ANNOUNCEMENT_STATUS_LABEL_MAP[status] || "Bản nháp";
 
 export const parseScheduledAt = (isoString) => {
   if (!isoString || !isoString.includes("T")) {
@@ -53,23 +53,26 @@ export const buildScheduledDateTime = (date, time) => {
 };
 
 export const getAnnouncementDashboardMeta = (item) => {
-  let tag = "News";
+  let tag = "Tin tức";
   let type = "success";
 
-  if (item.category === ANNOUNCEMENT_STATUS.SCHEDULED) {
-    tag = "Scheduled";
+  if (item.status === ANNOUNCEMENT_STATUS.SCHEDULED) {
+    tag = "Đã lên lịch";
     type = "primary";
   } else if (item.category === ANNOUNCEMENT_CATEGORY.EVENT) {
-    tag = "Event";
+    tag = "Sự kiện";
+    type = "primary";
+  } else if (item.category === ANNOUNCEMENT_CATEGORY.POLICY) {
+    tag = "Chính sách";
     type = "primary";
   } else if (item.category === ANNOUNCEMENT_CATEGORY.NEWS) {
-    tag = "News";
+    tag = "Tin tức";
     type = "success";
   }
 
   if (item.priority === "URGENT") {
     type = "error";
-    tag = "Important";
+    tag = "Quan trọng";
   } else if (item.priority === "HIGH") {
     type = "error";
   }

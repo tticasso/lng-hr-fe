@@ -38,9 +38,9 @@ const AnnouncementList = memo(({ announcements, onAnnouncementClick, onViewAll }
                 <div className="mb-1 flex flex-wrap items-center gap-2">
                   <span
                     className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                      news.tag === "Important"
+                      news.tag === "Quan trọng"
                         ? "bg-red-100 text-red-600"
-                        : news.tag === "Policy"
+                        : news.tag === "Chính sách"
                           ? "bg-blue-100 text-blue-600"
                           : "bg-green-100 text-green-600"
                     }`}

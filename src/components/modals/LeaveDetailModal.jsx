@@ -121,7 +121,7 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
 
     const handleUploadAttachments = async () => {
         if (!selectedFiles.length) {
-            toast.error("Vui long chon file dinh kem");
+            toast.error("Vui lòng chọn file đính kèm");
             return;
         }
 
@@ -134,9 +134,9 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
             const nextAttachments = response?.data?.data?.attachments || [];
             setAttachments(nextAttachments);
             setSelectedFiles([]);
-            toast.success("Da tai file dinh kem");
+            toast.success("Đã tải file đính kèm");
         } catch (error) {
-            toast.error(error.normalizedMessage || error.response?.data?.message || "Tai file that bai");
+            toast.error(error.normalizedMessage || error.response?.data?.message || "Tải file thất bại");
         } finally {
             setUploading(false);
         }
@@ -157,7 +157,7 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
             link.remove();
             window.URL.revokeObjectURL(blobUrl);
         } catch (error) {
-            toast.error(error.normalizedMessage || error.response?.data?.message || "Tai file xuong that bai");
+            toast.error(error.normalizedMessage || error.response?.data?.message || "Tải file xuống thất bại");
         } finally {
             setDownloadingFile("");
         }
@@ -166,7 +166,7 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
     const handleRefund = async () => {
         const days = Number(refundDays);
         if (!days || days <= 0 || !refundReason.trim()) {
-            toast.error("Vui long nhap so ngay hoan va ly do");
+            toast.error("Vui lòng nhập số ngày hoàn và lý do");
             return;
         }
 
@@ -176,12 +176,12 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                 refundDays: days,
                 refundReason: refundReason.trim(),
             });
-            toast.success("Da hoan phep cho don nghi");
+            toast.success("Đã hoàn phép cho đơn nghỉ");
             setRefundDays("");
             setRefundReason("");
             await fetchLeaveDetail();
         } catch (error) {
-            toast.error(error.normalizedMessage || error.response?.data?.message || "Hoan phep that bai");
+            toast.error(error.normalizedMessage || error.response?.data?.message || "Hoàn phép thất bại");
         } finally {
             setRefunding(false);
         }
@@ -316,7 +316,7 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                                 <div className="bg-white rounded-lg p-3 border border-gray-200 sm:p-4">
                                     <div className="flex items-center gap-2 mb-3 sm:gap-3">
                                         <Upload className="text-blue-600" size={18} />
-                                        <h3 className="font-semibold text-gray-800">File dinh kem</h3>
+                                        <h3 className="font-semibold text-gray-800">File đính kèm</h3>
                                     </div>
 
                                     <div className="space-y-2">
@@ -331,7 +331,7 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                                                             {attachment.filename || "--"}
                                                         </p>
                                                         <p className="text-xs text-gray-500">
-                                                            Tai len: {formatDateTime(attachment.uploadDate)}
+                                                            Tải lên: {formatDateTime(attachment.uploadDate)}
                                                         </p>
                                                     </div>
                                                     <button
@@ -345,13 +345,13 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                                                         ) : (
                                                             <Download size={14} />
                                                         )}
-                                                        Tai xuong
+                                                        Tải xuống
                                                     </button>
                                                 </div>
                                             ))
                                         ) : (
                                             <p className="rounded-lg border border-dashed border-gray-200 p-3 text-sm text-gray-400">
-                                                Chua co file dinh kem
+                                                Chưa có file đính kèm
                                             </p>
                                         )}
                                     </div>
@@ -370,7 +370,7 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                                             className="inline-flex shrink-0 items-center justify-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                                         >
                                             {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-                                            Tai len
+                                            Tải lên
                                         </button>
                                     </div>
                                 </div>
@@ -473,7 +473,7 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                                     <div className="rounded-lg border border-green-200 bg-green-50 p-3 sm:p-4">
                                         <div className="flex items-center gap-2">
                                             <RotateCcw size={18} className="text-green-600" />
-                                            <h3 className="font-semibold text-green-800">Da hoan phep</h3>
+                                            <h3 className="font-semibold text-green-800">Đã hoàn phép</h3>
                                         </div>
                                         <p className="mt-2 text-sm text-green-700">
                                             {leaveDetail.refundReason || "Don nay da duoc hoan phep."}
@@ -495,7 +495,7 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                                                 step="0.5"
                                                 value={refundDays}
                                                 onChange={(event) => setRefundDays(event.target.value)}
-                                                placeholder="So ngay hoan"
+                                                placeholder="Số ngày hoàn"
                                                 className="w-full rounded-lg border border-orange-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
                                             />
                                             <textarea

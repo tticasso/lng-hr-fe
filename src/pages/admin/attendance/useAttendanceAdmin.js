@@ -1,38 +1,47 @@
 import { useEffect, useRef, useState } from "react";
 
-import * as XLSX from "xlsx";
 import { toast } from "react-toastify";
 
 import { attendancesAPI } from "../../../apis/attendancesAPI";
 import { payrollAPI } from "../../../apis/payrollAPI";
 import { departmentApi } from "../../../apis/departmentApi";
+import { getListData, getPagination, hasPaginationMetadata } from "../../../shared/apiResponse";
 import {
   extractDateRangeFromGrid,
+  formatStandardWorkday,
   getCurrentPeriod,
   getMonthYear,
   OT_TYPE_LABELS,
   parseAttendanceGrid,
 } from "./attendanceUtils";
 
+const ATTENDANCE_REPORT_LIMIT = 500;
+const MAX_ATTENDANCE_PREFETCH = 5000;
+
 const buildExportRows = (employees) =>
-  employees.map((emp, index) => ({
-    STT: index + 1,
-    "Mã nhân viên": emp.employeeCode || "",
-    "Họ và tên": emp.fullName || "",
-    "Phòng ban": emp.department || "",
-    "Ngày công": emp.totalWorkDays?.toFixed(2) || "0.00",
-    "Tổng giờ OT": emp.totalOTHours?.toFixed(2) || "0.00",
-    "OT Ngày thường": Number(emp.otHours?.weekday || 0).toFixed(2),
-    "OT Cuối tuần": Number(emp.otHours?.weekend || 0).toFixed(2),
-    "OT Ngày lễ": Number(emp.otHours?.holiday || 0).toFixed(2),
-    "OT Đêm ngày thường": Number(emp.otHours?.weekday_night || 0).toFixed(2),
-    "OT Đêm cuối tuần": Number(emp.otHours?.weekend_night || 0).toFixed(2),
-    "OT Đêm ngày lễ": Number(emp.otHours?.holiday_night || 0).toFixed(2),
-    "Nghỉ phép": emp.paidLeaveDays || 0,
-    "Đi muộn": emp.lateCount || 0,
-    "Trạng thái":
-      emp.hasError || emp.totalWorkDays === 0 ? "Error" : "Valid",
-  }));
+  employees.map((emp, index) => {
+    const standardWorkday = formatStandardWorkday(emp);
+
+    return {
+      STT: index + 1,
+      "Mã nhân viên": emp.employeeCode || "",
+      "Họ và tên": emp.fullName || "",
+      "Phòng ban": emp.department || "",
+      "Công chuẩn": standardWorkday === "--" ? "" : standardWorkday,
+      "Ngày công": emp.totalWorkDays?.toFixed(2) || "0.00",
+      "Tổng giờ OT": emp.totalOTHours?.toFixed(2) || "0.00",
+      "OT Ngày thường": Number(emp.otHours?.weekday || 0).toFixed(2),
+      "OT Cuối tuần": Number(emp.otHours?.weekend || 0).toFixed(2),
+      "OT Ngày lễ": Number(emp.otHours?.holiday || 0).toFixed(2),
+      "OT Đêm ngày thường": Number(emp.otHours?.weekday_night || 0).toFixed(2),
+      "OT Đêm cuối tuần": Number(emp.otHours?.weekend_night || 0).toFixed(2),
+      "OT Đêm ngày lễ": Number(emp.otHours?.holiday_night || 0).toFixed(2),
+      "Nghỉ phép": emp.paidLeaveDays || 0,
+      "Đi muộn": emp.lateCount || 0,
+      "Trạng thái":
+        emp.hasError || emp.totalWorkDays === 0 ? "Error" : "Valid",
+    };
+  });
 
 export const useAttendanceAdmin = () => {
   const [selectedPeriod, setSelectedPeriod] = useState(getCurrentPeriod());
@@ -78,8 +87,44 @@ export const useAttendanceAdmin = () => {
 
   const refreshAttendanceList = async (period = selectedPeriod) => {
     const { month: targetMonth, year: targetYear } = getMonthYear(period);
-    const res = await attendancesAPI.getall(targetMonth, targetYear);
-    const data = res.data?.data || res.data || [];
+    const buildReportParams = (page) => ({
+      page,
+      limit: ATTENDANCE_REPORT_LIMIT,
+      pageSize: ATTENDANCE_REPORT_LIMIT,
+      perPage: ATTENDANCE_REPORT_LIMIT,
+    });
+    const res = await attendancesAPI.getall(
+      targetMonth,
+      targetYear,
+      buildReportParams(1),
+    );
+    let data = getListData(res);
+
+    if (hasPaginationMetadata(res)) {
+      const pagination = getPagination(res, {
+        page: 1,
+        limit: ATTENDANCE_REPORT_LIMIT,
+        total: data.length,
+      });
+
+      if (pagination.totalPages > 1 && pagination.total <= MAX_ATTENDANCE_PREFETCH) {
+        const restPages = Array.from(
+          { length: pagination.totalPages - 1 },
+          (_, index) => index + 2,
+        );
+        const restResponses = await Promise.all(
+          restPages.map((page) =>
+            attendancesAPI.getall(targetMonth, targetYear, buildReportParams(page)),
+          ),
+        );
+
+        data = [
+          ...data,
+          ...restResponses.flatMap((response) => getListData(response)),
+        ];
+      }
+    }
+
     setAllAttendanceData(data);
     return data;
   };
@@ -159,7 +204,7 @@ export const useAttendanceAdmin = () => {
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
-        const res = await departmentApi.getAll();
+        const res = await departmentApi.getAllCached();
         const deptData = res.data?.data || res.data || [];
         setDepartments(Array.isArray(deptData) ? deptData : []);
       } catch (error) {
@@ -225,6 +270,7 @@ export const useAttendanceAdmin = () => {
       setLoading(true);
       toast.info("Đang xử lý file Excel...");
 
+      const XLSX = await import("xlsx");
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
       const sheetName = wb.SheetNames?.[0];
@@ -316,8 +362,9 @@ export const useAttendanceAdmin = () => {
     }
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     try {
+      const XLSX = await import("xlsx");
       const exportData = buildExportRows(filteredAttendanceData);
       const ws = XLSX.utils.json_to_sheet(exportData, { origin: "A4" });
       const currentDate = new Date().toLocaleDateString("vi-VN", {
@@ -333,9 +380,9 @@ export const useAttendanceAdmin = () => {
       );
 
       ws["!merges"] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 14 } },
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 14 } },
-        { s: { r: 2, c: 0 }, e: { r: 2, c: 14 } },
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 15 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 15 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 15 } },
       ];
 
       const headerStyle = {
@@ -375,6 +422,7 @@ export const useAttendanceAdmin = () => {
         "M4",
         "N4",
         "O4",
+        "P4",
       ].forEach((cell) => {
         if (ws[cell]) ws[cell].s = columnHeaderStyle;
       });
@@ -391,7 +439,7 @@ export const useAttendanceAdmin = () => {
 
       const range = XLSX.utils.decode_range(ws["!ref"]);
       for (let R = 4; R <= range.e.r; R += 1) {
-        for (let C = 0; C <= 14; C += 1) {
+        for (let C = 0; C <= 15; C += 1) {
           const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
           if (ws[cellAddress]) ws[cellAddress].s = dataCellStyle;
         }
@@ -402,6 +450,7 @@ export const useAttendanceAdmin = () => {
         { wch: 15 },
         { wch: 25 },
         { wch: 20 },
+        { wch: 12 },
         { wch: 12 },
         { wch: 12 },
         { wch: 14 },

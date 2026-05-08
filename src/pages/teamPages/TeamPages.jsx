@@ -73,7 +73,7 @@ const TeamPages = () => {
 
   useEffect(() => {
     fetchTeams();
-    departmentApi.getAll().catch((error) => console.error("DEPARTMENT_API error:", error));
+    departmentApi.getAllCached().catch((error) => console.error("DEPARTMENT_API error:", error));
   }, []);
 
   const filteredTeams = useMemo(() => {

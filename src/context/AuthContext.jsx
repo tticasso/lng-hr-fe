@@ -53,12 +53,10 @@ export function AuthProvider({ children }) {
           // Xác thực token bằng profile mới nhất trước khi cho vào app
           try {
             const res = await employeeApi.getMe();
-            console.log("GET ME :",res)
             // Lấy đúng data từ cấu trúc JSON của bạn
             const rawData = res.data?.data?.employee || res.data?.employee;
             if (rawData) {
               const cleanUser = normalizeUser(rawData);
-              console.log("DỮ LIỆU USER : ",cleanUser)
               setUser(cleanUser);
               localStorage.setItem(
                 STORAGE_KEY,

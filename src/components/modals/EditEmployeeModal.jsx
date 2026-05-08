@@ -130,14 +130,12 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
       setLoadingDepts(true);
       try {
         // 1. Fetch Departments (Internal API)
-        const deptRes = await departmentApi.getAll();
-        console.log("CHECK LOG : ", deptRes);
+        const deptRes = await departmentApi.getAllCached();
         const deptList = deptRes.data?.data || deptRes.data || [];
         setDepartments(deptList);
 
         // 2. Fetch Teams (Internal API)
         const teamRes = await teamAPI.get();
-        console.log("TEAM_API res:", teamRes);
         const teamList = teamRes.data?.data || teamRes.data || [];
         setTeams(teamList);
 
@@ -350,8 +348,6 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
         }
       });
 
-      console.log("Submitting data:", submitData); // Debug log
-      console.log("Phép năm tồn (annualLeaveBalance):", formData.annualLeaveBalance); // Log giá trị phép năm tồn
       
       await employeeApi.updateEmployee(employeeId, submitData);
       toast.success(`Cập nhật nhân viên ${formData.fullName} thành công!`);

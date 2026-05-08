@@ -1,22 +1,32 @@
 import {
   AlertCircle,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   HelpCircle,
   MoreHorizontal,
 } from "lucide-react";
 
 import DataTableShell from "../../../components/shared/DataTableShell";
+import { formatStandardWorkday } from "./attendanceUtils";
 
 const AttendanceOverviewTable = ({
   filtersNode,
   loading,
   employees,
+  pagination,
+  onPageChange,
   selectedEmployee,
   onEmployeeClick,
   openOTDetailId,
   setOpenOTDetailId,
   otTypeLabels,
 }) => {
+  const page = pagination?.page || 1;
+  const totalPages = pagination?.totalPages || 1;
+  const total = pagination?.total || employees.length;
+  const startIndex = pagination?.startIndex || 0;
+
   const mobileContent = (
     <div className="space-y-3">
       {employees.map((emp, index) => {
@@ -67,6 +77,12 @@ const AttendanceOverviewTable = ({
                 </p>
               </div>
               <div>
+                <p className="text-xs uppercase text-gray-400">Công chuẩn</p>
+                <p className="font-semibold text-blue-600">
+                  {formatStandardWorkday(emp)}
+                </p>
+              </div>
+              <div>
                 <p className="text-xs uppercase text-gray-400">OT</p>
                 <p className="font-semibold text-orange-600">
                   {emp.totalOTHours?.toFixed(2) || 0}h
@@ -88,13 +104,14 @@ const AttendanceOverviewTable = ({
   );
 
   const desktopContent = (
-    <table className="w-full min-w-[960px] border-collapse text-left text-sm">
+    <table className="w-full min-w-[1080px] border-collapse text-left text-sm">
       <thead className="sticky top-0 z-10 border-b border-gray-200 bg-white text-xs font-bold uppercase text-gray-500 shadow-sm">
         <tr>
           <th className="w-14 p-4 text-center">STT</th>
           <th className="p-4">Nhân viên</th>
           <th className="p-4">Phòng ban</th>
           <th className="p-4 text-center">Ngày công</th>
+          <th className="p-4 text-center">Công chuẩn</th>
           <th className="p-4 text-center">OT (Giờ)</th>
           <th className="p-4 text-center">Nghỉ phép</th>
           <th className="p-4 text-center">Đi muộn</th>
@@ -115,7 +132,7 @@ const AttendanceOverviewTable = ({
               } ${selectedEmployee?.employeeId === emp.employeeId ? "bg-blue-50" : ""}`}
             >
               <td className="p-4 text-center font-mono text-xs text-gray-400">
-                {index + 1}
+                {startIndex + index + 1}
               </td>
               <td className="p-4">
                 <div className="flex items-center gap-3">
@@ -133,6 +150,9 @@ const AttendanceOverviewTable = ({
               <td className="p-4 text-gray-600">{emp.department || "--"}</td>
               <td className="p-4 text-center font-medium">
                 {emp.totalWorkDays?.toFixed(2) || 0}
+              </td>
+              <td className="p-4 text-center font-medium text-blue-600">
+                {formatStandardWorkday(emp)}
               </td>
               <td className="p-4 text-center">
                 <div className="relative inline-flex items-center justify-center gap-1.5">
@@ -221,6 +241,40 @@ const AttendanceOverviewTable = ({
     </table>
   );
 
+  const footer = totalPages > 1 ? (
+    <div className="flex flex-col gap-3 border-t border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        Hiển thị{" "}
+        <strong>
+          {employees.length > 0 ? startIndex + 1 : 0}-
+          {Math.min(startIndex + employees.length, total)}
+        </strong>{" "}
+        trong tổng số <strong>{total}</strong> nhân viên
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onPageChange?.(page - 1)}
+          disabled={page === 1}
+          className="rounded-md border border-gray-300 p-2 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        <span className="min-w-24 text-center font-medium">
+          Trang {page}/{totalPages}
+        </span>
+        <button
+          type="button"
+          onClick={() => onPageChange?.(page + 1)}
+          disabled={page === totalPages}
+          className="rounded-md border border-gray-300 p-2 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <DataTableShell
       filters={filtersNode}
@@ -231,6 +285,7 @@ const AttendanceOverviewTable = ({
       emptyDescription="Thử thay đổi bộ lọc hoặc tìm kiếm"
       mobileContent={mobileContent}
       desktopContent={desktopContent}
+      footer={footer}
     />
   );
 };

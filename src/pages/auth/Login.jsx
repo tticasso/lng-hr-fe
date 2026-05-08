@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
-import logoLNG from "../../assets/LNG.png";
+import logoLNG from "../../assets/LNG-sm.webp";
 import { authApi } from "../../apis/authApi";
 import { employeeApi } from "../../apis/employeeApi"; // Import employeeApi
 import { setAuthToken } from "../../apis/apiClient"; // Import hàm set header
@@ -39,7 +39,6 @@ const Login = () => {
 
       // Lấy token từ response (cấu trúc có thể là res.data.accessToken hoặc res.accessToken)
       const payload = res.data || res;
-      console.log("API LOGIN : ", res)
       localStorage.setItem("role", res.data.data.role)
       const accessToken = payload.accessToken || payload.token;
 
@@ -52,12 +51,10 @@ const Login = () => {
 
       // 3. Gọi API getMe để lấy thông tin chi tiết (bao gồm isProfileUpdated)
       const resMe = await employeeApi.getMe();
-       console.log("EMPLOYEE + 2")
       // Lấy object employee từ response getMe
       // Cấu trúc response getMe thường là { status: "success", data: { employee: {...} } }
       const responseBody = resMe.data;
       const employeeData = responseBody?.data?.employee;
-      console.log("login/EMPLOYEE_DATA:", employeeData);
       localStorage.setItem("accountID", employeeData.accountId._id);
        localStorage.setItem("employee_ID", employeeData._id);
       if (!employeeData) {
@@ -73,7 +70,6 @@ const Login = () => {
       // 5. Kiểm tra và Điều hướng [Quan trọng]
       if (employeeData.isProfileUpdated == false) {
         // Nếu chưa cập nhật -> Chuyển sang trang Profile
-        // console.log("this is false");
         toast.success("ĐĂNG NHẬP THÀNH CÔNG")
         navigate("/profile");
       } else {
