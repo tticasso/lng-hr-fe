@@ -8,9 +8,13 @@ import { departmentApi } from "../../../apis/departmentApi";
 import { getListData, getPagination, hasPaginationMetadata } from "../../../shared/apiResponse";
 import {
   extractDateRangeFromGrid,
+  formatWorkdayValue,
   formatStandardWorkday,
+  getAttendanceWorkDays,
   getCurrentPeriod,
   getMonthYear,
+  getPaidHolidayWorkDays,
+  getPayrollWorkDays,
   OT_TYPE_LABELS,
   parseAttendanceGrid,
 } from "./attendanceUtils";
@@ -21,6 +25,9 @@ const MAX_ATTENDANCE_PREFETCH = 5000;
 const buildExportRows = (employees) =>
   employees.map((emp, index) => {
     const standardWorkday = formatStandardWorkday(emp);
+    const payrollWorkDays = getPayrollWorkDays(emp);
+    const attendanceWorkDays = getAttendanceWorkDays(emp);
+    const paidHolidayWorkDays = getPaidHolidayWorkDays(emp);
 
     return {
       STT: index + 1,
@@ -28,7 +35,9 @@ const buildExportRows = (employees) =>
       "Họ và tên": emp.fullName || "",
       "Phòng ban": emp.department || "",
       "Công chuẩn": standardWorkday === "--" ? "" : standardWorkday,
-      "Ngày công": emp.totalWorkDays?.toFixed(2) || "0.00",
+      "Công tính lương": formatWorkdayValue(payrollWorkDays),
+      "Công chấm công": formatWorkdayValue(attendanceWorkDays),
+      "Công lễ hưởng lương": formatWorkdayValue(paidHolidayWorkDays),
       "Tổng giờ OT": emp.totalOTHours?.toFixed(2) || "0.00",
       "OT Ngày thường": Number(emp.otHours?.weekday || 0).toFixed(2),
       "OT Cuối tuần": Number(emp.otHours?.weekend || 0).toFixed(2),
@@ -39,7 +48,7 @@ const buildExportRows = (employees) =>
       "Nghỉ phép": emp.paidLeaveDays || 0,
       "Đi muộn": emp.lateCount || 0,
       "Trạng thái":
-        emp.hasError || emp.totalWorkDays === 0 ? "Error" : "Valid",
+        emp.hasError || payrollWorkDays === 0 ? "Error" : "Valid",
     };
   });
 
@@ -68,7 +77,7 @@ export const useAttendanceAdmin = () => {
 
   const { month, year } = getMonthYear(selectedPeriod);
   const errorCount = filteredAttendanceData.filter(
-    (emp) => emp.hasError || emp.totalWorkDays === 0,
+    (emp) => emp.hasError || getPayrollWorkDays(emp) === 0,
   ).length;
 
   const handlePreviousPeriod = () => {
@@ -232,9 +241,9 @@ export const useAttendanceAdmin = () => {
     }
 
     if (filters.status === "Error") {
-      result = result.filter((emp) => emp.hasError || emp.totalWorkDays === 0);
+      result = result.filter((emp) => emp.hasError || getPayrollWorkDays(emp) === 0);
     } else if (filters.status === "Valid") {
-      result = result.filter((emp) => !emp.hasError && emp.totalWorkDays > 0);
+      result = result.filter((emp) => !emp.hasError && getPayrollWorkDays(emp) > 0);
     }
 
     setFilteredAttendanceData(result);

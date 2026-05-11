@@ -262,7 +262,7 @@ const handleReopenPayroll = async (payroll) => {
           "Lương theo ngày": item.dailyRate || 0,
           "Lương theo giờ": Number(item.dailyRate || 0) / 8,
           "Công chuẩn": item.standardWorkDays || 0,
-          "Công thực tế": item.actualWorkDays || 0,
+          "Công tính lương": item.actualWorkDays || 0,
           "Nghỉ phép hưởng lương": item.paidLeaveDays || 0,
           "Tổng ngày nghỉ": Number(totalLeaveDays.toFixed(2)),
           "Tổng tiền nghỉ": Math.round(totalLeaveAmount),

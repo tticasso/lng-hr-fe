@@ -8,7 +8,12 @@ import {
 } from "lucide-react";
 
 import DataTableShell from "../../../components/shared/DataTableShell";
-import { formatStandardWorkday } from "./attendanceUtils";
+import {
+  formatStandardWorkday,
+  formatWorkdayValue,
+  getPaidHolidayWorkDays,
+  getPayrollWorkDays,
+} from "./attendanceUtils";
 
 const AttendanceOverviewTable = ({
   filtersNode,
@@ -31,12 +36,15 @@ const AttendanceOverviewTable = ({
     <div className="space-y-3">
       {employees.map((emp, index) => {
         const avatar = emp.fullName?.substring(0, 2).toUpperCase() || "??";
+        const payrollWorkDays = getPayrollWorkDays(emp);
+        const paidHolidayWorkDays = getPaidHolidayWorkDays(emp);
+
         return (
           <article
             key={emp.employeeId || emp._id || index}
             onClick={() => onEmployeeClick(emp)}
             className={`rounded-xl border p-4 shadow-sm ${
-              emp.hasError || emp.totalWorkDays === 0
+              emp.hasError || payrollWorkDays === 0
                 ? "border-red-200 bg-red-50/60"
                 : "border-gray-200 bg-white"
             } ${
@@ -58,7 +66,7 @@ const AttendanceOverviewTable = ({
                   <p className="text-xs text-gray-500">{emp.department || "--"}</p>
                 </div>
               </div>
-              {emp.hasError || emp.totalWorkDays === 0 ? (
+              {emp.hasError || payrollWorkDays === 0 ? (
                 <span className="inline-flex items-center gap-1 rounded border border-red-200 bg-red-100 px-2 py-1 text-xs font-bold text-red-700">
                   <AlertCircle size={12} /> Error
                 </span>
@@ -71,10 +79,15 @@ const AttendanceOverviewTable = ({
 
             <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
               <div>
-                <p className="text-xs uppercase text-gray-400">Ngày công</p>
+                <p className="text-xs uppercase text-gray-400">Công tính lương</p>
                 <p className="font-semibold text-gray-700">
-                  {emp.totalWorkDays?.toFixed(2) || 0}
+                  {formatWorkdayValue(payrollWorkDays)}
                 </p>
+                {paidHolidayWorkDays > 0 && (
+                  <p className="text-xs text-emerald-600">
+                    +{formatWorkdayValue(paidHolidayWorkDays)} lễ
+                  </p>
+                )}
               </div>
               <div>
                 <p className="text-xs uppercase text-gray-400">Công chuẩn</p>
@@ -110,7 +123,7 @@ const AttendanceOverviewTable = ({
           <th className="w-14 p-4 text-center">STT</th>
           <th className="p-4">Nhân viên</th>
           <th className="p-4">Phòng ban</th>
-          <th className="p-4 text-center">Ngày công</th>
+          <th className="p-4 text-center">Công tính lương</th>
           <th className="p-4 text-center">Công chuẩn</th>
           <th className="p-4 text-center">OT (Giờ)</th>
           <th className="p-4 text-center">Nghỉ phép</th>
@@ -122,6 +135,8 @@ const AttendanceOverviewTable = ({
       <tbody className="divide-y divide-gray-100 bg-white">
         {employees.map((emp, index) => {
           const avatar = emp.fullName?.substring(0, 2).toUpperCase() || "??";
+          const payrollWorkDays = getPayrollWorkDays(emp);
+          const paidHolidayWorkDays = getPaidHolidayWorkDays(emp);
 
           return (
             <tr
@@ -149,7 +164,12 @@ const AttendanceOverviewTable = ({
               </td>
               <td className="p-4 text-gray-600">{emp.department || "--"}</td>
               <td className="p-4 text-center font-medium">
-                {emp.totalWorkDays?.toFixed(2) || 0}
+                <div>{formatWorkdayValue(payrollWorkDays)}</div>
+                {paidHolidayWorkDays > 0 && (
+                  <div className="text-xs font-normal text-emerald-600">
+                    +{formatWorkdayValue(paidHolidayWorkDays)} lễ
+                  </div>
+                )}
               </td>
               <td className="p-4 text-center font-medium text-blue-600">
                 {formatStandardWorkday(emp)}
@@ -218,7 +238,7 @@ const AttendanceOverviewTable = ({
                 {emp.lateCount || 0}
               </td>
               <td className="p-4 text-center">
-                {emp.hasError || emp.totalWorkDays === 0 ? (
+                {emp.hasError || payrollWorkDays === 0 ? (
                   <span className="inline-flex items-center gap-1 rounded border border-red-200 bg-red-100 px-2 py-1 text-xs font-bold text-red-700">
                     <AlertCircle size={12} /> Error
                   </span>

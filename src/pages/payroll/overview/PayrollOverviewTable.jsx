@@ -141,7 +141,7 @@ const PayrollOverviewTable = ({
                 <BreakdownList items={adjustmentBreakdown} formatter={formatMoney} />
               </div>
               <div>
-                <p className="text-xs uppercase text-gray-400">Công chuẩn</p>
+                <p className="text-xs uppercase text-gray-400">Công tính lương / chuẩn</p>
                 <p className="font-medium text-red-600">
                   {row.actualWorkDays}/{row.standardWorkDays}
                 </p>
@@ -231,7 +231,7 @@ const PayrollOverviewTable = ({
             <th className="p-4 text-right">OT</th>
             <th className="p-4 text-right">Phụ cấp</th>
             <th className="p-4 text-right">Điều chỉnh</th>
-            <th className="p-4 text-right">Công chuẩn</th>
+            <th className="p-4 text-right">Công tính lương / chuẩn</th>
             <th className="bg-blue-100 p-4 text-right">Thực nhận</th>
             <th className="p-4 text-center">Trạng thái</th>
             <th className="sticky right-0 z-20 border-l border-blue-200 bg-blue-100 p-4 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.35)]">Thao tác</th>

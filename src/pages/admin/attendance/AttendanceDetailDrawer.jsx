@@ -6,7 +6,7 @@ import {
   X,
 } from "lucide-react";
 
-import { formatStandardWorkday } from "./attendanceUtils";
+import { formatStandardWorkday, getPayrollWorkDays } from "./attendanceUtils";
 
 const SOURCE_META = {
   WEB_APP: {
@@ -47,6 +47,7 @@ const getSourceMeta = (source) => (
 );
 
 const getWorkValue = (log) =>
+  log?.payrollWorkDayValue ??
   log?.payableWorkDayValue ??
   log?.effectiveWorkDayValue ??
   log?.workValue ??
@@ -64,6 +65,60 @@ const formatWorkValue = (log) => {
   return Number.isFinite(numericValue) ? numericValue.toFixed(2) : String(value);
 };
 
+const toNumber = (value) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+};
+
+const sumFinalOTHours = (finalOtHours) => {
+  if (!finalOtHours || typeof finalOtHours !== "object") return 0;
+  return Object.values(finalOtHours).reduce((sum, hours) => sum + toNumber(hours), 0);
+};
+
+const getApprovedOTHours = (overtimeId) => {
+  if (!Array.isArray(overtimeId)) return 0;
+  return overtimeId.reduce((sum, ot) => sum + toNumber(ot.approvedHours), 0);
+};
+
+const formatLeaveDays = (value) => (
+  Number.isInteger(value) ? String(value) : value.toFixed(2)
+);
+
+const buildDetailSummary = (selectedEmployee, employeeDetail) => {
+  if (!Array.isArray(employeeDetail) || employeeDetail.length === 0) {
+    return {
+      totalWorkDays: getPayrollWorkDays(selectedEmployee),
+      totalOTHours: toNumber(selectedEmployee.totalOTHours),
+      paidLeaveDays: toNumber(
+        selectedEmployee.paidLeaveDays ?? selectedEmployee.totalLeaveDays,
+      ),
+      lateCount: toNumber(selectedEmployee.lateCount),
+    };
+  }
+
+  return employeeDetail.reduce(
+    (summary, log) => {
+      const finalOTHours = sumFinalOTHours(log.finalOtHours);
+      const workValue = toNumber(getWorkValue(log));
+
+      summary.totalWorkDays += workValue;
+      summary.totalOTHours += finalOTHours || getApprovedOTHours(log.overtimeId);
+      summary.paidLeaveDays += log.status === "PAID_LEAVE"
+        ? workValue || 1
+        : 0;
+      summary.lateCount += toNumber(log.lateMinutes) > 0 ? 1 : 0;
+
+      return summary;
+    },
+    {
+      totalWorkDays: 0,
+      totalOTHours: 0,
+      paidLeaveDays: 0,
+      lateCount: 0,
+    },
+  );
+};
+
 const AttendanceDetailDrawer = ({
   selectedEmployee,
   loadingDetail,
@@ -75,6 +130,11 @@ const AttendanceDetailDrawer = ({
   otTypeLabels,
 }) => {
   if (!selectedEmployee) return null;
+
+  const detailSummary = buildDetailSummary(
+    selectedEmployee,
+    loadingDetail ? null : employeeDetail,
+  );
 
   return (
     <div
@@ -107,9 +167,9 @@ const AttendanceDetailDrawer = ({
 
         <div className="grid grid-cols-2 border-b border-gray-100 sm:grid-cols-5">
           <div className="border-r border-gray-100 p-4 text-center">
-            <p className="text-xs uppercase text-gray-500">Ngày công</p>
+            <p className="text-xs uppercase text-gray-500">Công tính lương</p>
             <p className="text-xl font-bold text-blue-600">
-              {selectedEmployee.totalWorkDays?.toFixed(2) || 0}
+              {detailSummary.totalWorkDays.toFixed(2)}
             </p>
           </div>
           <div className="border-r border-gray-100 p-4 text-center">
@@ -121,19 +181,19 @@ const AttendanceDetailDrawer = ({
           <div className="border-r border-gray-100 p-4 text-center">
             <p className="text-xs uppercase text-gray-500">Giờ OT</p>
             <p className="text-xl font-bold text-orange-600">
-              {selectedEmployee.totalOTHours?.toFixed(2) || 0}
+              {detailSummary.totalOTHours.toFixed(2)}
             </p>
           </div>
           <div className="border-r border-gray-100 p-4 text-center">
             <p className="text-xs uppercase text-gray-500">Nghỉ phép</p>
             <p className="text-xl font-bold text-purple-600">
-              {selectedEmployee.paidLeaveDays || 0}
+              {formatLeaveDays(detailSummary.paidLeaveDays)}
             </p>
           </div>
           <div className="p-4 text-center">
             <p className="text-xs uppercase text-gray-500">Đi muộn</p>
             <p className="text-xl font-bold text-red-600">
-              {selectedEmployee.lateCount || 0}
+              {detailSummary.lateCount}
             </p>
           </div>
         </div>
@@ -155,7 +215,7 @@ const AttendanceDetailDrawer = ({
                   <tr>
                     <th className="p-4 font-medium text-gray-500">Ngày</th>
                     <th className="p-4 text-center font-medium text-gray-500">
-                      Công giá trị
+                      Công tính lương
                     </th>
                     <th className="p-4 text-center font-medium text-gray-500">Vào</th>
                     <th className="p-4 text-center font-medium text-gray-500">Ra</th>

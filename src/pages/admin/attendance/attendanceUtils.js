@@ -22,6 +22,33 @@ export const formatStandardWorkday = (employee) => {
   return Number.isFinite(numericValue) ? numericValue.toFixed(2) : String(value);
 };
 
+const toFiniteNumber = (value) => {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : 0;
+};
+
+export const getPayrollWorkDays = (employee) =>
+  toFiniteNumber(
+    employee?.payrollWorkDays ??
+      employee?.actualWorkDays ??
+      employee?.totalWorkDays,
+  );
+
+export const getAttendanceWorkDays = (employee) =>
+  toFiniteNumber(
+    employee?.attendanceWorkDays ??
+      employee?.workDayBreakdown?.attendanceWorkDays ??
+      employee?.totalWorkDays,
+  );
+
+export const getPaidHolidayWorkDays = (employee) =>
+  toFiniteNumber(
+    employee?.paidHolidayWorkDays ??
+      employee?.workDayBreakdown?.paidHolidayWorkDays,
+  );
+
+export const formatWorkdayValue = (value) => toFiniteNumber(value).toFixed(2);
+
 export const getCurrentPeriod = () => {
   const now = new Date();
   const year = now.getFullYear();
