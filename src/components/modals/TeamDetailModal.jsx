@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { teamAPI } from "../../apis/teamAPI";
 import { employeeApi } from "../../apis/employeeApi";
 import { saturdayRotations } from "../../apis/saturday-rotations";
+import { useAuth } from "../../context/AuthContext";
 
 const StatusBadge = ({ status }) => {
     const statusConfig = {
@@ -41,6 +42,7 @@ const formatPayrollReviewList = (items) =>
         .join(", ");
 
 const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
+    const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [teamDetail, setTeamDetail] = useState(null);
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
@@ -56,6 +58,15 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
     const [selectedRotationEmployees, setSelectedRotationEmployees] = useState([]);
     const [manualRotationSelections, setManualRotationSelections] = useState({});
     const [rotationPayrollReviews, setRotationPayrollReviews] = useState([]);
+    const permissions = user?.accountId?.role?.permissions?.map((permission) => permission.name) || [];
+    const hasPermission = (permissionName) => permissions.includes(permissionName);
+    const userEmployeeId = user?._id?.toString();
+    const teamLeaderId = teamDetail?.leader?._id?.toString() || teamDetail?.leader?.toString();
+    const canManageAllTeamMembers = hasPermission("WRITE_TEAMS");
+    const canManageOwnTeamMembers =
+        hasPermission("WRITE_OWN_TEAM_MEMBERS") && teamLeaderId && teamLeaderId === userEmployeeId;
+    const canManageTeamMembers = canManageAllTeamMembers || canManageOwnTeamMembers;
+    const canManageRotations = hasPermission("WRITE_TEAM_ROTATIONS");
     
     // State cho việc chọn tháng/năm xem lịch luân phiên
     const [selectedMonth, setSelectedMonth] = useState(() => getCurrentMonthYear().month);
@@ -76,7 +87,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
         if (teamId) {
             rotationCall();
         }
-    }, [teamId, selectedMonth, selectedYear]) // Thêm selectedMonth và selectedYear vào dependency
+    }, [teamId, selectedMonth, selectedYear, canManageTeamMembers]) // Thêm selectedMonth và selectedYear vào dependency
 
     const rotationCall = async () => {
         if (!teamId) return; // Chỉ gọi khi có teamId
@@ -284,12 +295,18 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
     };
 
     const dataEmplyee = async () => {
+        if (!teamId || !canManageTeamMembers) {
+            setEmployees([]);
+            return;
+        }
+
         try {
-            const res = await employeeApi.getAll();
+            const res = await employeeApi.getAll({ limit: 100, teamMemberCandidateFor: teamId });
             const employeeData = res?.data?.data || [];
             setEmployees(employeeData);
         } catch (error) {
             console.error("Team detail action failed:", error);
+            setEmployees([]);
         }
     }
 
@@ -354,6 +371,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
 
         } catch (error) {
             console.error("Error adding members:", error);
+            toast.error(error.normalizedMessage || "Thêm thành viên thất bại");
         } finally {
             setAddMemberLoading(false);
         }
@@ -368,6 +386,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
             await dataEmplyee();
         } catch (error) {
             console.error("Error removing member:", error);
+            toast.error(error.normalizedMessage || "Xóa thành viên khỏi team thất bại");
         }
     };
 
@@ -732,30 +751,36 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                             <span className="px-3 py-1 bg-green-100 text-green-700 border border-green-200 text-xs font-semibold rounded-md">
                                                 {teamDetail.members?.length || 0} người
                                             </span>
-                                            <button
-                                                onClick={openAddMemberModal}
-                                                className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md transition-colors"
-                                                title="Thêm thành viên"
-                                            >
-                                                <UserPlus size={14} />
-                                                Thêm
-                                            </button>
-                                            <button
-                                                onClick={rotationadd}
-                                                className="flex items-center gap-1 px-3 py-1.5 bg-gray-700 hover:bg-gray-800 text-white text-xs font-semibold rounded-md transition-colors"
-                                                title="Tự động chia lịch nghỉ luân phiên"
-                                            >
-                                                <CalendarSync size={14} />
-                                                Set tự động
-                                            </button>
-                                            <button
-                                                onClick={openManualRotationModal}
-                                                className="flex items-center gap-1 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-md transition-colors"
-                                                title="Set lịch nghỉ luân phiên thủ công"
-                                            >
-                                                <CalendarSync size={14} />
-                                                Set thủ công
-                                            </button>
+                                            {canManageTeamMembers && (
+                                                <button
+                                                    onClick={openAddMemberModal}
+                                                    className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md transition-colors"
+                                                    title="Thêm thành viên"
+                                                >
+                                                    <UserPlus size={14} />
+                                                    Thêm
+                                                </button>
+                                            )}
+                                            {canManageRotations && (
+                                                <>
+                                                    <button
+                                                        onClick={rotationadd}
+                                                        className="flex items-center gap-1 px-3 py-1.5 bg-gray-700 hover:bg-gray-800 text-white text-xs font-semibold rounded-md transition-colors"
+                                                        title="Tự động chia lịch nghỉ luân phiên"
+                                                    >
+                                                        <CalendarSync size={14} />
+                                                        Set tự động
+                                                    </button>
+                                                    <button
+                                                        onClick={openManualRotationModal}
+                                                        className="flex items-center gap-1 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-md transition-colors"
+                                                        title="Set lịch nghỉ luân phiên thủ công"
+                                                    >
+                                                        <CalendarSync size={14} />
+                                                        Set thủ công
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
 
@@ -784,13 +809,15 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                                         </div>
                                                         <div className="ml-3 flex shrink-0 items-center gap-2">
                                                             <StatusBadge status={member.status} />
-                                                            <button
-                                                                onClick={() => handleRemoveMember(member)}
-                                                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                                title="Xóa khỏi team"
-                                                            >
-                                                                <Trash2 size={14} />
-                                                            </button>
+                                                            {canManageTeamMembers && (
+                                                                <button
+                                                                    onClick={() => handleRemoveMember(member)}
+                                                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                                    title="Xóa khỏi team"
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
