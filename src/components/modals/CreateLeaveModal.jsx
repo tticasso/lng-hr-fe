@@ -356,6 +356,21 @@ const LeaveRequestModal = ({
                   <p className="text-xs text-gray-500">Trùng lịch</p>
                   <p className="font-bold text-gray-800">{preview.conflictCount ?? 0}</p>
                 </div>
+                {preview.balance && (
+                  <div className="col-span-2 rounded-md bg-white p-2 sm:col-span-4">
+                    <p className="text-xs text-gray-500">Số dư phép năm</p>
+                    <p className={`font-bold ${preview.balance.isEnough ? "text-green-700" : "text-red-700"}`}>
+                      Còn {preview.balance.currentBalance ?? 0} ngày
+                      {" · "}
+                      Sau khi gửi: {preview.balance.remainingAfterRequest ?? 0}
+                    </p>
+                    {preview.balance.message && (
+                      <p className="mt-1 text-xs font-medium text-red-600">
+                        {preview.balance.message}
+                      </p>
+                    )}
+                  </div>
+                )}
                 {Array.isArray(preview.holidays) && preview.holidays.length > 0 && (
                   <p className="col-span-2 text-xs text-gray-600 sm:col-span-4">
                     Ngày lễ: {preview.holidays.join(", ")}
