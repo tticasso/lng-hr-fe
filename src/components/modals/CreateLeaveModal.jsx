@@ -2,7 +2,13 @@ import React, { useEffect, useMemo, useState } from "react";
 import { X, FileText, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import Button from "../common/Button";
 import { leaveAPI } from "../../apis/leaveAPI";
-import { leaveTypeOptions } from "../../pages/leave/shared";
+import {
+  canUseHRControlledLeaveTypes,
+  getLeaveTypeOptionsForRole,
+  hrControlledLeaveTypes,
+} from "../../pages/leave/shared";
+import { useAuth } from "../../context/AuthContext";
+import { employeeApi } from "../../apis/employeeApi";
 
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -26,6 +32,12 @@ const dateToISO = (date) => {
   return `${y}-${m}-${d}`;
 };
 
+const getEntityId = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  return value._id || value.id || "";
+};
+
 const LeaveRequestModal = ({
   onClose,
   onConfirm,
@@ -35,6 +47,20 @@ const LeaveRequestModal = ({
   title = "Đơn xin nghỉ",
   submitLabel = "Xác nhận",
 }) => {
+  const { user } = useAuth();
+  const currentRole = user?.accountId?.role || user?.role || null;
+  const currentEmployeeId = getEntityId(user);
+  const canUseControlledLeaveTypes = canUseHRControlledLeaveTypes(currentRole);
+  const initialEmployeeId = getEntityId(initialValues?.employeeId) || currentEmployeeId;
+  const allowedLeaveTypeOptions = useMemo(
+    () => getLeaveTypeOptionsForRole(currentRole, initialValues?.leaveType || ""),
+    [currentRole, initialValues?.leaveType],
+  );
+  const normalizedDefaultLeaveType = allowedLeaveTypeOptions.some(
+    (option) => option.value === defaultLeaveType,
+  )
+    ? defaultLeaveType
+    : "ANNUAL";
   const [isShortLeave, setIsShortLeave] = useState(
     Boolean(initialValues?.leaveScope && initialValues.leaveScope !== "FULL_DAY"),
   );
@@ -42,7 +68,7 @@ const LeaveRequestModal = ({
 
   // ✅ formData lưu ISO để payload luôn chuẩn
   const [formData, setFormData] = useState({
-    leaveType: initialValues?.leaveType || defaultLeaveType,
+    leaveType: initialValues?.leaveType || normalizedDefaultLeaveType,
     fromDate: initialValues?.fromDate ? dateToISO(new Date(initialValues.fromDate)) : defaultFromDate,
     toDate: initialValues?.toDate ? dateToISO(new Date(initialValues.toDate)) : "",
     reason: initialValues?.reason || "",
@@ -53,13 +79,16 @@ const LeaveRequestModal = ({
   const [preview, setPreview] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState("");
+  const [employees, setEmployees] = useState([]);
+  const [employeesLoading, setEmployeesLoading] = useState(false);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState(initialEmployeeId);
 
   // ✅ Sync ngày và loại nghỉ từ Timesheet mỗi lần mở modal
   useEffect(() => {
     if (initialValues) {
       setIsShortLeave(Boolean(initialValues.leaveScope && initialValues.leaveScope !== "FULL_DAY"));
       setFormData({
-        leaveType: initialValues.leaveType || defaultLeaveType,
+        leaveType: initialValues.leaveType || normalizedDefaultLeaveType,
         fromDate: initialValues.fromDate ? dateToISO(new Date(initialValues.fromDate)) : defaultFromDate,
         toDate: initialValues.toDate ? dateToISO(new Date(initialValues.toDate)) : "",
         reason: initialValues.reason || "",
@@ -70,16 +99,48 @@ const LeaveRequestModal = ({
 
     setFormData((p) => ({
       ...p,
-      leaveType: defaultLeaveType,
+      leaveType: normalizedDefaultLeaveType,
       fromDate: defaultFromDate || p.fromDate,
       toDate: defaultFromDate ? (p.toDate || defaultFromDate) : p.toDate,
     }));
-  }, [defaultFromDate, defaultLeaveType, initialValues]);
+  }, [defaultFromDate, initialValues, normalizedDefaultLeaveType]);
+
+  useEffect(() => {
+    setSelectedEmployeeId(initialEmployeeId);
+  }, [initialEmployeeId]);
+
+  useEffect(() => {
+    if (!canUseControlledLeaveTypes) return;
+
+    let isMounted = true;
+
+    const fetchEmployees = async () => {
+      setEmployeesLoading(true);
+      try {
+        const response = await employeeApi.getAll({ limit: 1000 });
+        if (!isMounted) return;
+        setEmployees(response.data?.data || response.data || []);
+      } catch (error) {
+        if (isMounted) setEmployees([]);
+      } finally {
+        if (isMounted) setEmployeesLoading(false);
+      }
+    };
+
+    fetchEmployees();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [canUseControlledLeaveTypes]);
 
   const validate = () => {
     const e = {};
 
     if (!formData.leaveType) e.leaveType = "Vui lòng chọn loại nghỉ";
+    if (canUseControlledLeaveTypes && !selectedEmployeeId) {
+      e.employeeId = "Vui lòng chọn nhân viên";
+    }
     if (!formData.reason.trim()) e.reason = "Vui lòng nhập lý do nghỉ";
     if (!formData.fromDate) e.fromDate = "Vui lòng chọn ngày bắt đầu";
 
@@ -111,12 +172,13 @@ const LeaveRequestModal = ({
   const payload = useMemo(() => {
     return {
       leaveType: formData.leaveType,
+      ...(canUseControlledLeaveTypes && selectedEmployeeId ? { employeeId: selectedEmployeeId } : {}),
       fromDate: formData.fromDate, // ISO
       toDate: isShortLeave ? formData.fromDate : formData.toDate, // ISO
       reason: formData.reason.trim(),
       leaveScope: isShortLeave ? formData.leaveScope : "FULL_DAY",
     };
-  }, [formData, isShortLeave]);
+  }, [canUseControlledLeaveTypes, formData, isShortLeave, selectedEmployeeId]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -161,6 +223,30 @@ const LeaveRequestModal = ({
       </p>
     );
 
+  const employeeOptions = useMemo(() => {
+    const list = Array.isArray(employees) ? [...employees] : [];
+    const initialEmployee = initialValues?.employeeId;
+    const initialId = getEntityId(initialEmployee);
+
+    if (
+      initialId &&
+      typeof initialEmployee === "object" &&
+      !list.some((employee) => getEntityId(employee) === initialId)
+    ) {
+      list.unshift(initialEmployee);
+    }
+
+    if (
+      currentEmployeeId &&
+      user &&
+      !list.some((employee) => getEntityId(employee) === currentEmployeeId)
+    ) {
+      list.unshift(user);
+    }
+
+    return list;
+  }, [currentEmployeeId, employees, initialValues?.employeeId, user]);
+
   // ✅ style input của react-datepicker để giống input thường (Tailwind)
   const datePickerInputClass = (field) =>
     `${inputClass(field)} bg-white`; // react-datepicker render <input> bên trong
@@ -182,6 +268,40 @@ const LeaveRequestModal = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {canUseControlledLeaveTypes && (
+            <div>
+              <label className={labelClass}>Nhân viên áp dụng *</label>
+              <select
+                name="employeeId"
+                value={selectedEmployeeId}
+                onChange={(event) => {
+                  setSelectedEmployeeId(event.target.value);
+                  setPreview(null);
+                  setPreviewError("");
+                  if (errors.employeeId) setErrors((p) => ({ ...p, employeeId: "" }));
+                }}
+                disabled={isEditing || employeesLoading}
+                className={inputClass("employeeId")}
+              >
+                <option value="">
+                  {employeesLoading ? "Đang tải nhân viên..." : "-- Chọn nhân viên --"}
+                </option>
+                {employeeOptions.map((employee) => {
+                  const employeeId = getEntityId(employee);
+                  return (
+                    <option key={employeeId} value={employeeId}>
+                      {employee.fullName || "Chưa có tên"} ({employee.employeeCode || "--"})
+                    </option>
+                  );
+                })}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                HR/Admin có thể tạo hoặc ghi nhận đơn nghỉ cho nhân viên khác.
+              </p>
+              <ErrorMsg field="employeeId" />
+            </div>
+          )}
+
           {/* Leave Type */}
           <div>
             <label className={labelClass}>Loại nghỉ *</label>
@@ -191,12 +311,22 @@ const LeaveRequestModal = ({
               onChange={handleChange}
               className={inputClass("leaveType")}
             >
-              {leaveTypeOptions.map((option) => (
+              {allowedLeaveTypeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
             </select>
+            {!canUseControlledLeaveTypes && (
+              <p className="mt-1 text-xs text-gray-500">
+                Một số loại nghỉ đặc biệt có lương cần HR/Admin tạo hoặc hướng dẫn hồ sơ.
+              </p>
+            )}
+            {canUseControlledLeaveTypes && hrControlledLeaveTypes.includes(formData.leaveType) && (
+              <p className="mt-1 text-xs font-medium text-amber-700">
+                Loại nghỉ này thuộc nhóm HR kiểm soát, cần kiểm tra hồ sơ/chính sách trước khi duyệt.
+              </p>
+            )}
             <ErrorMsg field="leaveType" />
           </div>
 

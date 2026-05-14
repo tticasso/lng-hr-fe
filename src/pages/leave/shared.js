@@ -27,6 +27,22 @@ export const leaveTypeOptions = leaveTypeValues.map((value) => ({
   label: leaveTypeLabel[value] || value,
 }));
 
+export const hrControlledLeaveTypes = ["PERSONAL_PAID", "MATERNITY", "PATERNITY"];
+
+export const canUseHRControlledLeaveTypes = (role) => {
+  const flags = getRoleFlags(role);
+  return flags.isAdmin || flags.isHR;
+};
+
+export const getLeaveTypeOptionsForRole = (role, currentValue = "") => {
+  const canUseControlledTypes = canUseHRControlledLeaveTypes(role);
+
+  return leaveTypeOptions.filter((option) => {
+    if (!hrControlledLeaveTypes.includes(option.value)) return true;
+    return canUseControlledTypes || option.value === currentValue;
+  });
+};
+
 export const statusLabel = {
   PENDING: "Chờ duyệt",
   APPROVED: "Đã duyệt",
