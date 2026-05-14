@@ -1,13 +1,19 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { BarChart3, Calendar, ChevronDown, Clock, Edit, Eye, Info, Plus, Search, Trash2, Upload, X } from "lucide-react";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import MonthYearPicker from "../../components/common/MonthYearPicker";
 import { holidayAPI } from "../../apis/holidayAPI";
 import { shitfAPI } from "../../apis/shiftsAPI";
+import { useAuth } from "../../context/AuthContext";
+import { getPermissionNames } from "../../utils/authPermissions";
 import { toast } from "react-toastify";
 
 const Holiday = () => {
+  const { user } = useAuth();
+  const permissionNames = useMemo(() => getPermissionNames(user), [user]);
+  const canWriteHolidays = permissionNames.includes("WRITE_HOLIDAYS");
+  const canWriteShifts = permissionNames.includes("WRITE_SHIFTS");
   const [activeTab, setActiveTab] = useState("holidays");
 
   // States cho Holidays
@@ -137,6 +143,10 @@ const Holiday = () => {
 
   // Open modal thêm mới
   const handleAdd = () => {
+    if (!canWriteHolidays) {
+      toast.error("Bạn không có quyền WRITE_HOLIDAYS để thay đổi ngày nghỉ");
+      return;
+    }
     setEditingHoliday(null);
     setFormData({
       name: "",
@@ -152,6 +162,10 @@ const Holiday = () => {
 
   // Open modal sửa
   const handleEdit = (holiday) => {
+    if (!canWriteHolidays) {
+      toast.error("Bạn không có quyền WRITE_HOLIDAYS để thay đổi ngày nghỉ");
+      return;
+    }
     setEditingHoliday(holiday);
     setFormData({
       name: holiday.name,
@@ -168,6 +182,10 @@ const Holiday = () => {
   // Submit form (thêm hoặc sửa)
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canWriteHolidays) {
+      toast.error("Bạn không có quyền WRITE_HOLIDAYS để thay đổi ngày nghỉ");
+      return;
+    }
 
     if (!formData.name.trim() || !formData.date) {
       toast.error("Vui lòng nhập đầy đủ thông tin");
@@ -201,6 +219,10 @@ const Holiday = () => {
 
   // Xóa holiday
   const handleDelete = async (holiday) => {
+    if (!canWriteHolidays) {
+      toast.error("Bạn không có quyền WRITE_HOLIDAYS để thay đổi ngày nghỉ");
+      return;
+    }
     if (!window.confirm(`Bạn có chắc muốn xóa "${holiday.name}"?`)) {
       return;
     }
@@ -266,6 +288,10 @@ const Holiday = () => {
   };
 
   const handleCreateAttendanceForHoliday = async (holidayId) => {
+    if (!canWriteHolidays) {
+      toast.error("Bạn không có quyền WRITE_HOLIDAYS để tạo attendance ngày nghỉ");
+      return;
+    }
     if (!window.confirm("Tạo attendance records cho ngày nghỉ này?")) return;
     try {
       await holidayAPI.createAttendance(holidayId);
@@ -276,6 +302,10 @@ const Holiday = () => {
   };
 
   const handleBulkImportHolidays = async () => {
+    if (!canWriteHolidays) {
+      toast.error("Bạn không có quyền WRITE_HOLIDAYS để import ngày nghỉ");
+      return;
+    }
     let payload;
     try {
       payload = JSON.parse(bulkPayload);
@@ -297,6 +327,10 @@ const Holiday = () => {
 
   // Open modal sửa shift
   const handleEditShift = (shift) => {
+    if (!canWriteShifts) {
+      toast.error("Bạn không có quyền WRITE_SHIFTS để thay đổi ca làm việc");
+      return;
+    }
     setEditingShift(shift);
     setShiftFormData({
       name: shift.name,
@@ -315,6 +349,10 @@ const Holiday = () => {
   // Submit form shift (thêm hoặc sửa)
   const handleSubmitShift = async (e) => {
     e.preventDefault();
+    if (!canWriteShifts) {
+      toast.error("Bạn không có quyền WRITE_SHIFTS để thay đổi ca làm việc");
+      return;
+    }
 
     if (!shiftFormData.name.trim() || !shiftFormData.shiftCode.trim() || !shiftFormData.startTime || !shiftFormData.endTime) {
       toast.error("Vui lòng nhập đầy đủ thông tin");
@@ -351,6 +389,10 @@ const Holiday = () => {
 
   // Xóa shift
   const handleDeleteShift = async (shift) => {
+    if (!canWriteShifts) {
+      toast.error("Bạn không có quyền WRITE_SHIFTS để thay đổi ca làm việc");
+      return;
+    }
     if (!window.confirm(`Bạn có chắc muốn xóa ca "${shift.name}"?`)) {
       return;
     }
@@ -380,9 +422,11 @@ const Holiday = () => {
             value={selectedMonthYear}
             onChange={(e) => setSelectedMonthYear(e.target.value)}
           />
-          <Button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2">
-            <Plus size={18} /> Thêm ngày lễ
-          </Button>
+          {canWriteHolidays && (
+            <Button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2">
+              <Plus size={18} /> Thêm ngày lễ
+            </Button>
+          )}
         </div>
       </div>
 
@@ -459,9 +503,11 @@ const Holiday = () => {
                 spellCheck={false}
                 className="mt-3 w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono"
               />
-              <Button type="button" variant="secondary" onClick={handleBulkImportHolidays} className="mt-2">
-                Import JSON
-              </Button>
+              {canWriteHolidays && (
+                <Button type="button" variant="secondary" onClick={handleBulkImportHolidays} className="mt-2">
+                  Import JSON
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -509,12 +555,16 @@ const Holiday = () => {
                     <button onClick={() => handleViewDetail(holiday._id)} className="p-2 text-gray-400 hover:text-green-600 transition-colors" title="Xem chi tiết">
                       <Eye size={16} />
                     </button>
-                    <button onClick={() => handleEdit(holiday)} className="p-2 text-gray-400 hover:text-blue-600 transition-colors" title="Sửa">
-                      <Edit size={16} />
-                    </button>
-                    <button onClick={() => handleDelete(holiday)} className="p-2 text-gray-400 hover:text-red-600 transition-colors" title="Xóa">
-                      <Trash2 size={16} />
-                    </button>
+                    {canWriteHolidays && (
+                      <>
+                        <button onClick={() => handleEdit(holiday)} className="p-2 text-gray-400 hover:text-blue-600 transition-colors" title="Sửa">
+                          <Edit size={16} />
+                        </button>
+                        <button onClick={() => handleDelete(holiday)} className="p-2 text-gray-400 hover:text-red-600 transition-colors" title="Xóa">
+                          <Trash2 size={16} />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               );
@@ -566,22 +616,24 @@ const Holiday = () => {
                     </h3>
                     <p className="text-xs text-gray-500 mt-1">Mã ca: {shift.shiftCode}</p>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEditShift(shift)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Chỉnh sửa"
-                    >
-                      <Edit size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteShift(shift)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Xóa"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
+                  {canWriteShifts && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEditShift(shift)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Chỉnh sửa"
+                      >
+                        <Edit size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteShift(shift)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Xóa"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-6">
@@ -965,18 +1017,21 @@ const Holiday = () => {
 
                 {/* Footer Actions */}
                 <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                  <Button
-                    variant="secondary"
-                    onClick={() => handleCreateAttendanceForHoliday(selectedHoliday._id)}
-                  >
-                    Tao attendance
-                  </Button>
+                  {canWriteHolidays && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => handleCreateAttendanceForHoliday(selectedHoliday._id)}
+                    >
+                      Tao attendance
+                    </Button>
+                  )}
                   <Button
                     variant="secondary"
                     onClick={() => setIsDetailModalOpen(false)}
                   >
                     Đóng
                   </Button>
+                  {canWriteHolidays && (
                   <Button
                     onClick={() => {
                       setIsDetailModalOpen(false);
@@ -987,6 +1042,7 @@ const Holiday = () => {
                     <Edit size={16} />
                     Chỉnh sửa
                   </Button>
+                  )}
                 </div>
               </div>
             ) : (

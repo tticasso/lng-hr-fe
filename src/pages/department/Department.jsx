@@ -16,9 +16,12 @@ import { departmentApi } from "../../apis/departmentApi";
 import { employeeApi } from "../../apis/employeeApi";
 import Button from "../../components/common/Button";
 import Card from "../../components/common/Card";
+import { useAuth } from "../../context/AuthContext";
+import { getPermissionNames } from "../../utils/authPermissions";
 import { toast } from "react-toastify";
 
 const Department = () => {
+  const { user } = useAuth();
   const [departments, setDepartments] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,18 +37,9 @@ const Department = () => {
     manager: "",
   });
 
-  const role = useMemo(() => {
-    const raw = localStorage.getItem("role");
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return raw;
-    }
-  }, []);
-
   const canManage = useMemo(
-    () => role === "ADMIN" || role === "HR" || role === "MANAGER",
-    [role],
+    () => getPermissionNames(user).includes("WRITE_DEPARTMENTS"),
+    [user],
   );
 
   const fetchEmployees = async () => {
@@ -103,12 +97,20 @@ const Department = () => {
   };
 
   const handleAdd = () => {
+    if (!canManage) {
+      toast.error("Bạn không có quyền WRITE_DEPARTMENTS để thay đổi phòng ban");
+      return;
+    }
     setEditingDepartment(null);
     setFormData({ name: "", deptCode: "", manager: "" });
     setIsFormModalOpen(true);
   };
 
   const handleEdit = (dept) => {
+    if (!canManage) {
+      toast.error("Bạn không có quyền WRITE_DEPARTMENTS để thay đổi phòng ban");
+      return;
+    }
     setEditingDepartment(dept);
     setFormData({
       name: dept.name || "",
@@ -120,6 +122,10 @@ const Department = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canManage) {
+      toast.error("Bạn không có quyền WRITE_DEPARTMENTS để thay đổi phòng ban");
+      return;
+    }
 
     if (!formData.name.trim() || !formData.deptCode.trim()) {
       toast.error("Vui lòng nhập đầy đủ thông tin");
@@ -149,6 +155,10 @@ const Department = () => {
   };
 
   const handleDelete = async (dept) => {
+    if (!canManage) {
+      toast.error("Bạn không có quyền WRITE_DEPARTMENTS để thay đổi phòng ban");
+      return;
+    }
     if (!window.confirm(`Bạn có chắc muốn xóa phòng ban "${dept.name}"?`)) return;
 
     try {

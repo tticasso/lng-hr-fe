@@ -21,6 +21,8 @@ import { permissionApi } from "../../apis/permissionApi";
 import { auditLogApi } from "../../apis/auditLogApi";
 import { systemSettingApi } from "../../apis/systemSettingApi";
 import { officeNetworkApi } from "../../apis/officeNetworkApi";
+import { useAuth } from "../../context/AuthContext";
+import { getPermissionNames } from "../../utils/authPermissions";
 import { toast } from "react-toastify";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button"; // Đảm bảo component này tồn tại
@@ -50,7 +52,17 @@ const DEFAULT_APPROVAL_POLICIES = {
 };
 
 const SystemAdmin = () => {
+  const { user } = useAuth();
   const [activeAdminTab, setActiveAdminTab] = useState("roles");
+  const currentPermissionNames = useMemo(() => getPermissionNames(user), [user]);
+  const canWriteRoles = currentPermissionNames.includes("WRITE_ROLES");
+  const canWritePermissions = currentPermissionNames.includes("WRITE_PERMISSIONS");
+  const canReadRolesOrPermissions =
+    currentPermissionNames.includes("READ_ROLES") ||
+    currentPermissionNames.includes("READ_PERMISSIONS") ||
+    canWriteRoles ||
+    canWritePermissions;
+  const canManageSystem = currentPermissionNames.includes("MANAGE_SYSTEM");
   // --- MAPPING TIẾNG VIỆT ---
   const moduleNameMap = {
     "ADMIN": "Quản trị",
@@ -227,7 +239,24 @@ const SystemAdmin = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeAdminTab]);
 
+  useEffect(() => {
+    const systemTabs = ["settings", "officeNetworks", "audit"];
+    if (activeAdminTab === "roles" && !canReadRolesOrPermissions && canManageSystem) {
+      setActiveAdminTab("settings");
+      return;
+    }
+    if (systemTabs.includes(activeAdminTab) && !canManageSystem && canReadRolesOrPermissions) {
+      setActiveAdminTab("roles");
+    }
+  }, [activeAdminTab, canManageSystem, canReadRolesOrPermissions]);
+
   const fetchData = async () => {
+    if (!canReadRolesOrPermissions) {
+      setRoles([]);
+      setPermissions([]);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const [rolesRes, permsRes] = await Promise.all([
@@ -290,6 +319,10 @@ const SystemAdmin = () => {
 
   // --- HANDLERS: ROLE ---
   const handleCreateRole = async () => {
+    if (!canWriteRoles) {
+      toast.error("Bạn không có quyền WRITE_ROLES để thay đổi vai trò");
+      return;
+    }
     if (!newRoleName.trim()) return;
     try {
       const res = await roleApi.create({ name: newRoleName });
@@ -310,6 +343,10 @@ const SystemAdmin = () => {
   };
 
   const handleDeleteRole = async (id) => {
+    if (!canWriteRoles) {
+      toast.error("Bạn không có quyền WRITE_ROLES để thay đổi vai trò");
+      return;
+    }
     if (!window.confirm("Bạn có chắc chắn muốn xóa vai trò này?")) return;
     try {
       await roleApi.delete(id);
@@ -327,6 +364,10 @@ const SystemAdmin = () => {
 
   // --- HANDLERS: PERMISSION (MỚI) ---
   const handleCreatePermission = async () => {
+    if (!canWritePermissions) {
+      toast.error("Bạn không có quyền WRITE_PERMISSIONS để tạo quyền mới");
+      return;
+    }
     // Validate cơ bản
     if (!newPermData.name || !newPermData.module) {
       toast.warning("Vui lòng nhập Tên quyền và Module");
@@ -356,6 +397,10 @@ const SystemAdmin = () => {
 
   const togglePermission = async (permId, isAssigned) => {
     if (!selectedRole) return;
+    if (!canWriteRoles) {
+      toast.error("Bạn không có quyền WRITE_ROLES để phân quyền vai trò");
+      return;
+    }
 
     const originalRole = { ...selectedRole };
     let updatedPermissions;
@@ -412,7 +457,7 @@ const SystemAdmin = () => {
         { id: "settings", label: "Cấu hình hệ thống" },
         { id: "officeNetworks", label: "Mạng văn phòng" },
         { id: "audit", label: "Audit logs" },
-      ].map((tab) => (
+      ].filter((tab) => (tab.id === "roles" ? canReadRolesOrPermissions : canManageSystem)).map((tab) => (
         <button
           key={tab.id}
           type="button"
@@ -430,6 +475,10 @@ const SystemAdmin = () => {
   );
 
   const fetchSystemSettings = async () => {
+    if (!canManageSystem) {
+      toast.error("Bạn không có quyền MANAGE_SYSTEM để xem cấu hình hệ thống");
+      return;
+    }
     try {
       setSettingsLoading(true);
       const res = settingCategory.trim()
@@ -445,6 +494,10 @@ const SystemAdmin = () => {
   };
 
   const updateSystemSetting = async () => {
+    if (!canManageSystem) {
+      toast.error("Bạn không có quyền MANAGE_SYSTEM để cập nhật cấu hình hệ thống");
+      return;
+    }
     const payload = parseJsonPayload(settingPayload);
     if (!payload || !settingKey.trim()) {
       if (!settingKey.trim()) toast.warning("Vui lòng nhập setting key");
@@ -481,6 +534,7 @@ const SystemAdmin = () => {
   };
 
   const fetchApprovalPolicies = async () => {
+    if (!canManageSystem) return;
     try {
       setApprovalLoading(true);
       const res = await systemSettingApi.getByCategory("APPROVAL");
@@ -526,6 +580,10 @@ const SystemAdmin = () => {
   };
 
   const saveApprovalPolicy = async (key) => {
+    if (!canManageSystem) {
+      toast.error("Bạn không có quyền MANAGE_SYSTEM để cập nhật cấu hình duyệt");
+      return;
+    }
     const policy = approvalPolicies[key];
     if (!policy?.levels?.length) {
       toast.warning("Cần có ít nhất 1 tầng duyệt");
@@ -565,6 +623,10 @@ const SystemAdmin = () => {
   };
 
   const fetchOfficeNetworks = async () => {
+    if (!canManageSystem) {
+      toast.error("Bạn không có quyền MANAGE_SYSTEM để xem mạng văn phòng");
+      return;
+    }
     try {
       setOfficeNetworksLoading(true);
       const res = await officeNetworkApi.getAll();
@@ -578,6 +640,10 @@ const SystemAdmin = () => {
   };
 
   const submitOfficeNetwork = async () => {
+    if (!canManageSystem) {
+      toast.error("Bạn không có quyền MANAGE_SYSTEM để thay đổi mạng văn phòng");
+      return;
+    }
     const payload = {
       officeName: officeNetworkForm.officeName.trim(),
       ipAddress: officeNetworkForm.ipAddress.trim(),
@@ -608,6 +674,10 @@ const SystemAdmin = () => {
   };
 
   const editOfficeNetwork = (network) => {
+    if (!canManageSystem) {
+      toast.error("Bạn không có quyền MANAGE_SYSTEM để thay đổi mạng văn phòng");
+      return;
+    }
     setOfficeNetworkForm({
       officeName: network.officeName || "",
       ipAddress: network.ipAddress || "",
@@ -617,6 +687,10 @@ const SystemAdmin = () => {
   };
 
   const toggleOfficeNetwork = async (network) => {
+    if (!canManageSystem) {
+      toast.error("Bạn không có quyền MANAGE_SYSTEM để thay đổi mạng văn phòng");
+      return;
+    }
     try {
       setOfficeNetworksLoading(true);
       await officeNetworkApi.update(network._id, { isActive: !network.isActive });
@@ -630,6 +704,10 @@ const SystemAdmin = () => {
   };
 
   const disableOfficeNetwork = async (network) => {
+    if (!canManageSystem) {
+      toast.error("Bạn không có quyền MANAGE_SYSTEM để thay đổi mạng văn phòng");
+      return;
+    }
     if (!window.confirm(`Tắt mạng văn phòng "${network.officeName}"?`)) return;
 
     try {
@@ -645,6 +723,10 @@ const SystemAdmin = () => {
   };
 
   const fetchAuditLogs = async () => {
+    if (!canManageSystem) {
+      toast.error("Bạn không có quyền MANAGE_SYSTEM để xem audit logs");
+      return;
+    }
     try {
       setAuditLoading(true);
       setSelectedAuditLog(null);
@@ -658,6 +740,10 @@ const SystemAdmin = () => {
   };
 
   const fetchAuditLogDetail = async (id = auditLogId) => {
+    if (!canManageSystem) {
+      toast.error("Bạn không có quyền MANAGE_SYSTEM để xem audit logs");
+      return;
+    }
     if (!id) {
       toast.warning("Vui lòng chọn audit log");
       return;
@@ -991,16 +1077,24 @@ const SystemAdmin = () => {
     );
   }
 
-  if (activeAdminTab === "settings") {
+  if (activeAdminTab === "settings" && canManageSystem) {
     return renderSystemSettings();
   }
 
-  if (activeAdminTab === "officeNetworks") {
+  if (activeAdminTab === "officeNetworks" && canManageSystem) {
     return renderOfficeNetworks();
   }
 
-  if (activeAdminTab === "audit") {
+  if (activeAdminTab === "audit" && canManageSystem) {
     return renderAuditLogs();
+  }
+
+  if (!canReadRolesOrPermissions) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600">
+        Bạn không có quyền để xem khu vực cài đặt hệ thống.
+      </div>
+    );
   }
 
   return (
@@ -1008,7 +1102,7 @@ const SystemAdmin = () => {
     {renderAdminTabs()}
     <div className="min-h-[calc(100dvh-8rem)] lg:h-[calc(100vh-150px)] flex flex-col xl:flex-row gap-4 lg:gap-6">
       {/* --- MODAL TẠO PERMISSION --- */}
-      {isCreatingPerm && (
+      {canWritePermissions && isCreatingPerm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-100 flex justify-between items-center">
@@ -1093,14 +1187,19 @@ const SystemAdmin = () => {
           </h2>
           <button
             onClick={() => setIsCreatingRole(!isCreatingRole)}
-            className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors"
-            title="Thêm vai trò mới"
+            disabled={!canWriteRoles}
+            className={`p-2 rounded-lg transition-colors ${
+              canWriteRoles
+                ? "hover:bg-blue-50 text-blue-600"
+                : "text-gray-300 cursor-not-allowed"
+            }`}
+            title={canWriteRoles ? "Thêm vai trò mới" : "Cần quyền WRITE_ROLES"}
           >
             {isCreatingRole ? <X size={18} /> : <Plus size={18} />}
           </button>
         </div>
 
-        {isCreatingRole && (
+        {canWriteRoles && isCreatingRole && (
           <div className="mb-4 flex gap-2 animate-in fade-in slide-in-from-top-2">
             <input
               type="text"
@@ -1143,15 +1242,17 @@ const SystemAdmin = () => {
                 </p>
               </div>
 
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteRole(role._id);
-                }}
-                className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-              >
-                <Trash2 size={16} />
-              </button>
+              {canWriteRoles && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteRole(role._id);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -1186,8 +1287,13 @@ const SystemAdmin = () => {
                 </div>
                 <button
                   onClick={() => setIsCreatingPerm(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
-                  title="Tạo quyền mới"
+                  disabled={!canWritePermissions}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                    canWritePermissions
+                      ? "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                      : "bg-gray-100 text-gray-300 cursor-not-allowed"
+                  }`}
+                  title={canWritePermissions ? "Tạo quyền mới" : "Cần quyền WRITE_PERMISSIONS"}
                 >
                   <Plus size={18} />
                   <span className="text-sm font-medium">Thêm quyền</span>
@@ -1237,9 +1343,13 @@ const SystemAdmin = () => {
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-12">
                                   <input
                                     type="checkbox"
-                                    className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                                    disabled={!canWriteRoles}
+                                    className={`w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 ${
+                                      canWriteRoles ? "" : "cursor-not-allowed opacity-50"
+                                    }`}
                                     checked={perms.every(p => hasPermission(p._id))}
                                     onChange={(e) => {
+                                      if (!canWriteRoles) return;
                                       const shouldAssign = e.target.checked;
                                       perms.forEach(perm => {
                                         const isAssigned = hasPermission(perm._id);
@@ -1272,7 +1382,10 @@ const SystemAdmin = () => {
                                     <td className="px-4 py-3">
                                       <input
                                         type="checkbox"
-                                        className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                                        disabled={!canWriteRoles}
+                                        className={`w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 ${
+                                          canWriteRoles ? "cursor-pointer" : "cursor-not-allowed opacity-50"
+                                        }`}
                                         checked={isAssigned}
                                         onChange={() =>
                                           togglePermission(perm._id, isAssigned)

@@ -1,11 +1,7 @@
 import { useMemo } from "react";
 import { leaveTypeMap, otTypeMap } from "../constants";
 
-/**
- * Custom hook để tính toán các giá trị computed trong Dashboard
- */
-export const useDashboardComputed = (mySheetData, leaveRequests, otRequests) => {
-  // Summary stats cho tháng hiện tại (chỉ trả về data, không có JSX)
+export const useDashboardComputed = (mySheetData, leaveRequests, otRequests, hrRequestsSummary = null) => {
   const summaryStats = useMemo(
     () => [
       {
@@ -36,8 +32,18 @@ export const useDashboardComputed = (mySheetData, leaveRequests, otRequests) => 
     [mySheetData]
   );
 
-  // Requests (3 mới nhất)
   const requests = useMemo(() => {
+    if (hrRequestsSummary?.requests) {
+      return hrRequestsSummary.requests.map((request) => ({
+        id: request.id,
+        title: `${request.type === "LEAVE" ? (leaveTypeMap[request.title] || request.title) : (otTypeMap[request.title] || request.title)} - ${request.employee?.fullName || "Unknown"}`,
+        date: request.date ? new Date(request.date).toLocaleDateString("vi-VN") : "--",
+        status: request.status,
+        type: request.type?.toLowerCase(),
+        rawData: request,
+      }));
+    }
+
     return [
       ...leaveRequests.map((leave) => ({
         id: leave._id,
@@ -51,36 +57,44 @@ export const useDashboardComputed = (mySheetData, leaveRequests, otRequests) => 
         id: ot._id,
         title: otTypeMap[ot.otType] || ot.otType,
         date: new Date(ot.createdAt).toLocaleDateString("vi-VN"),
-        status:ot.status,
+        status: ot.status,
         type: "ot",
         rawData: ot,
       })),
     ]
       .sort((a, b) => new Date(b.rawData.createdAt) - new Date(a.rawData.createdAt))
       .slice(0, 3);
-  }, [leaveRequests, otRequests]);
+  }, [leaveRequests, otRequests, hrRequestsSummary]);
 
-  // Counts (pending và approved)
-  const { pendingCount, approvedCount } = useMemo(() => {
+  const { pendingCount, approvedCount, rejectedCount, cancelledCount } = useMemo(() => {
+    if (hrRequestsSummary?.summary) {
+      return {
+        pendingCount: hrRequestsSummary.summary.pending?.total || 0,
+        approvedCount: hrRequestsSummary.summary.approved?.total || 0,
+        rejectedCount: hrRequestsSummary.summary.rejected?.total || 0,
+        cancelledCount: hrRequestsSummary.summary.cancelled?.total || 0,
+      };
+    }
+
     const allRequests = [
-      ...leaveRequests.map((leave) => ({
-        status: leave.status,
-      })),
-      ...otRequests.map((ot) => ({
-        status: ot.status,
-      })),
+      ...leaveRequests.map((leave) => ({ status: leave.status })),
+      ...otRequests.map((ot) => ({ status: ot.status })),
     ];
 
     return {
-      pendingCount: allRequests.filter((r) => r.status === "PENDING").length,
-      approvedCount: allRequests.filter((r) => r.status === "APPROVED").length,
+      pendingCount: allRequests.filter((request) => request.status === "PENDING").length,
+      approvedCount: allRequests.filter((request) => request.status === "APPROVED").length,
+      rejectedCount: allRequests.filter((request) => request.status === "REJECTED" || request.status === "Rejected").length,
+      cancelledCount: allRequests.filter((request) => request.status === "CANCELLED").length,
     };
-  }, [leaveRequests, otRequests]);
+  }, [leaveRequests, otRequests, hrRequestsSummary]);
 
   return {
     summaryStats,
     requests,
     pendingCount,
     approvedCount,
+    rejectedCount,
+    cancelledCount,
   };
 };

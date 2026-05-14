@@ -20,26 +20,20 @@ import TeamDetailModal from "../../components/modals/TeamDetailModal";
 import CreateTeamModal from "../../components/modals/CreateTeamModal";
 import DeleteConfirmModal from "../../components/modals/DeleteConfirmModal";
 import { departmentApi } from "../../apis/departmentApi";
+import { useAuth } from "../../context/AuthContext";
+import { getPermissionNames } from "../../utils/authPermissions";
 import { toast } from "react-toastify";
 
 const TeamPages = () => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [teams, setTeams] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
 
-  const role = useMemo(() => {
-    const raw = localStorage.getItem("role");
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return raw;
-    }
-  }, []);
-
   const canManage = useMemo(
-    () => role === "ADMIN" || role === "HR" || role === "MANAGER",
-    [role],
+    () => getPermissionNames(user).includes("WRITE_TEAMS"),
+    [user],
   );
 
   const [teamDetailModal, setTeamDetailModal] = useState({
@@ -121,10 +115,18 @@ const TeamPages = () => {
   };
 
   const openCreateTeamModal = () => {
+    if (!canManage) {
+      toast.error("Bạn không có quyền WRITE_TEAMS để thay đổi team");
+      return;
+    }
     setCreateTeamModal({ isOpen: true, teamData: null });
   };
 
   const openEditTeamModal = (team) => {
+    if (!canManage) {
+      toast.error("Bạn không có quyền WRITE_TEAMS để thay đổi team");
+      return;
+    }
     setCreateTeamModal({ isOpen: true, teamData: team });
   };
 
@@ -137,6 +139,10 @@ const TeamPages = () => {
   };
 
   const openDeleteModal = (team) => {
+    if (!canManage) {
+      toast.error("Bạn không có quyền WRITE_TEAMS để thay đổi team");
+      return;
+    }
     setDeleteModal({ isOpen: true, teamData: team, loading: false });
   };
 
@@ -146,6 +152,10 @@ const TeamPages = () => {
 
   const handleDeleteTeam = async () => {
     if (!deleteModal.teamData) return;
+    if (!canManage) {
+      toast.error("Bạn không có quyền WRITE_TEAMS để thay đổi team");
+      return;
+    }
 
     setDeleteModal((prev) => ({ ...prev, loading: true }));
 
@@ -353,6 +363,7 @@ const TeamPages = () => {
         onClose={closeCreateTeamModal}
         onSuccess={handleCreateSuccess}
         teamData={createTeamModal.teamData}
+        canWrite={canManage}
       />
 
       <DeleteConfirmModal

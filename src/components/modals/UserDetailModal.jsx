@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   X,
   Shield,
@@ -17,9 +17,140 @@ import StatusBadge from "../common/StatusBadge";
 import { accountApi } from "../../apis/accountApi"; // Cần thêm hàm updateRole nếu backend tách riêng, hoặc dùng update chung
 import { toast } from "react-toastify";
 
-const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh }) => {
+const permissionActionColumns = [
+  { key: "read", label: "Xem" },
+  { key: "write", label: "Ghi" },
+  { key: "approve", label: "Duyệt" },
+  { key: "manage", label: "Quản lý" },
+  { key: "other", label: "Khác" },
+];
+
+const moduleNameMap = {
+  ACCOUNT: "Tài khoản",
+  ACCOUNTS: "Tài khoản",
+  ADMIN: "Quản trị",
+  ANNOUNCEMENT: "Thông báo",
+  ANNOUNCEMENTS: "Thông báo",
+  ATTENDANCE: "Chấm công",
+  ATTENDANCES: "Chấm công",
+  AUTH: "Xác thực",
+  DEPARTMENT: "Phòng ban",
+  DEPARTMENTS: "Phòng ban",
+  EMPLOYEE: "Nhân sự",
+  EMPLOYEES: "Nhân sự",
+  HOLIDAY: "Ngày nghỉ",
+  HOLIDAYS: "Ngày nghỉ",
+  LEAVE: "Nghỉ phép",
+  LEAVES: "Nghỉ phép",
+  OT: "Tăng ca",
+  OVERTIME: "Tăng ca",
+  PAYROLL: "Lương",
+  PAYROLLS: "Lương",
+  PERMISSION: "Quyền hạn",
+  PERMISSIONS: "Quyền hạn",
+  REPORT: "Báo cáo",
+  REPORTS: "Báo cáo",
+  REQUEST: "Yêu cầu",
+  REQUESTS: "Yêu cầu",
+  ROLE: "Vai trò",
+  ROLES: "Vai trò",
+  SHIFT: "Ca làm",
+  SHIFTS: "Ca làm",
+  SYSTEM: "Hệ thống",
+  TEAM: "Đội nhóm",
+  TEAMS: "Đội nhóm",
+  USER: "Người dùng",
+  USERS: "Người dùng",
+};
+
+const getPermissionName = (permission) =>
+  typeof permission === "string" ? permission : permission?.name || "";
+
+const inferPermissionAction = (permission) => {
+  const name = getPermissionName(permission).toUpperCase();
+
+  if (/^(READ|VIEW)_/.test(name)) return "read";
+  if (/^(WRITE|CREATE|UPDATE)_/.test(name)) return "write";
+  if (/^(APPROVE|REFUND)_/.test(name) || name.includes("APPROVE")) {
+    return "approve";
+  }
+  if (/^MANAGE_/.test(name)) return "manage";
+
+  return "other";
+};
+
+const inferPermissionModule = (permission) => {
+  const explicitModule =
+    typeof permission === "object" && permission?.module
+      ? String(permission.module).toUpperCase()
+      : "";
+
+  if (explicitModule) return explicitModule;
+
+  const name = getPermissionName(permission).toUpperCase();
+  const normalized = name.replace(
+    /^(READ|VIEW|WRITE|CREATE|UPDATE|DELETE|APPROVE|MANAGE|REFUND)_/,
+    "",
+  );
+  const parts = normalized.split("_").filter(Boolean);
+
+  return parts[parts.length - 1] || "OTHER";
+};
+
+const buildPermissionRows = (permissions = []) => {
+  const grouped = new Map();
+
+  permissions.forEach((permission) => {
+    const name = getPermissionName(permission);
+    if (!name) return;
+
+    const moduleKey = inferPermissionModule(permission);
+    const actionKey = inferPermissionAction(permission);
+
+    if (!grouped.has(moduleKey)) {
+      grouped.set(moduleKey, {
+        key: moduleKey,
+        label: moduleNameMap[moduleKey] || moduleKey,
+        actions: permissionActionColumns.reduce((acc, column) => {
+          acc[column.key] = [];
+          return acc;
+        }, {}),
+      });
+    }
+
+    grouped.get(moduleKey).actions[actionKey].push(name);
+  });
+
+  return Array.from(grouped.values()).sort((a, b) =>
+    a.label.localeCompare(b.label, "vi"),
+  );
+};
+
+const PermissionCell = ({ items }) => (
+  <td className="px-4 py-3 text-center">
+    {items.length > 0 ? (
+      <CheckSquare
+        size={16}
+        className="mx-auto text-blue-600"
+        title={items.join(", ")}
+      />
+    ) : (
+      <Square size={16} className="mx-auto text-gray-300" />
+    )}
+  </td>
+);
+
+const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh, canWriteAccounts = true }) => {
   const [selectedRole, setSelectedRole] = useState(user.role?._id || "");
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
+  const selectedRoleObj = useMemo(
+    () => rolesList.find((role) => role._id === selectedRole) || user.role,
+    [rolesList, selectedRole, user.role],
+  );
+  const permissionRows = useMemo(
+    () => buildPermissionRows(selectedRoleObj?.permissions || []),
+    [selectedRoleObj],
+  );
 
   // Helper format ngày
   const formatDate = (date) =>
@@ -46,6 +177,10 @@ const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh }) => {
 
   // Handle Update Role
   const handleUpdateRole = async () => {
+    if (!canWriteAccounts) {
+      toast.error("Bạn không có quyền WRITE_ACCOUNTS để thay đổi tài khoản");
+      return;
+    }
     if (selectedRole === user.role?._id) return; // Không đổi thì không gọi
     
     // Tìm role object từ selectedRole ID
@@ -123,39 +258,41 @@ const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh }) => {
           </div>
 
           {/* Quick Actions */}
-          <div className="flex gap-4">
-            <Button
-              variant="secondary"
-              className="flex-1 justify-center border-orange-200 text-orange-600 hover:bg-orange-50"
-              onClick={() => {
-                onClose();
-                onAction("reset", user);
-              }}
-            >
-              <RefreshCcw size={16} className="mr-2" /> Đặt lại mật khẩu
-            </Button>
-            <Button
-              variant="secondary"
-              className={`flex-1 justify-center ${user.isActive
-                  ? "border-red-200 text-red-600 hover:bg-red-50"
-                  : "border-green-200 text-green-600 hover:bg-green-50"
-                }`}
-              onClick={() => {
-                onClose();
-                onAction("toggle_status", user);
-              }}
-            >
-              {user.isActive ? (
-                <>
-                  <Lock size={16} className="mr-2" /> Khóa tài khoản
-                </>
-              ) : (
-                <>
-                  <Unlock size={16} className="mr-2" /> Mở khóa
-                </>
-              )}
-            </Button>
-          </div>
+          {canWriteAccounts && (
+            <div className="flex gap-4">
+              <Button
+                variant="secondary"
+                className="flex-1 justify-center border-orange-200 text-orange-600 hover:bg-orange-50"
+                onClick={() => {
+                  onClose();
+                  onAction("reset", user);
+                }}
+              >
+                <RefreshCcw size={16} className="mr-2" /> Đặt lại mật khẩu
+              </Button>
+              <Button
+                variant="secondary"
+                className={`flex-1 justify-center ${user.isActive
+                    ? "border-red-200 text-red-600 hover:bg-red-50"
+                    : "border-green-200 text-green-600 hover:bg-green-50"
+                  }`}
+                onClick={() => {
+                  onClose();
+                  onAction("toggle_status", user);
+                }}
+              >
+                {user.isActive ? (
+                  <>
+                    <Lock size={16} className="mr-2" /> Khóa tài khoản
+                  </>
+                ) : (
+                  <>
+                    <Unlock size={16} className="mr-2" /> Mở khóa
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
 
           {/* Role & Permissions Section */}
           <div className="border rounded-lg p-5 bg-white shadow-sm">
@@ -174,6 +311,7 @@ const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh }) => {
                   className="w-full border border-gray-300 rounded-lg p-2.5 bg-gray-50 font-medium text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
                   value={selectedRole}
                   onChange={(e) => setSelectedRole(e.target.value)}
+                  disabled={!canWriteAccounts}
                 >
                   {rolesList.map((r) => (
                     <option key={r._id} value={r._id}>
@@ -184,7 +322,7 @@ const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh }) => {
               </div>
               <Button
                 onClick={handleUpdateRole}
-                disabled={selectedRole === user.role?._id || isUpdatingRole}
+                disabled={!canWriteAccounts || selectedRole === user.role?._id || isUpdatingRole}
                 className="mb-[1px]"
               >
                 {isUpdatingRole ? (
@@ -201,38 +339,48 @@ const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh }) => {
                 <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
                   <tr>
                     <th className="px-4 py-3">Module</th>
-                    <th className="px-4 py-3 text-center">Xem</th>
-                    <th className="px-4 py-3 text-center">Tạo</th>
-                    <th className="px-4 py-3 text-center">Cập nhật</th>
-                    <th className="px-4 py-3 text-center">Xóa</th>
+                    {permissionActionColumns.map((column) => (
+                      <th key={column.key} className="px-4 py-3 text-center">
+                        {column.label}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y text-gray-600">
-                  {/* Mock permission display based on selected role name (visual only) */}
-                  {["Quản trị hệ thống", "Quản lý người dùng", "Báo cáo"].map(
-                    (mod, i) => (
-                      <tr key={i}>
-                        <td className="px-4 py-3 font-medium">{mod}</td>
-                        <td className="px-4 py-3 text-center text-blue-600">
-                          <CheckSquare size={16} />
+                  {permissionRows.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={permissionActionColumns.length + 1}
+                        className="px-4 py-6 text-center text-gray-400"
+                      >
+                        Vai trò này chưa có quyền nào.
+                      </td>
+                    </tr>
+                  ) : (
+                    permissionRows.map((row) => (
+                      <tr key={row.key}>
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-gray-700">
+                            {row.label}
+                          </div>
+                          <div className="text-[11px] text-gray-400">
+                            {row.key}
+                          </div>
                         </td>
-                        <td className="px-4 py-3 text-center">
-                          <Square size={16} className="text-gray-300" />
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <Square size={16} className="text-gray-300" />
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <Square size={16} className="text-gray-300" />
-                        </td>
+                        {permissionActionColumns.map((column) => (
+                          <PermissionCell
+                            key={column.key}
+                            items={row.actions[column.key]}
+                          />
+                        ))}
                       </tr>
-                    ),
+                    ))
                   )}
                 </tbody>
               </table>
               <div className="p-2 bg-yellow-50 text-xs text-yellow-700 text-center italic">
-                * Bảng quyền hạn chỉ mang tính chất hiển thị tham khảo theo vai
-                trò.
+                * Bảng này hiển thị quyền thật của vai trò đang chọn. Muốn sửa
+                quyền, vào Cài đặt hệ thống &gt; Vai trò &amp; quyền.
               </div>
             </div>
           </div>

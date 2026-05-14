@@ -2,7 +2,19 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Loader2 } from "lucide-react";
 
-const RequireAuth = ({ children, roles: allowedRoles }) => {
+const getRoleName = (user) => user?.accountId?.role?.name || user?.role?.name || user?.role || "USER";
+
+const getPermissionNames = (user) => {
+  const permissions =
+    user?.accountId?.role?.permissions ||
+    user?.role?.permissions ||
+    user?.permissions ||
+    [];
+
+  return permissions.map((permission) => permission?.name || permission);
+};
+
+const RequireAuth = ({ children, roles: allowedRoles, permissions: allowedPermissions }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
@@ -22,9 +34,15 @@ const RequireAuth = ({ children, roles: allowedRoles }) => {
     return <Navigate to="/profile" replace />;
   }
 
-  const userRoleName = user.accountId?.role?.name || "USER";
+  const userRoleName = getRoleName(user);
+  const userPermissionNames = getPermissionNames(user);
 
-  if (allowedRoles && !allowedRoles.includes(userRoleName)) {
+  const hasAllowedRole = !allowedRoles || allowedRoles.includes(userRoleName);
+  const hasAllowedPermission =
+    !allowedPermissions ||
+    allowedPermissions.some((permission) => userPermissionNames.includes(permission));
+
+  if (!hasAllowedRole && !hasAllowedPermission) {
     return <Navigate to="/unauthorized" replace />;
   }
 

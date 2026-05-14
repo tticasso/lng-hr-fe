@@ -4,7 +4,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import DOMPurify from "dompurify";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { TimePicker } from "antd";
 import dayjs from "../../untils/dayjs";
@@ -46,6 +46,8 @@ import {
   getAnnouncementTag,
   parseScheduledAt,
 } from "../../shared/announcementSchedule";
+import { useAuth } from "../../context/AuthContext";
+import { getPermissionNames } from "../../utils/authPermissions";
 
 const buildPageList = (current, total) => {
   if (total <= 1) return [1];
@@ -111,6 +113,11 @@ const formatDateTime = (dateString) => {
 };
 
 const Announcements = () => {
+  const { user } = useAuth();
+  const canWriteAnnouncements = useMemo(
+    () => getPermissionNames(user).includes("WRITE_ANNOUNCEMENTS"),
+    [user],
+  );
   const [title, setTitle] = useState("");
   const [contentHtml, setContentHtml] = useState(""); // để preview / submit
   const imageInputRef = useRef(null);
@@ -182,6 +189,10 @@ const Announcements = () => {
 
   // Handler mở form edit và load dữ liệu
   const handleEdit = async (announcementId) => {
+    if (!canWriteAnnouncements) {
+      toast.error("Bạn không có quyền WRITE_ANNOUNCEMENTS để thay đổi thông báo");
+      return;
+    }
     try {
       // Lấy chi tiết thông báo từ API
       const res = await announcementAPI.getById(announcementId);
@@ -234,6 +245,10 @@ const Announcements = () => {
 
   // Handler xóa thông báo
   const handleDelete = async (announcementId, announcementTitle) => {
+    if (!canWriteAnnouncements) {
+      toast.error("Bạn không có quyền WRITE_ANNOUNCEMENTS để thay đổi thông báo");
+      return;
+    }
     const confirmDelete = window.confirm(
       `Bạn có chắc chắn muốn xóa thông báo "${announcementTitle}"?\n\nHành động này không thể hoàn tác.`
     );
@@ -316,6 +331,10 @@ const Announcements = () => {
 
   // Handler publish
   const handlePublish = async () => {
+    if (!canWriteAnnouncements) {
+      toast.error("Bạn không có quyền WRITE_ANNOUNCEMENTS để thay đổi thông báo");
+      return;
+    }
     const errors = {};
 
     // Validation
@@ -519,6 +538,7 @@ const Announcements = () => {
             Quản lý thông báo nội bộ gửi đến toàn công ty.
           </p>
         </div>
+        {canWriteAnnouncements && (
         <Button
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200"
           onClick={() => {
@@ -528,6 +548,7 @@ const Announcements = () => {
         >
           <Plus size={18} /> Tạo thông báo
         </Button>
+        )}
       </div>
 
       {/* Toolbar & Filter */}
@@ -679,6 +700,7 @@ const Announcements = () => {
                         >
                           <Eye size={16} />
                         </button>
+                        {canWriteAnnouncements && (
                         <button
                           className="p-1.5 text-blue-600 hover:bg-blue-100 rounded"
                           title="Chỉnh sửa"
@@ -686,6 +708,7 @@ const Announcements = () => {
                         >
                           <Edit size={16} />
                         </button>
+                        )}
                         {/* <button
                           className="p-1.5 text-gray-500 hover:bg-gray-100 rounded"
                           title="Nhân bản"
@@ -698,6 +721,7 @@ const Announcements = () => {
                         >
                           <BarChart2 size={16} />
                         </button> */}
+                        {canWriteAnnouncements && (
                         <button
                           className="p-1.5 text-red-500 hover:bg-red-100 rounded"
                           title="Lưu trữ"
@@ -705,6 +729,7 @@ const Announcements = () => {
                         >
                           <Trash2 size={16} />
                         </button>
+                        )}
                       </div>
                     </td>
                   </tr>

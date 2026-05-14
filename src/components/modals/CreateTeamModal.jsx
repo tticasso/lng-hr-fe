@@ -5,7 +5,7 @@ import { departmentApi } from "../../apis/departmentApi";
 import { employeeApi } from "../../apis/employeeApi";
 import { toast } from "react-toastify";
 
-const CreateTeamModal = ({ isOpen, onClose, onSuccess, teamData = null }) => {
+const CreateTeamModal = ({ isOpen, onClose, onSuccess, teamData = null, canWrite = true }) => {
     const isEditMode = !!teamData;
     const [loading, setLoading] = useState(false);
     const [departments, setDepartments] = useState([]);
@@ -112,6 +112,10 @@ const CreateTeamModal = ({ isOpen, onClose, onSuccess, teamData = null }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!canWrite) {
+            toast.error("Bạn không có quyền WRITE_TEAMS để thay đổi team");
+            return;
+        }
 
         if (!validate()) {
             return;

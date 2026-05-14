@@ -30,6 +30,7 @@ import UserDetailModal from "../../components/modals/UserDetailModal";
 import ActionModal from "../../components/modals/ActionModal";
 import { useAuth } from "../../context/AuthContext";
 import { getListData, getPagination, hasPaginationMetadata } from "../../shared/apiResponse";
+import { getPermissionNames } from "../../utils/authPermissions";
 
 const USER_PAGE_SIZE = 50;
 const MAX_USER_PREFETCH = 500;
@@ -38,6 +39,9 @@ const UserManagement = () => {
   // State
   const { user } = useAuth();
   const userInfo = user;
+  const permissionNames = getPermissionNames(user);
+  const canWriteAccounts = permissionNames.includes("WRITE_ACCOUNTS");
+  const canImportProfiles = permissionNames.includes("WRITE_EMPLOYEES");
   const [users, setUsers] = useState([]);
   const [rolesList, setRolesList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -231,6 +235,11 @@ const UserManagement = () => {
 
   const handleConfirmAction = async () => {
     if (!actionData.user) return;
+    if (!canWriteAccounts) {
+      toast.error("Bạn không có quyền WRITE_ACCOUNTS để thay đổi tài khoản");
+      setActionData({ type: null, user: null });
+      return;
+    }
     setIsProcessing(true);
     const userId = actionData.user._id;
 
@@ -282,6 +291,13 @@ const UserManagement = () => {
   const handleImportExcel = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!canImportProfiles) {
+      toast.error("Bạn không có quyền WRITE_EMPLOYEES để import hồ sơ");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
     setIsImporting(true);
 
     try {
@@ -365,7 +381,8 @@ const UserManagement = () => {
             onClick={() => {
               fileInputRef.current?.click();
             }}
-            disabled={isImporting}
+            disabled={isImporting || !canImportProfiles}
+            title={canImportProfiles ? "Import Excel" : "Cần quyền WRITE_EMPLOYEES"}
           >
             {isImporting ? (
               <>
@@ -386,7 +403,15 @@ const UserManagement = () => {
           />
           <Button
             className="bg-blue-600 text-white flex gap-2 items-center w-full sm:w-auto"
-            onClick={() => setIsCreateOpen(true)}
+            onClick={() => {
+              if (!canWriteAccounts) {
+                toast.error("Bạn không có quyền WRITE_ACCOUNTS để tạo tài khoản");
+                return;
+              }
+              setIsCreateOpen(true);
+            }}
+            disabled={!canWriteAccounts}
+            title={canWriteAccounts ? "Tạo tài khoản" : "Cần quyền WRITE_ACCOUNTS"}
           >
             <Plus size={18} /> Tạo tài khoản
           </Button>
@@ -515,6 +540,8 @@ const UserManagement = () => {
                       >
                         <Eye size={16} />
                       </button>
+                      {canWriteAccounts && (
+                        <>
                       <button
                         onClick={() => setActionData({ type: "reset", user })}
                         className="p-1.5 text-orange-500 hover:bg-orange-50 rounded"
@@ -553,6 +580,8 @@ const UserManagement = () => {
                         >
                           <Trash2 size={16} disabled />
                         </button>
+                      )}
+                        </>
                       )}
                     </div>
                   </td>
@@ -622,7 +651,7 @@ const UserManagement = () => {
       {/* --- MODALS --- */}
 
       {/* 1. Create Account */}
-      {isCreateOpen && (
+      {canWriteAccounts && isCreateOpen && (
         <CreateAccountModal
           onClose={() => setIsCreateOpen(false)}
           onSuccess={() => {
@@ -641,6 +670,7 @@ const UserManagement = () => {
           onClose={() => setSelectedUser(null)}
           onRefresh={fetchUsers}
           onAction={(type, user) => setActionData({ type, user })}
+          canWriteAccounts={canWriteAccounts}
         />
       )}
 

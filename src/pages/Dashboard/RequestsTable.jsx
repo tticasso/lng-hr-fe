@@ -3,7 +3,17 @@ import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import { Clock, CheckCircle2, FileText, XCircle, AlertCircle } from "lucide-react";
 
-const RequestsTable = memo(({ requests, pendingCount, approvedCount, onNavigate }) => {
+const RequestsTable = memo(({
+  requests,
+  pendingCount,
+  approvedCount,
+  rejectedCount = 0,
+  cancelledCount = 0,
+  onNavigate,
+  title = "Yêu cầu của tôi",
+  emptyText = "Chưa có yêu cầu nào",
+  buttonLabel = "Xem lịch sử yêu cầu",
+}) => {
   const renderStatusBadge = (status) => {
     const statusConfig = {
       PENDING: {
@@ -21,6 +31,13 @@ const RequestsTable = memo(({ requests, pendingCount, approvedCount, onNavigate 
         label: "Đã duyệt",
       },
       Rejected: {
+        bg: "bg-red-50",
+        text: "text-red-700",
+        border: "border-red-200",
+        icon: <XCircle size={14} className="text-red-600" />,
+        label: "Từ chối",
+      },
+      REJECTED: {
         bg: "bg-red-50",
         text: "text-red-700",
         border: "border-red-200",
@@ -57,7 +74,7 @@ const RequestsTable = memo(({ requests, pendingCount, approvedCount, onNavigate 
   return (
     <Card>
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-base font-bold text-gray-800 sm:text-lg">Yêu cầu của tôi</h3>
+        <h3 className="text-base font-bold text-gray-800 sm:text-lg">{title}</h3>
         <div className="flex flex-wrap gap-2">
           {pendingCount > 0 && (
             <div className="flex items-center gap-1 rounded border border-orange-100 bg-orange-50 px-2 py-1 text-xs font-medium text-orange-600">
@@ -69,6 +86,16 @@ const RequestsTable = memo(({ requests, pendingCount, approvedCount, onNavigate 
               <CheckCircle2 size={12} /> {approvedCount} Đã duyệt
             </div>
           )}
+          {rejectedCount > 0 && (
+            <div className="flex items-center gap-1 rounded border border-red-100 bg-red-50 px-2 py-1 text-xs font-medium text-red-600">
+              <XCircle size={12} /> {rejectedCount} Từ chối
+            </div>
+          )}
+          {cancelledCount > 0 && (
+            <div className="flex items-center gap-1 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600">
+              <XCircle size={12} /> {cancelledCount} Đã hủy
+            </div>
+          )}
         </div>
       </div>
 
@@ -76,7 +103,7 @@ const RequestsTable = memo(({ requests, pendingCount, approvedCount, onNavigate 
         {requests.length > 0 ? (
           <div className="space-y-3">
             {requests.map((req) => (
-              <div key={req.id} className="rounded-xl border border-gray-200 p-4">
+              <div key={req.id} className="rounded-md border border-gray-200 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-medium text-gray-800">{req.title}</p>
@@ -90,7 +117,7 @@ const RequestsTable = memo(({ requests, pendingCount, approvedCount, onNavigate 
         ) : (
           <div className="py-8 text-center text-gray-400">
             <FileText size={32} className="mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Chưa có yêu cầu nào</p>
+            <p className="text-sm">{emptyText}</p>
           </div>
         )}
       </div>
@@ -100,7 +127,7 @@ const RequestsTable = memo(({ requests, pendingCount, approvedCount, onNavigate 
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50 text-xs uppercase text-gray-500">
               <tr>
-                <th className="rounded-l-md px-4 py-3">Loại yêu cầu</th>
+                <th className="rounded-l-md px-4 py-3">Loại request</th>
                 <th className="px-4 py-3">Ngày gửi</th>
                 <th className="rounded-r-md px-4 py-3 text-right">Trạng thái</th>
               </tr>
@@ -118,14 +145,14 @@ const RequestsTable = memo(({ requests, pendingCount, approvedCount, onNavigate 
         ) : (
           <div className="py-8 text-center text-gray-400">
             <FileText size={32} className="mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Chưa có yêu cầu nào</p>
+            <p className="text-sm">{emptyText}</p>
           </div>
         )}
       </div>
 
       <div className="mt-4 text-center">
         <Button variant="ghost" className="w-full py-1 text-sm" onClick={onNavigate}>
-          Xem lịch sử yêu cầu
+          {buttonLabel}
         </Button>
       </div>
     </Card>

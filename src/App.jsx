@@ -137,7 +137,10 @@ function App() {
                   <Route
                     path="admin"
                     element={
-                      <RequireAuth roles={["ADMIN"]}>
+                      <RequireAuth
+                        roles={["ADMIN"]}
+                        permissions={["READ_ACCOUNTS", "MANAGE_SYSTEM", "READ_ROLES", "READ_PERMISSIONS"]}
+                      >
                         <Outlet />
                       </RequireAuth>
                     }

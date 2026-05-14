@@ -41,6 +41,23 @@ const parseStoredRole = () => {
   }
 };
 
+const getRoleName = (user) => (
+  user?.accountId?.role?.name ||
+  user?.role?.name ||
+  user?.role ||
+  parseStoredRole()
+);
+
+const getPermissionNames = (user) => {
+  const permissions =
+    user?.accountId?.role?.permissions ||
+    user?.role?.permissions ||
+    user?.permissions ||
+    [];
+
+  return permissions.map((permission) => permission?.name || permission);
+};
+
 const groupTitleClass =
   "mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400";
 
@@ -50,10 +67,12 @@ const itemBaseClass =
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { isCollapsed, isMobileSidebarOpen, toggleSidebar, closeMobileSidebar } = useSidebar();
 
-  const role = parseStoredRole();
+  const role = getRoleName(user);
+  const permissionNames = useMemo(() => getPermissionNames(user), [user]);
+  const hasPermission = (permissions = []) => permissions.some((permission) => permissionNames.includes(permission));
   const shouldCollapse = isCollapsed && !isMobileSidebarOpen;
 
   const isAdmin = role === "ADMIN";
@@ -61,6 +80,8 @@ const Sidebar = () => {
   const isManager = role === "MANAGER";
   const isLeader = role === "LEADER";
   const isEmployee = role === "EMPLOYEE";
+  const canReadAccounts = isAdmin || hasPermission(["READ_ACCOUNTS"]);
+  const canManageSystem = isAdmin || hasPermission(["MANAGE_SYSTEM", "READ_ROLES", "READ_PERMISSIONS"]);
 
   const [expandedDropdowns, setExpandedDropdowns] = useState({});
 
@@ -199,7 +220,7 @@ const Sidebar = () => {
             },
           ]
         : []),
-      ...(isAdmin
+      ...(canReadAccounts || canManageSystem
         ? [
             {
               title: "Hệ thống",
@@ -208,18 +229,20 @@ const Sidebar = () => {
                   path: "/admin/user-management",
                   label: "Quản lý tài khoản",
                   icon: UserCog,
+                  permissions: ["READ_ACCOUNTS"],
                 },
                 {
                   path: "/admin/system-admin",
                   label: "Cài đặt hệ thống",
                   icon: Settings,
+                  permissions: ["MANAGE_SYSTEM", "READ_ROLES", "READ_PERMISSIONS"],
                 },
               ],
             },
           ]
         : []),
     ],
-    [isAdmin, isEmployee, isHR, isLeader, isManager]
+    [canManageSystem, canReadAccounts, isAdmin, isEmployee, isHR, isLeader, isManager]
   );
 
   useEffect(() => {
@@ -264,7 +287,9 @@ const Sidebar = () => {
   };
 
   const renderNavItem = (item, isChild = false) => {
-    if (item.roles && !item.roles.includes(role)) return null;
+    const hasRoleAccess = !item.roles || item.roles.includes(role);
+    const hasPermissionAccess = !item.permissions || isAdmin || hasPermission(item.permissions);
+    if (!hasRoleAccess || !hasPermissionAccess) return null;
 
     const Icon = item.icon;
 
@@ -305,7 +330,11 @@ const Sidebar = () => {
 
   const renderDropdown = (item) => {
     const visibleChildren = item.children.filter(
-      (child) => !child.roles || child.roles.includes(role)
+      (child) => {
+        const hasRoleAccess = !child.roles || child.roles.includes(role);
+        const hasPermissionAccess = !child.permissions || isAdmin || hasPermission(child.permissions);
+        return hasRoleAccess && hasPermissionAccess;
+      }
     );
     if (!visibleChildren.length) return null;
 

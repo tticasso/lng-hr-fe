@@ -9,13 +9,39 @@ import { getAnnouncementDashboardMeta } from "../../../shared/announcementSchedu
 const DASHBOARD_REQUEST_LIMIT = 5;
 const DASHBOARD_ANNOUNCEMENT_LIMIT = 3;
 const DASHBOARD_EVENT_LIMIT = 4;
+const DASHBOARD_LATE_ATTENDANCE_LIMIT = 5;
+const DASHBOARD_DAILY_ALERT_LIMIT = 5;
 
-export const useDashboardData = () => {
+const formatLocalDate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const getRoleName = (user) => user?.accountId?.role?.name || user?.role?.name || user?.role || "";
+
+export const isHRDashboardUser = (user) => ["ADMIN", "HR"].includes(getRoleName(user));
+
+const canReadAttendance = (user) => {
+  const roleName = getRoleName(user);
+  if (["ADMIN", "HR", "MANAGER", "LEADER", "DIRECTOR"].includes(roleName)) return true;
+
+  const permissions = user?.accountId?.role?.permissions || user?.role?.permissions || [];
+  return permissions.some((permission) => permission?.name === "READ_ATTENDANCE" || permission === "READ_ATTENDANCE");
+};
+
+export const useDashboardData = (user, selectedDate = formatLocalDate(new Date())) => {
   const [mySheetData, setMySheetData] = useState(null);
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [otRequests, setOTRequests] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [hrOverview, setHROverview] = useState(null);
+  const [hrRequestsSummary, setHRRequestsSummary] = useState(null);
+  const [lateAttendanceDashboard, setLateAttendanceDashboard] = useState(null);
+  const [absentAttendanceDashboard, setAbsentAttendanceDashboard] = useState(null);
+  const [missingCheckOutDashboard, setMissingCheckOutDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -38,12 +64,58 @@ export const useDashboardData = () => {
         setMySheetData(resMySheet.data.data);
         setLoading(false);
 
-        const [leaveResult, otResult, announcementResult, eventResult] = await Promise.allSettled([
-          leaveAPI.getbyUSER(1, DASHBOARD_REQUEST_LIMIT),
-          OTApi.getMy({ page: 1, limit: DASHBOARD_REQUEST_LIMIT }),
-          announcementAPI.get({ page: 1, limit: DASHBOARD_ANNOUNCEMENT_LIMIT }),
-          dashboardAPI.getUpcomingEvents({ limit: DASHBOARD_EVENT_LIMIT, days: 90 }),
-        ]);
+        const secondaryRequests = [
+          isHRDashboardUser(user)
+            ? Promise.resolve({ data: { data: [] } })
+            : leaveAPI.getbyUSER(1, DASHBOARD_REQUEST_LIMIT),
+          isHRDashboardUser(user)
+            ? Promise.resolve({ data: { data: [] } })
+            : OTApi.getMy({ page: 1, limit: DASHBOARD_REQUEST_LIMIT }),
+          isHRDashboardUser(user)
+            ? Promise.resolve({ data: { data: [] } })
+            : announcementAPI.get({ page: 1, limit: DASHBOARD_ANNOUNCEMENT_LIMIT }),
+          isHRDashboardUser(user)
+            ? Promise.resolve({ data: { data: [] } })
+            : dashboardAPI.getUpcomingEvents({ limit: DASHBOARD_EVENT_LIMIT, days: 90 }),
+          isHRDashboardUser(user)
+            ? dashboardAPI.getHRRequestsSummary({ page: 1, limit: DASHBOARD_REQUEST_LIMIT })
+            : Promise.resolve({ data: { data: null } }),
+        ];
+
+        if (canReadAttendance(user)) {
+          const dailyAttendanceParams = {
+            date: selectedDate,
+            page: 1,
+            limit: DASHBOARD_DAILY_ALERT_LIMIT,
+          };
+
+          secondaryRequests.push(
+            isHRDashboardUser(user)
+              ? dashboardAPI.getHROverview({ date: dailyAttendanceParams.date })
+              : Promise.resolve({ data: { data: null } })
+          );
+
+          secondaryRequests.push(
+            dashboardAPI.getLateAttendances({
+              ...dailyAttendanceParams,
+              limit: DASHBOARD_LATE_ATTENDANCE_LIMIT,
+            }),
+            dashboardAPI.getAbsentAttendances(dailyAttendanceParams),
+            dashboardAPI.getMissingCheckOuts(dailyAttendanceParams)
+          );
+        }
+
+        const [
+          leaveResult,
+          otResult,
+          announcementResult,
+          eventResult,
+          hrRequestsResult,
+          hrOverviewResult,
+          lateAttendanceResult,
+          absentAttendanceResult,
+          missingCheckOutResult,
+        ] = await Promise.allSettled(secondaryRequests);
 
         if (!isMounted) return;
 
@@ -79,6 +151,36 @@ export const useDashboardData = () => {
         } else {
           setUpcomingEvents([]);
         }
+
+        if (hrRequestsResult?.status === "fulfilled") {
+          setHRRequestsSummary(hrRequestsResult.value.data?.data || null);
+        } else {
+          setHRRequestsSummary(null);
+        }
+
+        if (hrOverviewResult?.status === "fulfilled") {
+          setHROverview(hrOverviewResult.value.data?.data || null);
+        } else {
+          setHROverview(null);
+        }
+
+        if (lateAttendanceResult?.status === "fulfilled") {
+          setLateAttendanceDashboard(lateAttendanceResult.value.data?.data || null);
+        } else {
+          setLateAttendanceDashboard(null);
+        }
+
+        if (absentAttendanceResult?.status === "fulfilled") {
+          setAbsentAttendanceDashboard(absentAttendanceResult.value.data?.data || null);
+        } else {
+          setAbsentAttendanceDashboard(null);
+        }
+
+        if (missingCheckOutResult?.status === "fulfilled") {
+          setMissingCheckOutDashboard(missingCheckOutResult.value.data?.data || null);
+        } else {
+          setMissingCheckOutDashboard(null);
+        }
       } catch (err) {
         console.error("Dashboard API ERROR:", err);
         if (isMounted) {
@@ -88,6 +190,11 @@ export const useDashboardData = () => {
           setOTRequests([]);
           setAnnouncements([]);
           setUpcomingEvents([]);
+          setHROverview(null);
+          setHRRequestsSummary(null);
+          setLateAttendanceDashboard(null);
+          setAbsentAttendanceDashboard(null);
+          setMissingCheckOutDashboard(null);
         }
       } finally {
         if (isMounted) {
@@ -101,7 +208,7 @@ export const useDashboardData = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [selectedDate, user]);
 
   return {
     mySheetData,
@@ -109,6 +216,11 @@ export const useDashboardData = () => {
     otRequests,
     announcements,
     upcomingEvents,
+    hrOverview,
+    hrRequestsSummary,
+    lateAttendanceDashboard,
+    absentAttendanceDashboard,
+    missingCheckOutDashboard,
     loading,
     error,
   };

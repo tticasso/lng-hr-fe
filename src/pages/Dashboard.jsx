@@ -2,6 +2,7 @@ import { useCallback, useEffect, lazy, Suspense, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertTriangle, X } from "lucide-react";
 import { toast } from "react-toastify";
+import { dashboardAPI } from "../apis/dashboardAPI";
 import { attendancesAPI, isNetworkRestrictedError } from "../apis/attendancesAPI";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
@@ -19,14 +20,48 @@ import AnnouncementList from "./Dashboard/AnnouncementList";
 import RequestsTable from "./Dashboard/RequestsTable";
 import QuickActions from "./Dashboard/QuickActions";
 import UpcomingEvents from "./Dashboard/UpcomingEvents";
+import DailyLateAttendances from "./Dashboard/DailyLateAttendances";
+import DailyAbsentAttendances from "./Dashboard/DailyAbsentAttendances";
+import DailyMissingCheckOuts from "./Dashboard/DailyMissingCheckOuts";
+import HROperationsOverview from "./Dashboard/HROperationsOverview";
+import DailyAttendanceDrilldownModal from "./Dashboard/DailyAttendanceDrilldownModal";
 
 // Import custom hooks
 import {
   useDashboardData,
+  isHRDashboardUser,
   useDashboardModals,
   useDashboardComputed,
   useSocketHandler,
 } from "./Dashboard/hooks";
+
+const formatDashboardDate = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const dailyAlertConfigs = {
+  late: {
+    title: "Danh sách đi muộn",
+    fetcher: dashboardAPI.getLateAttendances,
+    recordsKey: "lateAttendances",
+    totalKey: "totalLateEmployees",
+  },
+  absent: {
+    title: "Danh sách vắng mặt",
+    fetcher: dashboardAPI.getAbsentAttendances,
+    recordsKey: "absentAttendances",
+    totalKey: "totalAbsentEmployees",
+  },
+  missingCheckOut: {
+    title: "Danh sách chưa check-out",
+    fetcher: dashboardAPI.getMissingCheckOuts,
+    recordsKey: "missingCheckOuts",
+    totalKey: "totalMissingCheckOuts",
+  },
+};
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -37,9 +72,33 @@ const Dashboard = () => {
   );
   const [checkingAttendance, setCheckingAttendance] = useState(false);
   const [showNetworkRestrictedAlert, setShowNetworkRestrictedAlert] = useState(false);
+  const [dashboardDate, setDashboardDate] = useState(formatDashboardDate());
+  const [dailyAlertModal, setDailyAlertModal] = useState({
+    isOpen: false,
+    type: "",
+    title: "",
+    subtitle: "",
+    records: [],
+    pagination: null,
+    loading: false,
+  });
 
   // Custom hooks
-  const { mySheetData, leaveRequests, otRequests, announcements, upcomingEvents, loading } = useDashboardData();
+  const {
+    mySheetData,
+    leaveRequests,
+    otRequests,
+    announcements,
+    upcomingEvents,
+    hrOverview,
+    hrRequestsSummary,
+    lateAttendanceDashboard,
+    absentAttendanceDashboard,
+    missingCheckOutDashboard,
+    loading,
+  } = useDashboardData(user, dashboardDate);
+  const isHRDashboard = isHRDashboardUser(user);
+  const todayDate = formatDashboardDate();
   
   const {
     isLeaveModalOpen,
@@ -59,10 +118,11 @@ const Dashboard = () => {
     closeAnnouncementModal,
   } = useDashboardModals();
 
-  const { summaryStats, requests, pendingCount, approvedCount } = useDashboardComputed(
+  const { summaryStats, requests, pendingCount, approvedCount, rejectedCount, cancelledCount } = useDashboardComputed(
     mySheetData,
     leaveRequests,
-    otRequests
+    otRequests,
+    hrRequestsSummary
   );
 
   useSocketHandler();
@@ -117,6 +177,64 @@ const Dashboard = () => {
     }
   }, [checkingAttendance, handleAttendanceError]);
 
+  const closeDailyAlertModal = useCallback(() => {
+    setDailyAlertModal((current) => ({
+      ...current,
+      isOpen: false,
+      loading: false,
+    }));
+  }, []);
+
+  const openDailyAlertModal = useCallback(async (type, page = 1) => {
+    const config = dailyAlertConfigs[type];
+    if (!config) return;
+    const dateLabel = new Date(`${dashboardDate}T00:00:00`).toLocaleDateString("vi-VN");
+
+    setDailyAlertModal((current) => ({
+      ...current,
+      isOpen: true,
+      type,
+      title: config.title,
+      subtitle: `Đang tải danh sách ngày ${dateLabel}...`,
+      records: page === 1 ? [] : current.records,
+      loading: true,
+    }));
+
+    try {
+      const response = await config.fetcher({
+        date: dashboardDate,
+        page,
+        limit: 100,
+      });
+      const payload = response.data?.data || {};
+      const records = payload[config.recordsKey] || [];
+      const pagination = response.data?.pagination || null;
+      const total = payload.summary?.[config.totalKey] || records.length;
+
+      setDailyAlertModal({
+        isOpen: true,
+        type,
+        title: config.title,
+        subtitle: `Ngày ${dateLabel} · Hiển thị ${records.length}/${total} nhân sự`,
+        records,
+        pagination,
+        loading: false,
+      });
+    } catch (error) {
+      setDailyAlertModal((current) => ({
+        ...current,
+        loading: false,
+        subtitle: "Không tải được danh sách.",
+      }));
+      toast.error(error.normalizedMessage || "Không tải được danh sách chấm công.");
+    }
+  }, [dashboardDate]);
+
+  const handleDailyAlertPageChange = useCallback((page) => {
+    if (!dailyAlertModal.type) return;
+    openDailyAlertModal(dailyAlertModal.type, page);
+  }, [dailyAlertModal.type, openDailyAlertModal]);
+
   // Redirect to profile if not updated
   useEffect(() => {
     if (user.isProfileUpdated === false) navigate("/profile");
@@ -168,6 +286,16 @@ const Dashboard = () => {
         isOpen={isHRSupportModalOpen}
         onClose={closeHRSupportModal}
       />
+      <DailyAttendanceDrilldownModal
+        isOpen={dailyAlertModal.isOpen}
+        title={dailyAlertModal.title}
+        subtitle={dailyAlertModal.subtitle}
+        records={dailyAlertModal.records}
+        pagination={dailyAlertModal.pagination}
+        loading={dailyAlertModal.loading}
+        onClose={closeDailyAlertModal}
+        onPageChange={handleDailyAlertPageChange}
+      />
       {showNetworkRestrictedAlert && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-lg bg-white shadow-xl">
@@ -211,7 +339,7 @@ const Dashboard = () => {
         </div>
       )}
       {/* --- HÀNG TRÊN: WELCOME & STATS --- */}
-      <div className="px-1 md:hidden">
+      <div className={`${isHRDashboard ? "hidden" : "px-1 md:hidden"}`}>
         <h1 className="text-2xl font-bold text-gray-900">
           Xin chao, {user?.fullName || "Unknown"}!
         </h1>
@@ -220,7 +348,19 @@ const Dashboard = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-12 lg:gap-6">
+      {isHRDashboard && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
+          <HROperationsOverview
+            data={hrOverview}
+            selectedDate={dashboardDate}
+            maxDate={todayDate}
+            onDateChange={setDashboardDate}
+            onResetDate={() => setDashboardDate(todayDate)}
+          />
+        </div>
+      )}
+
+      <div className={`${isHRDashboard ? "hidden" : "grid"} grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-12 lg:gap-6`}>
         {/* 1. Welcome Card (Chiếm 6/12 cột) */}
         <div className="hidden md:contents">
           <WelcomeCard user={user} onNavigate={() => navigate("/profile")} />
@@ -237,35 +377,70 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
         {/* CỘT TRÁI (8/12) - Announcements & Requests */}
-        <div className="hidden space-y-4 md:block lg:col-span-8 lg:space-y-6">
+        <div className={`${isHRDashboard ? "lg:col-span-12" : "hidden space-y-4 md:block lg:col-span-8 lg:space-y-6"}`}>
           {/* Block Announcements */}
-          <AnnouncementList
-            announcements={announcements}
-            onAnnouncementClick={openAnnouncementModal}
-            onViewAll={openNotificationPanel}
-          />
+          {!isHRDashboard && (
+            <AnnouncementList
+              announcements={announcements}
+              onAnnouncementClick={openAnnouncementModal}
+              onViewAll={openNotificationPanel}
+            />
+          )}
 
-          {/* Block My Requests */}
-          <RequestsTable
-            requests={requests}
-            pendingCount={pendingCount}
-            approvedCount={approvedCount}
-            onNavigate={() => navigate("/leave")}
-          />
+          {isHRDashboard && (
+            <RequestsTable
+              requests={requests}
+              pendingCount={pendingCount}
+              approvedCount={approvedCount}
+              rejectedCount={rejectedCount}
+              cancelledCount={cancelledCount}
+              title="Trạng thái request"
+              emptyText="Chưa có request nào"
+              buttonLabel="Xem tất cả request"
+              onNavigate={() => navigate("/requests")}
+            />
+          )}
+
+          {!isHRDashboard && (
+            <RequestsTable
+              requests={requests}
+              pendingCount={pendingCount}
+              approvedCount={approvedCount}
+              rejectedCount={rejectedCount}
+              cancelledCount={cancelledCount}
+              onNavigate={() => navigate("/leave")}
+            />
+          )}
+
         </div>
 
         {/* CỘT PHẢI (4/12) - Quick Actions */}
-        <div className="space-y-4 lg:col-span-4 lg:space-y-6">
-          <QuickActions
-            onLeaveClick={openLeaveModal}
-            onOTClick={openOTModal}
-            onPayrollClick={() => navigate("/payroll")}
-            onSupportClick={openHRSupportModal}
-            onCheckInClick={handleCheckIn}
-            onCheckOutClick={handleCheckOut}
-            isOffline={!isOnline}
-            checkingAttendance={checkingAttendance}
+        <div className={isHRDashboard ? "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 lg:col-span-12 lg:gap-6" : "space-y-4 lg:col-span-4 lg:space-y-6"}>
+          <DailyLateAttendances
+            data={lateAttendanceDashboard}
+            onViewAll={() => openDailyAlertModal("late")}
           />
+          <DailyAbsentAttendances
+            data={absentAttendanceDashboard}
+            onViewAll={() => openDailyAlertModal("absent")}
+          />
+          <DailyMissingCheckOuts
+            data={missingCheckOutDashboard}
+            onViewAll={() => openDailyAlertModal("missingCheckOut")}
+          />
+
+          {!isHRDashboard && (
+            <QuickActions
+              onLeaveClick={openLeaveModal}
+              onOTClick={openOTModal}
+              onPayrollClick={() => navigate("/payroll")}
+              onSupportClick={openHRSupportModal}
+              onCheckInClick={handleCheckIn}
+              onCheckOutClick={handleCheckOut}
+              isOffline={!isOnline}
+              checkingAttendance={checkingAttendance}
+            />
+          )}
         </div>
       </div>
     </div>
