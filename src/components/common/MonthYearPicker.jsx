@@ -62,43 +62,43 @@ const MonthYearPicker = ({ value, onChange, className = "" }) => {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full min-w-[260px] items-center justify-between rounded-lg border border-gray-300 bg-white p-3 outline-none transition-all hover:border-blue-400 focus:ring-2 focus:ring-blue-500 group"
+        className="group flex h-12 w-full min-w-0 items-center justify-between rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none transition-all hover:border-blue-400 focus:ring-2 focus:ring-blue-500"
       >
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <Calendar
             size={20}
             className="text-gray-400 transition-colors group-hover:text-blue-500"
           />
-          <span className="whitespace-nowrap font-semibold text-gray-700">
+          <span className="truncate whitespace-nowrap font-semibold text-gray-700">
             {displayValue}
           </span>
         </div>
         <ChevronDown
           size={20}
-          className={`text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          className={`shrink-0 text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
         />
       </button>
 
       {isOpen && (
-        <div className="animate-in fade-in slide-in-from-top-2 absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl duration-200">
-          <div className="grid grid-cols-2 divide-x divide-gray-200">
+        <div className="animate-in fade-in slide-in-from-top-2 absolute left-0 top-full z-50 mt-2 w-[min(92vw,420px)] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl duration-200 sm:left-auto sm:right-0">
+          <div className="grid grid-cols-[minmax(0,1.35fr)_minmax(112px,0.65fr)] divide-x divide-gray-200">
             <div className="p-3">
               <div className="mb-2 px-2 text-xs font-semibold uppercase text-gray-500">
                 Chọn tháng
               </div>
-              <div className="grid max-h-64 grid-cols-3 gap-1 overflow-y-auto">
+              <div className="grid max-h-64 grid-cols-3 gap-1 overflow-y-auto overflow-x-hidden">
                 {months.map((month) => (
                   <button
                     key={month.value}
                     type="button"
                     onClick={() => handleMonthSelect(month.value)}
-                    className={`rounded-md p-2 text-sm transition-all ${
+                    className={`min-w-0 rounded-md px-2 py-2 text-sm transition-all ${
                       selectedMonth === month.value
                         ? "bg-blue-600 font-semibold text-white shadow-md"
                         : "text-gray-700 hover:bg-gray-100"
                     }`}
                   >
-                    T{month.value}
+                    Th{month.value}
                   </button>
                 ))}
               </div>

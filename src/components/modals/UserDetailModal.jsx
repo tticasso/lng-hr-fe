@@ -66,6 +66,11 @@ const moduleNameMap = {
 const getPermissionName = (permission) =>
   typeof permission === "string" ? permission : permission?.name || "";
 
+const getPermissionDisplayName = (permission) =>
+  typeof permission === "string"
+    ? permission
+    : permission?.displayName?.trim() || permission?.name || "";
+
 const inferPermissionAction = (permission) => {
   const name = getPermissionName(permission).toUpperCase();
 
@@ -118,7 +123,7 @@ const buildPermissionRows = (permissions = []) => {
       });
     }
 
-    grouped.get(moduleKey).actions[actionKey].push(name);
+    grouped.get(moduleKey).actions[actionKey].push(getPermissionDisplayName(permission));
   });
 
   return Array.from(grouped.values()).sort((a, b) =>

@@ -9,6 +9,10 @@ export const payrollAdjustmentAPI = {
     return apiClient.post("/payroll-adjustments", payload);
   },
 
+  createBulk: (payload) => {
+    return apiClient.post("/payroll-adjustments/bulk", payload);
+  },
+
   update: (id, payload) => {
     return apiClient.patch(`/payroll-adjustments/${id}`, payload);
   },

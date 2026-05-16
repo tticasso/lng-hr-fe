@@ -11,7 +11,7 @@ const MonthNavigator = ({
 }) => {
   return (
     <div
-      className={`flex h-14 items-center justify-between rounded-2xl border border-gray-200 bg-white px-4 shadow-sm ${className}`}
+      className={`flex h-14 min-w-0 items-center justify-between rounded-2xl border border-gray-200 bg-white px-3 shadow-sm ${className}`}
     >
       <button
         type="button"
@@ -22,7 +22,7 @@ const MonthNavigator = ({
         <ChevronLeft size={20} />
       </button>
 
-      <span className="whitespace-nowrap px-4 text-center text-xl font-semibold text-gray-800">
+      <span className="min-w-0 truncate whitespace-nowrap px-2 text-center text-base font-semibold text-gray-800 sm:text-lg">
         {formatMonthYearLabel(month, year)}
       </span>
 

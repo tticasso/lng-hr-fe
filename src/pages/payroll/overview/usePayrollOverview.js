@@ -80,6 +80,11 @@ export const usePayrollOverview = () => {
     return Array.from(deptSet);
   }, [payrollData]);
 
+  const selectedPayrollItems = useMemo(
+    () => payrollData.filter((item) => selectedRows.includes(item._id)),
+    [payrollData, selectedRows],
+  );
+
   const summary = useMemo(
     () => ({
       totalEmployees: filteredData.length,
@@ -181,6 +186,15 @@ const handleReopenPayroll = async (payroll) => {
 
   const handleOpenAdjustments = (payroll) => {
     setAdjustmentModalPayroll(payroll);
+  };
+
+  const handleOpenBulkAdjustments = () => {
+    if (selectedRows.length === 0) {
+      toast.warning("Vui lòng chọn ít nhất một bản lương để điều chỉnh hàng loạt.");
+      return;
+    }
+
+    setAdjustmentModalPayroll({ __bulk: true });
   };
 
   const handleCloseAdjustments = () => {
@@ -361,12 +375,14 @@ const handleReopenPayroll = async (payroll) => {
     handleSendPayrollEmail,
     handleReopenPayroll,
     handleOpenAdjustments,
+    handleOpenBulkAdjustments,
     handleCloseAdjustments,
     isAllSelected,
     isSomeSelected,
     loading,
     sendingBulkEmails,
     adjustmentModalPayroll,
+    selectedPayrollItems,
     selectedMonth,
     selectedRows,
     setSelectedMonth,

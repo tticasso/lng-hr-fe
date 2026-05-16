@@ -21,12 +21,14 @@ const AllPayRoll = () => {
     handleSendPayrollEmail,
     handleReopenPayroll,
     handleOpenAdjustments,
+    handleOpenBulkAdjustments,
     handleCloseAdjustments,
     isAllSelected,
     isSomeSelected,
     loading,
     sendingBulkEmails,
     adjustmentModalPayroll,
+    selectedPayrollItems,
     selectedMonth,
     selectedRows,
     setSelectedMonth,
@@ -50,6 +52,7 @@ const AllPayRoll = () => {
         onChangeMonth={(e) => setSelectedMonth(e.target.value)}
         onRefresh={fetchPayrollData}
         onPayment={handlePayment}
+        onBulkAdjustments={handleOpenBulkAdjustments}
         onSendEmailsBulk={handleSendPayrollEmailsBulk}
         onExport={handleExportExcel}
         loading={loading}
@@ -79,6 +82,7 @@ const AllPayRoll = () => {
         isOpen={Boolean(adjustmentModalPayroll)}
         onClose={handleCloseAdjustments}
         payroll={adjustmentModalPayroll}
+        bulkPayrolls={adjustmentModalPayroll?.__bulk ? selectedPayrollItems : []}
         selectedMonth={selectedMonth}
         onChanged={fetchPayrollData}
       />

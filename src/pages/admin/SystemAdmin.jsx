@@ -15,6 +15,8 @@ import {
   ChevronDown,
   ChevronRight,
   Wifi,
+  Settings2,
+  RefreshCw,
 } from "lucide-react";
 import { roleApi } from "../../apis/roleApi";
 import { permissionApi } from "../../apis/permissionApi";
@@ -29,27 +31,111 @@ import Button from "../../components/common/Button"; // Đảm bảo component n
 import AuditLogsPanel from "./audit/AuditLogsPanel";
 
 const APPROVER_TYPES = [
-  { value: "TEAM_LEADER", label: "Team leader" },
-  { value: "DEPARTMENT_MANAGER", label: "Department manager" },
-  { value: "REPORTING_MANAGER", label: "Reporting manager" },
+  { value: "TEAM_LEADER", label: "Trưởng team" },
+  { value: "DEPARTMENT_MANAGER", label: "Trưởng phòng" },
+  { value: "REPORTING_MANAGER", label: "Quản lý trực tiếp" },
 ];
 
 const DEFAULT_APPROVAL_POLICIES = {
   "approval.leave": {
     requestType: "LEAVE",
     levels: [
-      { type: "TEAM_LEADER", label: "Team leader", enabled: true },
-      { type: "DEPARTMENT_MANAGER", label: "Department manager", enabled: true },
+      { type: "TEAM_LEADER", label: "Trưởng team", enabled: true },
+      { type: "DEPARTMENT_MANAGER", label: "Trưởng phòng", enabled: true },
     ],
   },
   "approval.overtime": {
     requestType: "OVERTIME",
     levels: [
-      { type: "TEAM_LEADER", label: "Team leader", enabled: true },
-      { type: "DEPARTMENT_MANAGER", label: "Department manager", enabled: true },
+      { type: "TEAM_LEADER", label: "Trưởng team", enabled: true },
+      { type: "DEPARTMENT_MANAGER", label: "Trưởng phòng", enabled: true },
     ],
   },
 };
+
+const SETTING_CATEGORY_FILTERS = [
+  { value: "", label: "Tất cả" },
+  { value: "ATTENDANCE", label: "Chấm công" },
+  { value: "APPROVAL", label: "Duyệt đơn" },
+  { value: "LEAVE", label: "Nghỉ phép" },
+  { value: "PAYROLL", label: "Lương & OT" },
+  { value: "GENERAL", label: "Chung" },
+];
+
+const DEFAULT_OPERATION_SETTINGS = {
+  "leave.balancePolicy": {
+    category: "LEAVE",
+    description: "Chính sách quỹ phép năm và số ngày phép được chuyển sang năm sau.",
+    value: {
+      annualEntitlementDays: 12,
+      maxCarryOverDays: 5,
+    },
+  },
+  "leave.requestPolicy": {
+    category: "LEAVE",
+    description: "Chính sách tạo và cập nhật đơn nghỉ phép.",
+    value: {
+      maxAttachments: 5,
+    },
+  },
+  "attendance.blockPolicy": {
+    category: "ATTENDANCE",
+    description: "Chinh sach block cham cong va quy doi workDayValue.",
+    value: {
+      blockMinutes: 15,
+      defaultTotalBlocks: 32,
+    },
+  },
+  "payroll.insurancePolicy": {
+    category: "PAYROLL",
+    description: "Chinh sach khau tru bao hiem va thue TNCN khi tinh luong.",
+    value: {
+      enabled: false,
+      pitEnabled: false,
+      salaryCapBase: 2340000,
+      salaryCapMultiplier: 20,
+      personalDeduction: 11000000,
+      dependantDeduction: 4400000,
+      rates: {
+        bhxh: 0.08,
+        bhyt: 0.015,
+        bhtn: 0.01,
+      },
+    },
+  },
+  "overtime.payPolicy": {
+    category: "PAYROLL",
+    description: "Chính sách tính tiền tăng ca.",
+    value: {
+      workHoursPerDay: 8,
+      multipliers: {
+        weekday: 1.5,
+        weekend: 2,
+        holiday: 3,
+        weekday_night: 1.8,
+        weekend_night: 2.4,
+        holiday_night: 3.9,
+      },
+    },
+  },
+  "payroll.processingPolicy": {
+    category: "PAYROLL",
+    description: "Chính sách xử lý bảng lương theo lô.",
+    value: {
+      employeeBatchSize: 100,
+      attendanceBulkBatchSize: 500,
+    },
+  },
+};
+
+const OT_MULTIPLIER_LABELS = [
+  { key: "weekday", label: "Ngày thường" },
+  { key: "weekend", label: "Cuối tuần" },
+  { key: "holiday", label: "Ngày lễ" },
+  { key: "weekday_night", label: "Ngày thường - giờ đêm" },
+  { key: "weekend_night", label: "Cuối tuần - giờ đêm" },
+  { key: "holiday_night", label: "Ngày lễ - giờ đêm" },
+];
 
 const SystemAdmin = () => {
   const { user } = useAuth();
@@ -173,6 +259,11 @@ const SystemAdmin = () => {
     return permissionNameMap[permName] || permName;
   };
 
+  const getPermissionDisplayName = (permission) => {
+    if (typeof permission === "string") return getVietnameseName(permission);
+    return permission?.displayName?.trim() || getVietnameseName(permission?.name || "");
+  };
+
   const extractAuditLogList = (payload) => {
     const candidates = [
       payload?.data,
@@ -201,6 +292,7 @@ const SystemAdmin = () => {
   const [isCreatingPerm, setIsCreatingPerm] = useState(false);
   const [newPermData, setNewPermData] = useState({
     name: "",
+    displayName: "",
     module: "",
     description: "",
   });
@@ -214,6 +306,12 @@ const SystemAdmin = () => {
   const [settingPayload, setSettingPayload] = useState("{\n  \n}");
   const [approvalPolicies, setApprovalPolicies] = useState(DEFAULT_APPROVAL_POLICIES);
   const [approvalLoading, setApprovalLoading] = useState(false);
+  const [operationSettings, setOperationSettings] = useState(
+    Object.fromEntries(
+      Object.entries(DEFAULT_OPERATION_SETTINGS).map(([key, setting]) => [key, setting.value])
+    )
+  );
+  const [operationSavingKey, setOperationSavingKey] = useState("");
   const [officeNetworksLoading, setOfficeNetworksLoading] = useState(false);
   const [officeNetworks, setOfficeNetworks] = useState([]);
   const [officeNetworkForm, setOfficeNetworkForm] = useState({
@@ -235,6 +333,7 @@ const SystemAdmin = () => {
   useEffect(() => {
     if (activeAdminTab === "settings") {
       fetchApprovalPolicies();
+      fetchSystemSettings();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeAdminTab]);
@@ -304,6 +403,7 @@ const SystemAdmin = () => {
       if (
         searchTerm === "" ||
         perm.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        perm.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         perm.description?.toLowerCase().includes(searchTerm.toLowerCase())
       ) {
         groups[moduleName].push(perm);
@@ -369,8 +469,8 @@ const SystemAdmin = () => {
       return;
     }
     // Validate cơ bản
-    if (!newPermData.name || !newPermData.module) {
-      toast.warning("Vui lòng nhập Tên quyền và Module");
+    if (!newPermData.name || !newPermData.displayName || !newPermData.module) {
+      toast.warning("Vui lòng nhập mã quyền, tên hiển thị và module");
       return;
     }
 
@@ -382,7 +482,7 @@ const SystemAdmin = () => {
       setPermissions([...permissions, newPerm]); // Cập nhật list ngay lập tức
 
       // Reset form
-      setNewPermData({ name: "", module: "", description: "" });
+      setNewPermData({ name: "", displayName: "", module: "", description: "" });
       setIsCreatingPerm(false);
     } catch (error) {
       toast.error(error.response?.data?.message || "Tạo quyền thất bại");
@@ -474,18 +574,53 @@ const SystemAdmin = () => {
     </div>
   );
 
-  const fetchSystemSettings = async () => {
+  const mergeOperationSettings = (rows = []) => {
+    const rowMap = new Map(rows.map((item) => [item.key, item.value]));
+    const next = {};
+
+    Object.entries(DEFAULT_OPERATION_SETTINGS).forEach(([key, setting]) => {
+      const savedValue = rowMap.get(key);
+      next[key] = {
+        ...setting.value,
+        ...(savedValue || {}),
+        multipliers: {
+          ...(setting.value.multipliers || {}),
+          ...(savedValue?.multipliers || {}),
+        },
+        rates: {
+          ...(setting.value.rates || {}),
+          ...(savedValue?.rates || {}),
+        },
+      };
+    });
+
+    return next;
+  };
+
+  const fetchSystemSettings = async (categoryOverride = settingCategory) => {
     if (!canManageSystem) {
       toast.error("Bạn không có quyền MANAGE_SYSTEM để xem cấu hình hệ thống");
       return;
     }
+
+    const category = String(categoryOverride || "").trim();
+
     try {
       setSettingsLoading(true);
-      const res = settingCategory.trim()
-        ? await systemSettingApi.getByCategory(settingCategory.trim())
+      const res = category
+        ? await systemSettingApi.getByCategory(category)
         : await systemSettingApi.getAll();
       const data = res.data?.data || res.data || [];
-      setSettings(Array.isArray(data) ? data : Object.values(data || {}));
+      const rows = Array.isArray(data) ? data : Object.values(data || {});
+      setSettings(rows);
+      if (category) {
+        const allRes = await systemSettingApi.getAll();
+        const allData = allRes.data?.data || allRes.data || [];
+        const allRows = Array.isArray(allData) ? allData : Object.values(allData || {});
+        setOperationSettings(mergeOperationSettings(allRows));
+      } else {
+        setOperationSettings(mergeOperationSettings(rows));
+      }
     } catch (error) {
       toast.error(error.normalizedMessage || "Không thể tải cấu hình hệ thống");
     } finally {
@@ -517,6 +652,222 @@ const SystemAdmin = () => {
     }
   };
 
+  const handleSettingCategoryChange = (category) => {
+    setSettingCategory(category);
+    fetchSystemSettings(category);
+  };
+
+  const updateOperationSettingValue = (key, field, value) => {
+    setOperationSettings((prev) => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        [field]: value,
+      },
+    }));
+  };
+
+  const updateOtMultiplier = (field, value) => {
+    setOperationSettings((prev) => ({
+      ...prev,
+      "overtime.payPolicy": {
+        ...prev["overtime.payPolicy"],
+        multipliers: {
+          ...prev["overtime.payPolicy"].multipliers,
+          [field]: value,
+        },
+      },
+    }));
+  };
+
+  const updateInsuranceRate = (field, value) => {
+    setOperationSettings((prev) => ({
+      ...prev,
+      "payroll.insurancePolicy": {
+        ...prev["payroll.insurancePolicy"],
+        rates: {
+          ...prev["payroll.insurancePolicy"].rates,
+          [field]: value,
+        },
+      },
+    }));
+  };
+
+  const updateOperationSettingBoolean = (key, field, value) => {
+    setOperationSettings((prev) => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        [field]: value,
+      },
+    }));
+  };
+
+  const toNumberOrNull = (value) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const getOperationSettingPayload = (key) => {
+    const value = operationSettings[key] || DEFAULT_OPERATION_SETTINGS[key].value;
+
+    if (key === "leave.balancePolicy") {
+      const annualEntitlementDays = toNumberOrNull(value.annualEntitlementDays);
+      const maxCarryOverDays = toNumberOrNull(value.maxCarryOverDays);
+      if (!annualEntitlementDays || annualEntitlementDays <= 0 || maxCarryOverDays === null || maxCarryOverDays < 0) {
+        toast.warning("Vui lòng nhập đúng số ngày phép năm và số ngày chuyển phép");
+        return null;
+      }
+      return { annualEntitlementDays, maxCarryOverDays };
+    }
+
+    if (key === "leave.requestPolicy") {
+      const maxAttachments = Math.floor(toNumberOrNull(value.maxAttachments));
+      if (!maxAttachments || maxAttachments <= 0) {
+        toast.warning("Số file đính kèm tối đa phải lớn hơn 0");
+        return null;
+      }
+      return { maxAttachments };
+    }
+
+    if (key === "attendance.blockPolicy") {
+      const blockMinutes = Math.floor(toNumberOrNull(value.blockMinutes));
+      const defaultTotalBlocks = Math.floor(toNumberOrNull(value.defaultTotalBlocks));
+      if (!blockMinutes || !defaultTotalBlocks || blockMinutes <= 0 || defaultTotalBlocks <= 0) {
+        toast.warning("Block cham cong va tong so block phai lon hon 0");
+        return null;
+      }
+      return { blockMinutes, defaultTotalBlocks };
+    }
+
+    if (key === "payroll.insurancePolicy") {
+      const salaryCapBase = toNumberOrNull(value.salaryCapBase);
+      const salaryCapMultiplier = toNumberOrNull(value.salaryCapMultiplier);
+      const personalDeduction = toNumberOrNull(value.personalDeduction);
+      const dependantDeduction = toNumberOrNull(value.dependantDeduction);
+      const rates = {
+        bhxh: toNumberOrNull(value.rates?.bhxh),
+        bhyt: toNumberOrNull(value.rates?.bhyt),
+        bhtn: toNumberOrNull(value.rates?.bhtn),
+      };
+      if (!salaryCapBase || !salaryCapMultiplier || personalDeduction === null || dependantDeduction === null) {
+        toast.warning("Thong so bao hiem/thue khong hop le");
+        return null;
+      }
+      if (Object.values(rates).some((rate) => rate === null || rate < 0)) {
+        toast.warning("Ty le bao hiem khong hop le");
+        return null;
+      }
+      return {
+        enabled: value.enabled === true,
+        pitEnabled: value.pitEnabled === true,
+        salaryCapBase,
+        salaryCapMultiplier,
+        personalDeduction,
+        dependantDeduction,
+        rates,
+      };
+    }
+
+    if (key === "overtime.payPolicy") {
+      const workHoursPerDay = toNumberOrNull(value.workHoursPerDay);
+      const multipliers = {};
+      for (const item of OT_MULTIPLIER_LABELS) {
+        const multiplier = toNumberOrNull(value.multipliers?.[item.key]);
+        if (!multiplier || multiplier <= 0) {
+          toast.warning(`Hệ số ${item.label} phải lớn hơn 0`);
+          return null;
+        }
+        multipliers[item.key] = multiplier;
+      }
+      if (!workHoursPerDay || workHoursPerDay <= 0) {
+        toast.warning("Số giờ công chuẩn mỗi ngày phải lớn hơn 0");
+        return null;
+      }
+      return { workHoursPerDay, multipliers };
+    }
+
+    if (key === "payroll.processingPolicy") {
+      const employeeBatchSize = Math.floor(toNumberOrNull(value.employeeBatchSize));
+      const attendanceBulkBatchSize = Math.floor(toNumberOrNull(value.attendanceBulkBatchSize));
+      if (!employeeBatchSize || !attendanceBulkBatchSize || employeeBatchSize <= 0 || attendanceBulkBatchSize <= 0) {
+        toast.warning("Kích thước xử lý theo lô phải lớn hơn 0");
+        return null;
+      }
+      return { employeeBatchSize, attendanceBulkBatchSize };
+    }
+
+    return value;
+  };
+
+  const saveOperationSetting = async (key) => {
+    if (!canManageSystem) {
+      toast.error("Bạn không có quyền MANAGE_SYSTEM để cập nhật cấu hình hệ thống");
+      return;
+    }
+
+    const setting = DEFAULT_OPERATION_SETTINGS[key];
+    const value = getOperationSettingPayload(key);
+    if (!setting || !value) return;
+
+    try {
+      setOperationSavingKey(key);
+      await systemSettingApi.updateByKey(key, {
+        category: setting.category,
+        description: setting.description,
+        value,
+      });
+      toast.success("Đã lưu cấu hình");
+      await fetchSystemSettings();
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Lưu cấu hình thất bại");
+    } finally {
+      setOperationSavingKey("");
+    }
+  };
+
+  const saveLeavePolicies = async () => {
+    if (!canManageSystem) {
+      toast.error("Bạn không có quyền MANAGE_SYSTEM để cập nhật cấu hình hệ thống");
+      return;
+    }
+
+    const keys = ["leave.balancePolicy", "leave.requestPolicy"];
+    const payloads = keys.map((key) => {
+      const setting = DEFAULT_OPERATION_SETTINGS[key];
+      const value = getOperationSettingPayload(key);
+      if (!setting || !value) return null;
+
+      return {
+        key,
+        category: setting.category,
+        description: setting.description,
+        value,
+      };
+    });
+
+    if (payloads.some((item) => !item)) return;
+
+    try {
+      setOperationSavingKey("leave.policies");
+      await Promise.all(
+        payloads.map((item) =>
+          systemSettingApi.updateByKey(item.key, {
+            category: item.category,
+            description: item.description,
+            value: item.value,
+          })
+        )
+      );
+      toast.success("Đã lưu cấu hình");
+      await fetchSystemSettings();
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Lưu cấu hình thất bại");
+    } finally {
+      setOperationSavingKey("");
+    }
+  };
+
   const normalizeApprovalPolicy = (value, fallback) => {
     const levels = Array.isArray(value?.levels) && value.levels.length > 0
       ? value.levels
@@ -525,11 +876,14 @@ const SystemAdmin = () => {
     return {
       ...fallback,
       ...value,
-      levels: levels.slice(0, 2).map((level, index) => ({
-        type: level.type || fallback.levels[index]?.type || "TEAM_LEADER",
-        label: level.label || APPROVER_TYPES.find((item) => item.value === level.type)?.label || level.type,
-        enabled: level.enabled !== false,
-      })),
+      levels: levels.slice(0, 3).map((level, index) => {
+        const type = level.type || fallback.levels[index]?.type || APPROVER_TYPES[index]?.value || "TEAM_LEADER";
+        return {
+          type,
+          label: level.label || APPROVER_TYPES.find((item) => item.value === type)?.label || type,
+          enabled: level.enabled !== false,
+        };
+      }),
     };
   };
 
@@ -557,12 +911,21 @@ const SystemAdmin = () => {
   const setApprovalLevelCount = (key, count) => {
     setApprovalPolicies((prev) => {
       const current = prev[key] || DEFAULT_APPROVAL_POLICIES[key];
-      const baseLevels = current.levels.length >= count ? current.levels : DEFAULT_APPROVAL_POLICIES[key].levels;
+      const baseLevels = Array.from({ length: count }, (_, index) => {
+        const existing = current.levels[index] || DEFAULT_APPROVAL_POLICIES[key].levels[index];
+        const fallbackType = APPROVER_TYPES[index]?.value || "REPORTING_MANAGER";
+        const type = existing?.type || fallbackType;
+        return {
+          type,
+          label: APPROVER_TYPES.find((item) => item.value === type)?.label || type,
+          enabled: true,
+        };
+      });
       return {
         ...prev,
         [key]: {
           ...current,
-          levels: baseLevels.slice(0, count).map((level) => ({ ...level, enabled: true })),
+          levels: baseLevels,
         },
       };
     });
@@ -594,7 +957,7 @@ const SystemAdmin = () => {
       setApprovalLoading(true);
       await systemSettingApi.updateByKey(key, {
         category: "APPROVAL",
-        description: key === "approval.leave" ? "Leave approval policy" : "Overtime approval policy",
+        description: key === "approval.leave" ? "Cấu hình luồng duyệt đơn nghỉ" : "Cấu hình luồng duyệt đơn OT",
         value: {
           requestType: policy.requestType,
           levels: policy.levels.map((level) => ({
@@ -766,6 +1129,555 @@ const SystemAdmin = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeAdminTab]);
 
+  const _selectSettingForEditV2 = (item) => {
+    setSettingKey(item.key || "");
+    setSettingPayload(JSON.stringify({
+      category: item.category || "GENERAL",
+      description: item.description || "",
+      value: item.value ?? {},
+    }, null, 2));
+  };
+
+  const formatSettingValueV2 = (item) => {
+    const value = item?.value ?? item;
+    if (value?.levels && Array.isArray(value.levels)) {
+      return value.levels.map((level, index) => `${index + 1}. ${level.label || level.type}`).join(" -> ");
+    }
+    if (Array.isArray(value)) {
+      return `${value.length} mục`;
+    }
+    if (value && typeof value === "object") {
+      const entries = Object.entries(value).slice(0, 4);
+      if (entries.length === 0) return "Chưa cấu hình";
+      return entries
+        .map(([key, entryValue]) => {
+          if (entryValue === null || entryValue === undefined) return `${key}: --`;
+          if (typeof entryValue === "boolean") return `${key}: ${entryValue ? "Bật" : "Tắt"}`;
+          if (typeof entryValue === "object") return key;
+          return `${key}: ${entryValue}`;
+        })
+        .join(", ");
+    }
+    if (typeof value === "boolean") return value ? "Bật" : "Tắt";
+    return value || "--";
+  };
+
+  const getApprovalSummaryV2 = (key) => {
+    const policy = approvalPolicies[key] || DEFAULT_APPROVAL_POLICIES[key];
+    return policy.levels.map((level) => level.label || level.type).join(" -> ");
+  };
+
+  const renderApprovalPolicyCardV2 = (key, title, description) => {
+    const policy = approvalPolicies[key] || DEFAULT_APPROVAL_POLICIES[key];
+
+    return (
+      <Card className="p-0 overflow-hidden">
+        <div className="border-b border-slate-100 bg-slate-50 px-5 py-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="font-semibold text-slate-900">{title}</h3>
+              <p className="mt-1 text-sm text-slate-500">{description}</p>
+            </div>
+            <span className="shrink-0 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+              {policy.levels.length} cấp
+            </span>
+          </div>
+        </div>
+
+        <div className="space-y-5 p-5">
+          <div>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Số cấp duyệt
+            </label>
+            <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1">
+              {[1, 2, 3].map((count) => (
+                <button
+                  key={`${key}-level-count-${count}`}
+                  type="button"
+                  onClick={() => setApprovalLevelCount(key, count)}
+                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                    policy.levels.length === count
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {count} cấp
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            {policy.levels.map((level, index) => (
+              <div key={`${key}-${index}`} className="rounded-lg border border-slate-200 bg-white p-3">
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-700">
+                    {index + 1}
+                  </span>
+                  <label className="text-sm font-medium text-slate-700">Cấp duyệt {index + 1}</label>
+                </div>
+                <select
+                  value={level.type}
+                  onChange={(event) => updateApprovalLevelType(key, index, event.target.value)}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {APPROVER_TYPES.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Luồng hiện tại
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {policy.levels.map((level, index) => (
+                <React.Fragment key={`${key}-preview-${index}`}>
+                  <span className="rounded-full bg-white px-3 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-slate-200">
+                    {level.label || level.type}
+                  </span>
+                  {index < policy.levels.length - 1 && (
+                    <ChevronRight size={16} className="text-slate-400" />
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button type="button" onClick={() => saveApprovalPolicy(key)} disabled={approvalLoading}>
+              {approvalLoading ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Save size={16} className="mr-2" />}
+              Lưu cấu hình
+            </Button>
+          </div>
+        </div>
+      </Card>
+    );
+  };
+
+  const renderNumberInput = ({ label, value, onChange, min = 0, step = "1", suffix }) => (
+    <label className="block">
+      <span className="mb-1.5 block text-sm font-medium text-slate-700">{label}</span>
+      <div className="flex overflow-hidden rounded-lg border border-slate-300 bg-white focus-within:ring-2 focus-within:ring-blue-500">
+        <input
+          type="number"
+          min={min}
+          step={step}
+          value={value ?? ""}
+          onChange={(event) => onChange(event.target.value)}
+          className="min-w-0 flex-1 px-3 py-2 text-sm outline-none"
+        />
+        {suffix && (
+          <span className="flex items-center border-l border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-500">
+            {suffix}
+          </span>
+        )}
+      </div>
+    </label>
+  );
+
+  const renderSaveSettingButton = (key) => (
+    <Button
+      type="button"
+      onClick={() => saveOperationSetting(key)}
+      disabled={operationSavingKey === key}
+    >
+      {operationSavingKey === key ? (
+        <Loader2 size={16} className="mr-2 animate-spin" />
+      ) : (
+        <Save size={16} className="mr-2" />
+      )}
+      Lưu cấu hình
+    </Button>
+  );
+
+  const renderOperationalSettings = () => {
+    const leaveBalance = operationSettings["leave.balancePolicy"];
+    const leaveRequest = operationSettings["leave.requestPolicy"];
+    const attendanceBlock = operationSettings["attendance.blockPolicy"];
+    const insurancePolicy = operationSettings["payroll.insurancePolicy"];
+    const overtimePay = operationSettings["overtime.payPolicy"];
+    const payrollProcessing = operationSettings["payroll.processingPolicy"];
+
+    return (
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <Card className="p-0 overflow-hidden">
+          <div className="border-b border-slate-100 bg-slate-50 px-5 py-4">
+            <h3 className="font-semibold text-slate-900">Chính sách nghỉ phép</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Áp dụng cho reset quỹ phép, chuyển phép năm và file đính kèm đơn nghỉ.
+            </p>
+          </div>
+          <div className="space-y-5 p-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {renderNumberInput({
+                label: "Phép năm mặc định",
+                value: leaveBalance.annualEntitlementDays,
+                min: 0.5,
+                step: "0.5",
+                suffix: "ngày",
+                onChange: (value) => updateOperationSettingValue("leave.balancePolicy", "annualEntitlementDays", value),
+              })}
+              {renderNumberInput({
+                label: "Chuyển phép tối đa",
+                value: leaveBalance.maxCarryOverDays,
+                min: 0,
+                step: "0.5",
+                suffix: "ngày",
+                onChange: (value) => updateOperationSettingValue("leave.balancePolicy", "maxCarryOverDays", value),
+              })}
+              {renderNumberInput({
+                label: "File đính kèm tối đa",
+                value: leaveRequest.maxAttachments,
+                min: 1,
+                step: "1",
+                suffix: "file",
+                onChange: (value) => updateOperationSettingValue("leave.requestPolicy", "maxAttachments", value),
+              })}
+            </div>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button
+                type="button"
+                onClick={saveLeavePolicies}
+                disabled={operationSavingKey === "leave.policies"}
+              >
+                {operationSavingKey === "leave.policies" ? (
+                  <Loader2 size={16} className="mr-2 animate-spin" />
+                ) : (
+                  <Save size={16} className="mr-2" />
+                )}
+                Lưu cấu hình
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-0 overflow-hidden">
+          <div className="border-b border-slate-100 bg-slate-50 px-5 py-4">
+            <h3 className="font-semibold text-slate-900">Block chấm công</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Cấu hình số phút mỗi block và tổng block mặc định để quy đổi công.
+            </p>
+          </div>
+          <div className="space-y-5 p-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {renderNumberInput({
+                label: "Số phút mỗi block",
+                value: attendanceBlock.blockMinutes,
+                min: 1,
+                step: "1",
+                suffix: "phút",
+                onChange: (value) => updateOperationSettingValue("attendance.blockPolicy", "blockMinutes", value),
+              })}
+              {renderNumberInput({
+                label: "Tổng block mặc định",
+                value: attendanceBlock.defaultTotalBlocks,
+                min: 1,
+                step: "1",
+                suffix: "block",
+                onChange: (value) => updateOperationSettingValue("attendance.blockPolicy", "defaultTotalBlocks", value),
+              })}
+            </div>
+            <div className="flex justify-end">
+              {renderSaveSettingButton("attendance.blockPolicy")}
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-0 overflow-hidden">
+          <div className="border-b border-slate-100 bg-slate-50 px-5 py-4">
+            <h3 className="font-semibold text-slate-900">Chính sách OT & lương</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Áp dụng cho ước tính tiền OT, chạy bảng lương và tổng hợp giờ công.
+            </p>
+          </div>
+          <div className="space-y-5 p-5">
+            {renderNumberInput({
+              label: "Số giờ công chuẩn mỗi ngày",
+              value: overtimePay.workHoursPerDay,
+              min: 0.5,
+              step: "0.5",
+              suffix: "giờ",
+              onChange: (value) => updateOperationSettingValue("overtime.payPolicy", "workHoursPerDay", value),
+            })}
+            <div>
+              <div className="mb-3 text-sm font-semibold text-slate-800">Hệ số tăng ca</div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {OT_MULTIPLIER_LABELS.map((item) => (
+                  <React.Fragment key={item.key}>
+                    {renderNumberInput({
+                      label: item.label,
+                      value: overtimePay.multipliers?.[item.key],
+                      min: 0.1,
+                      step: "0.1",
+                      suffix: "x",
+                      onChange: (value) => updateOtMultiplier(item.key, value),
+                    })}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end">
+              {renderSaveSettingButton("overtime.payPolicy")}
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-0 overflow-hidden">
+          <div className="border-b border-slate-100 bg-slate-50 px-5 py-4">
+            <h3 className="font-semibold text-slate-900">Bảo hiểm & thuế</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Mặc định đang tắt để giữ đúng cách tính lương hiện tại; bật lên khi công ty áp dụng khấu trừ.
+            </p>
+          </div>
+          <div className="space-y-5 p-5">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 text-sm font-medium text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={insurancePolicy.enabled === true}
+                  onChange={(event) => updateOperationSettingBoolean("payroll.insurancePolicy", "enabled", event.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                />
+                Khấu trừ bảo hiểm
+              </label>
+              <label className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 text-sm font-medium text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={insurancePolicy.pitEnabled === true}
+                  onChange={(event) => updateOperationSettingBoolean("payroll.insurancePolicy", "pitEnabled", event.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                />
+                Tính thuế TNCN
+              </label>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {["bhxh", "bhyt", "bhtn"].map((key) => (
+                <React.Fragment key={key}>
+                  {renderNumberInput({
+                    label: key.toUpperCase(),
+                    value: insurancePolicy.rates?.[key],
+                    min: 0,
+                    step: "0.001",
+                    suffix: "tỷ lệ",
+                    onChange: (value) => updateInsuranceRate(key, value),
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {renderNumberInput({
+                label: "Lương cơ sở tính trần",
+                value: insurancePolicy.salaryCapBase,
+                min: 1,
+                step: "1000",
+                suffix: "VND",
+                onChange: (value) => updateOperationSettingValue("payroll.insurancePolicy", "salaryCapBase", value),
+              })}
+              {renderNumberInput({
+                label: "Hệ số trần đóng",
+                value: insurancePolicy.salaryCapMultiplier,
+                min: 1,
+                step: "1",
+                suffix: "x",
+                onChange: (value) => updateOperationSettingValue("payroll.insurancePolicy", "salaryCapMultiplier", value),
+              })}
+              {renderNumberInput({
+                label: "Giảm trừ bản thân",
+                value: insurancePolicy.personalDeduction,
+                min: 0,
+                step: "1000",
+                suffix: "VND",
+                onChange: (value) => updateOperationSettingValue("payroll.insurancePolicy", "personalDeduction", value),
+              })}
+              {renderNumberInput({
+                label: "Giảm trừ mỗi phụ thuộc",
+                value: insurancePolicy.dependantDeduction,
+                min: 0,
+                step: "1000",
+                suffix: "VND",
+                onChange: (value) => updateOperationSettingValue("payroll.insurancePolicy", "dependantDeduction", value),
+              })}
+            </div>
+            <div className="flex justify-end">
+              {renderSaveSettingButton("payroll.insurancePolicy")}
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-0 overflow-hidden xl:col-span-2">
+          <div className="border-b border-slate-100 bg-slate-50 px-5 py-4">
+            <h3 className="font-semibold text-slate-900">Xử lý dữ liệu lương và công</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Điều chỉnh kích thước xử lý theo lô khi đồng bộ công và chạy bảng lương cho số lượng nhân sự lớn.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-[1fr_1fr_auto] md:items-end">
+            {renderNumberInput({
+              label: "Số nhân sự mỗi lô payroll",
+              value: payrollProcessing.employeeBatchSize,
+              min: 1,
+              step: "1",
+              suffix: "người",
+              onChange: (value) => updateOperationSettingValue("payroll.processingPolicy", "employeeBatchSize", value),
+            })}
+            {renderNumberInput({
+              label: "Số bản ghi công mỗi lô đồng bộ",
+              value: payrollProcessing.attendanceBulkBatchSize,
+              min: 1,
+              step: "1",
+              suffix: "record",
+              onChange: (value) => updateOperationSettingValue("payroll.processingPolicy", "attendanceBulkBatchSize", value),
+            })}
+            <div className="md:pb-0">
+              {renderSaveSettingButton("payroll.processingPolicy")}
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  };
+
+  const renderSystemSettingsPanel = () => (
+    <div className="space-y-5">
+      {renderAdminTabs()}
+
+      <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+              <Settings2 size={22} />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">Cấu hình hệ thống</h1>
+              <p className="mt-1 text-sm text-slate-500">
+                Quản lý luồng duyệt và các setting vận hành đang lưu trên backend.
+              </p>
+            </div>
+          </div>
+          <Button type="button" variant="secondary" onClick={() => {
+            fetchApprovalPolicies();
+            fetchSystemSettings();
+          }} disabled={settingsLoading || approvalLoading}>
+            {(settingsLoading || approvalLoading) ? (
+              <Loader2 size={16} className="mr-2 animate-spin" />
+            ) : (
+              <RefreshCw size={16} className="mr-2" />
+            )}
+            Làm mới
+          </Button>
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Đơn nghỉ</div>
+            <div className="mt-2 text-sm font-medium text-slate-800">{getApprovalSummaryV2("approval.leave")}</div>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Đơn OT</div>
+            <div className="mt-2 text-sm font-medium text-slate-800">{getApprovalSummaryV2("approval.overtime")}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        {renderApprovalPolicyCardV2(
+          "approval.leave",
+          "Duyệt đơn nghỉ",
+          "Áp dụng cho các đơn nghỉ được tạo sau khi lưu cấu hình."
+        )}
+        {renderApprovalPolicyCardV2(
+          "approval.overtime",
+          "Duyệt đơn OT",
+          "Áp dụng cho các đơn OT được tạo sau khi lưu cấu hình."
+        )}
+      </div>
+
+      {renderOperationalSettings()}
+
+      <div>
+        <Card className="overflow-hidden p-0">
+          <div className="border-b border-slate-100 bg-slate-50 p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h2 className="font-semibold text-slate-900">Danh sách setting</h2>
+                <p className="mt-1 text-sm text-slate-500">Theo dõi các cấu hình đang áp dụng trong hệ thống.</p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1">
+                  {SETTING_CATEGORY_FILTERS.map((filter) => (
+                    <button
+                      key={filter.label}
+                      type="button"
+                      onClick={() => handleSettingCategoryChange(filter.value)}
+                      className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                        settingCategory === filter.value
+                          ? "bg-blue-600 text-white"
+                          : "text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
+                </div>
+                <Button type="button" variant="secondary" onClick={fetchSystemSettings} disabled={settingsLoading}>
+                  {settingsLoading ? <Loader2 size={16} className="mr-2 animate-spin" /> : <RefreshCw size={16} className="mr-2" />}
+                  Tải
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="max-h-[560px] overflow-auto">
+            {settings.length === 0 ? (
+              <div className="p-10 text-center text-sm text-slate-400">
+                Chưa có dữ liệu. Nhấn tải để xem cấu hình.
+              </div>
+            ) : (
+              <table className="w-full min-w-[900px] text-sm">
+                <thead className="sticky top-0 bg-white text-xs uppercase text-slate-500 shadow-sm">
+                  <tr>
+                    <th className="p-3 text-left">Key</th>
+                    <th className="p-3 text-left">Nhóm</th>
+                    <th className="p-3 text-left">Giá trị</th>
+                    <th className="p-3 text-left">Mô tả</th>
+                    <th className="p-3 text-left">Cập nhật</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {settings.map((item, index) => (
+                    <tr
+                      key={item._id || item.key || index}
+                      className="hover:bg-blue-50/50"
+                    >
+                      <td className="p-3 font-mono text-xs text-slate-800">{item.key || "--"}</td>
+                      <td className="p-3">
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                          {item.category || "--"}
+                        </span>
+                      </td>
+                      <td className="max-w-md truncate p-3 text-xs text-slate-600">{formatSettingValueV2(item)}</td>
+                      <td className="max-w-sm p-3 text-xs text-slate-500">{item.description || "--"}</td>
+                      <td className="p-3 text-xs text-slate-500">
+                        {item.updatedAt ? new Date(item.updatedAt).toLocaleString("vi-VN") : "--"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </Card>
+
+      </div>
+    </div>
+  );
+
   const renderApprovalPolicyCard = (key, title, description) => {
     const policy = approvalPolicies[key] || DEFAULT_APPROVAL_POLICIES[key];
 
@@ -817,7 +1729,7 @@ const SystemAdmin = () => {
     );
   };
 
-  const renderSystemSettings = () => (
+  const _renderSystemSettings = () => (
     <div className="space-y-4">
       {renderAdminTabs()}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
@@ -1078,7 +1990,7 @@ const SystemAdmin = () => {
   }
 
   if (activeAdminTab === "settings" && canManageSystem) {
-    return renderSystemSettings();
+    return renderSystemSettingsPanel();
   }
 
   if (activeAdminTab === "officeNetworks" && canManageSystem) {
@@ -1128,6 +2040,20 @@ const SystemAdmin = () => {
                   value={newPermData.name}
                   onChange={(e) =>
                     setNewPermData({ ...newPermData, name: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tên hiển thị <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                  placeholder="VD: Quản trị hệ thống"
+                  value={newPermData.displayName}
+                  onChange={(e) =>
+                    setNewPermData({ ...newPermData, displayName: e.target.value })
                   }
                 />
               </div>
@@ -1394,7 +2320,7 @@ const SystemAdmin = () => {
                                     </td>
                                     <td className="px-4 py-3">
                                       <p className={`text-sm font-medium ${isAssigned ? "text-blue-700" : "text-gray-700"}`}>
-                                        {getVietnameseName(perm.name)}
+                                        {getPermissionDisplayName(perm)}
                                       </p>
                                     </td>
                                     <td className="px-4 py-3">

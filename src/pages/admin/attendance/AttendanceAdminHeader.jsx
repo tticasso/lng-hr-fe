@@ -36,69 +36,67 @@ const AttendanceAdminHeader = ({
   );
 
   const actions = (
-    <div className="flex w-full min-w-0 flex-col gap-3 xl:flex-row xl:items-center xl:justify-end">
+    <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-[240px_repeat(6,minmax(0,1fr))]">
       <MonthNavigator
         month={month}
         year={year}
         onPrevious={onPreviousPeriod}
         onNext={onNextPeriod}
-        className="w-full xl:w-auto xl:min-w-[300px] xl:flex-none"
+        className="w-full min-w-0"
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:flex xl:min-w-0 xl:flex-1 xl:flex-nowrap xl:items-center xl:justify-end">
-        <Button
-          variant="secondary"
-          className="h-14 min-w-[168px] gap-2 rounded-xl px-4 text-sm xl:min-w-0 xl:flex-1"
-          onClick={onImport}
-        >
-          <Upload size={16} /> Import dữ liệu
-        </Button>
+      <Button
+        variant="secondary"
+        className="h-14 min-w-0 gap-2 rounded-xl px-3 text-sm"
+        onClick={onImport}
+      >
+        <Upload size={16} /> Import dữ liệu
+      </Button>
 
-        <Button
-          variant="secondary"
-          className="h-14 min-w-[160px] gap-2 rounded-xl px-4 text-sm xl:min-w-0 xl:flex-1"
-          onClick={onOpenBulkAttendance}
-        >
-          <UserPlus size={16} /> Tạo công hàng loạt
-        </Button>
+      <Button
+        variant="secondary"
+        className="h-14 min-w-0 gap-2 rounded-xl px-3 text-sm"
+        onClick={onOpenBulkAttendance}
+      >
+        <UserPlus size={16} /> Tạo công hàng loạt
+      </Button>
 
-        <Button
-          variant="secondary"
-          className="h-14 min-w-[160px] gap-2 rounded-xl px-4 text-sm xl:min-w-0 xl:flex-1"
-          onClick={onExport}
-          disabled={isExportDisabled}
-        >
-          <Download size={16} /> Xuất Excel
-        </Button>
+      <Button
+        variant="secondary"
+        className="h-14 min-w-0 gap-2 rounded-xl px-3 text-sm"
+        onClick={onExport}
+        disabled={isExportDisabled}
+      >
+        <Download size={16} /> Xuất Excel
+      </Button>
 
-        <Button
-          onClick={onSyncData}
-          variant="secondary"
-          className="h-14 min-w-[192px] gap-2 rounded-xl px-4 text-sm xl:min-w-0 xl:flex-1"
-        >
-          <RefreshCcw size={16} /> Đồng bộ dữ liệu
-        </Button>
+      <Button
+        onClick={onSyncData}
+        variant="secondary"
+        className="h-14 min-w-0 gap-2 rounded-xl px-3 text-sm"
+      >
+        <RefreshCcw size={16} /> Đồng bộ dữ liệu
+      </Button>
 
-        <Button
-          onClick={onSyncHoliday}
-          variant="secondary"
-          className="h-14 min-w-[192px] gap-2 rounded-xl px-4 text-sm xl:min-w-0 xl:flex-1"
-        >
-          <RefreshCcw size={16} /> Đồng bộ lịch nghỉ
-        </Button>
+      <Button
+        onClick={onSyncHoliday}
+        variant="secondary"
+        className="h-14 min-w-0 gap-2 rounded-xl px-3 text-sm"
+      >
+        <RefreshCcw size={16} /> Đồng bộ lịch nghỉ
+      </Button>
 
-        <Button
-          className={`h-14 min-w-[192px] gap-2 rounded-xl px-4 text-sm text-white shadow-md xl:min-w-0 xl:flex-1 ${
-            isPeriodLocked
-              ? "bg-gray-500 hover:bg-gray-600"
-              : "bg-blue-600 hover:bg-blue-700"
-          }`}
-          onClick={onToggleLock}
-        >
-          {isPeriodLocked ? <Unlock size={16} /> : <Lock size={16} />}
-          {isPeriodLocked ? "Mở khóa sổ" : "Khóa sổ công"}
-        </Button>
-      </div>
+      <Button
+        className={`h-14 min-w-0 gap-2 rounded-xl px-3 text-sm text-white shadow-md ${
+          isPeriodLocked
+            ? "bg-gray-500 hover:bg-gray-600"
+            : "bg-blue-600 hover:bg-blue-700"
+        }`}
+        onClick={onToggleLock}
+      >
+        {isPeriodLocked ? <Unlock size={16} /> : <Lock size={16} />}
+        {isPeriodLocked ? "Mở khóa sổ" : "Khóa sổ công"}
+      </Button>
     </div>
   );
 

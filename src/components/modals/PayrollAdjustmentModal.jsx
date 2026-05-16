@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
+import { AlertTriangle, Loader2, Pencil, Plus, Trash2, Users, X } from "lucide-react";
 import { toast } from "react-toastify";
 
 import { payrollAdjustmentAPI } from "../../apis/payrollAdjustmentAPI";
@@ -32,6 +32,7 @@ const PayrollAdjustmentModal = ({
   isOpen,
   onClose,
   payroll,
+  bulkPayrolls = [],
   selectedMonth,
   onChanged,
 }) => {
@@ -45,6 +46,17 @@ const PayrollAdjustmentModal = ({
   const [year, month] = useMemo(() => selectedMonth.split("-"), [selectedMonth]);
   const payrollEmployee = payroll?.employeeId;
   const lockedEmployeeId = getEmployeeId(payrollEmployee);
+  const bulkEmployeeIds = useMemo(
+    () => [
+      ...new Set(
+        bulkPayrolls
+          .map((item) => getEmployeeId(item.employeeId))
+          .filter(Boolean),
+      ),
+    ],
+    [bulkPayrolls],
+  );
+  const isBulkMode = !lockedEmployeeId && bulkEmployeeIds.length > 0;
   const isPayrollLocked = ["FINALIZED", "PAID"].includes(payroll?.status);
 
   const employeeOptions = useMemo(() => {
@@ -78,7 +90,7 @@ const PayrollAdjustmentModal = ({
   };
 
   const fetchEmployees = async () => {
-    if (lockedEmployeeId) return;
+    if (lockedEmployeeId || isBulkMode) return;
     try {
       const res = await employeeApi.getAll({ limit: 500 });
       setEmployees(res.data?.data || []);
@@ -97,7 +109,7 @@ const PayrollAdjustmentModal = ({
     setEditingId(null);
     fetchEmployees();
     fetchAdjustments();
-  }, [isOpen, selectedMonth, lockedEmployeeId]);
+  }, [isOpen, selectedMonth, lockedEmployeeId, isBulkMode]);
 
   if (!isOpen) return null;
 
@@ -126,6 +138,11 @@ const PayrollAdjustmentModal = ({
   };
 
   const handleEdit = (item) => {
+    if (isBulkMode) {
+      toast.warning("Chế độ hàng loạt chỉ dùng để thêm khoản điều chỉnh mới");
+      return;
+    }
+
     setEditingId(item._id);
     setForm({
       employeeId: getEmployeeId(item.employeeId) || "",
@@ -151,7 +168,7 @@ const PayrollAdjustmentModal = ({
       note: form.note.trim(),
     };
 
-    if (!payload.employeeId) {
+    if (!isBulkMode && !payload.employeeId) {
       toast.warning("Vui lòng chọn nhân viên");
       return;
     }
@@ -166,12 +183,24 @@ const PayrollAdjustmentModal = ({
 
     try {
       setSaving(true);
-      const res = editingId
+      const res = isBulkMode
+        ? await payrollAdjustmentAPI.createBulk({
+            ...payload,
+            employeeIds: bulkEmployeeIds,
+            employeeId: undefined,
+          })
+        : editingId
         ? await payrollAdjustmentAPI.update(editingId, payload)
         : await payrollAdjustmentAPI.create(payload);
       const result = res.data?.data || {};
 
-      toast.success(editingId ? "Đã cập nhật khoản điều chỉnh" : "Đã thêm khoản điều chỉnh");
+      toast.success(
+        isBulkMode
+          ? `Đã thêm khoản điều chỉnh cho ${result.createdCount || bulkEmployeeIds.length} nhân viên`
+          : editingId
+          ? "Đã cập nhật khoản điều chỉnh"
+          : "Đã thêm khoản điều chỉnh",
+      );
       showReviewWarning(result);
       resetForm();
       await fetchAdjustments();
@@ -207,7 +236,11 @@ const PayrollAdjustmentModal = ({
             <h3 className="text-lg font-bold text-gray-900">Khoản điều chỉnh lương</h3>
             <p className="mt-1 text-sm text-gray-500">
               Kỳ lương tháng {month}/{year}
-              {payrollEmployee?.fullName ? ` - ${payrollEmployee.fullName}` : ""}
+              {isBulkMode
+                ? ` - ${bulkEmployeeIds.length} nhân viên đã chọn`
+                : payrollEmployee?.fullName
+                ? ` - ${payrollEmployee.fullName}`
+                : ""}
             </p>
           </div>
           <button
@@ -228,7 +261,19 @@ const PayrollAdjustmentModal = ({
 
         <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[380px_minmax(0,1fr)]">
           <form onSubmit={handleSubmit} className="space-y-4 border-r border-gray-200 p-5">
-            {!lockedEmployeeId && (
+            {isBulkMode ? (
+              <div className="rounded-lg border border-purple-200 bg-purple-50 p-3 text-sm text-purple-800">
+                <div className="flex items-start gap-2">
+                  <Users size={16} className="mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-semibold">Áp dụng cho {bulkEmployeeIds.length} nhân viên</p>
+                    <p className="mt-1 text-xs text-purple-700">
+                      Khoản này sẽ được tạo riêng cho từng nhân viên đã chọn trong kỳ lương hiện tại.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : !lockedEmployeeId && (
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">Nhân viên</label>
                 <select
