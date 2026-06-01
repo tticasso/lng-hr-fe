@@ -31,7 +31,14 @@ const MyTimesheet = () => {
     handleNextMonth,
   } = useMonthNavigation();
 
-  const { timesheetData, attendanceData, holidayData, loading } =
+  const {
+    timesheetData,
+    attendanceData,
+    holidayData,
+    leaveRequests,
+    otRequests,
+    loading,
+  } =
     useTimesheetData(selectedMonth, selectedYear);
 
   const { calendarDays } = useCalendarData(
@@ -40,6 +47,8 @@ const MyTimesheet = () => {
     todayInfo,
     attendanceData,
     holidayData,
+    leaveRequests,
+    otRequests,
   );
 
   const {

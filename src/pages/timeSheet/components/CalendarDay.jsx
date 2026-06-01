@@ -110,14 +110,12 @@ const CalendarDay = memo(({
                   <div className="text-center mb-1">
                     <span
                       className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
-                        day.apiData?.status === "PAID_LEAVE"
+                        isPaidLeaveDay(day)
                           ? "text-purple-700 bg-purple-100"
                           : "text-orange-700 bg-orange-100"
                       }`}
                     >
-                      {day.apiData?.status === "PAID_LEAVE"
-                        ? "Nghỉ có lương"
-                        : "Nghỉ không lương"}
+                      {getLeaveLabel(day)}
                     </span>
                   </div>
                   {renderCheckInOut(day)}
@@ -150,6 +148,24 @@ const CalendarDay = memo(({
 });
 
 // Helper functions
+const isPaidLeaveDay = (day) =>
+  day.apiData?.status === "PAID_LEAVE" ||
+  ["ANNUAL", "BEREAVEMENT", "WEDDING", "PERSONAL_PAID"].includes(day.leaveInfo?.leaveType);
+
+const getLeaveLabel = (day) => {
+  const statutoryLabels = {
+    SICK_LEAVE: "Nghỉ ốm",
+    MATERNITY_LEAVE: "Nghỉ thai sản",
+    PATERNITY_LEAVE: "Nghỉ vợ sinh",
+  };
+
+  if (statutoryLabels[day.apiData?.status]) {
+    return statutoryLabels[day.apiData.status];
+  }
+
+  return isPaidLeaveDay(day) ? "Nghỉ có lương" : "Nghỉ không lương";
+};
+
 const renderCheckInOut = (day) => {
   if (day.checkIn || day.checkOut) {
     return (
@@ -182,14 +198,26 @@ const renderCheckInOut = (day) => {
 };
 
 const renderOTInfo = (day) => {
-  if (day.status.includes("ot") && day.otTimeRanges && day.otTimeRanges.length > 0) {
+  if (!day.status.includes("ot")) return null;
+
+  if (day.otTimeRanges && day.otTimeRanges.length > 0) {
     return (
       <div className="text-[10px] text-center font-bold text-orange-600 bg-orange-50 px-1 rounded mt-0.5">
-        OT: {day.otTimeRanges.map(ot => `${ot.startTime}-${ot.endTime}`).join(", ")}
+        OT: {day.otTimeRanges.map((ot) => {
+          if (ot.startTime || ot.endTime) {
+            return `${ot.startTime || "--:--"}-${ot.endTime || "--:--"}`;
+          }
+          return `${Number(ot.approvedHours || ot.totalHours || 0).toFixed(2)}h`;
+        }).join(", ")}
       </div>
     );
   }
-  return null;
+
+  return (
+    <div className="text-[10px] text-center font-bold text-orange-600 bg-orange-50 px-1 rounded mt-0.5">
+      OT: {Number(day.otHours || 0).toFixed(2)}h
+    </div>
+  );
 };
 
 CalendarDay.displayName = "CalendarDay";

@@ -115,6 +115,13 @@ const DayDetailPanel = memo(
   },
 );
 
+const hasOTInfo = (selectedDate) =>
+  selectedDate.status?.includes("ot") &&
+  (
+    Number(selectedDate.otHours || 0) > 0 ||
+    (selectedDate.otTimeRanges && selectedDate.otTimeRanges.length > 0)
+  );
+
 // Work Day Content Component
 const WorkDayContent = memo(({ selectedDate }) => (
   <div className="space-y-4">
@@ -174,11 +181,7 @@ const WorkDayContent = memo(({ selectedDate }) => (
       </div>
     )}
 
-    {selectedDate.status.includes("ot") &&
-      selectedDate.otTimeRanges &&
-      selectedDate.otTimeRanges.length > 0 && (
-        <OTInfo selectedDate={selectedDate} />
-      )}
+    {hasOTInfo(selectedDate) && <OTInfo selectedDate={selectedDate} />}
   </div>
 ));
 
@@ -272,20 +275,13 @@ const LeaveDayContent = memo(({ selectedDate, statusMap }) => (
       </div>
     )}
 
-    {selectedDate.status.includes("ot") &&
-      selectedDate.otTimeRanges &&
-      selectedDate.otTimeRanges.length > 0 && (
-        <OTInfo selectedDate={selectedDate} />
-      )}
+    {hasOTInfo(selectedDate) && <OTInfo selectedDate={selectedDate} />}
   </div>
 ));
 
 // Other Day Content Component
 const OtherDayContent = memo(({ selectedDate }) => {
-  const hasOT =
-    selectedDate.status?.includes("ot") &&
-    selectedDate.otTimeRanges &&
-    selectedDate.otTimeRanges.length > 0;
+  const hasOT = hasOTInfo(selectedDate);
   const hasCheckInOut = selectedDate.checkIn || selectedDate.checkOut;
 
   const bannerLabel =
@@ -419,11 +415,7 @@ const HolidayDayContent = memo(({ selectedDate }) => (
       </div>
     )}
 
-    {selectedDate.status.includes("ot") &&
-      selectedDate.otTimeRanges &&
-      selectedDate.otTimeRanges.length > 0 && (
-        <OTInfo selectedDate={selectedDate} />
-      )}
+    {hasOTInfo(selectedDate) && <OTInfo selectedDate={selectedDate} />}
   </div>
 ));
 
@@ -443,6 +435,7 @@ const OTInfo = memo(({ selectedDate }) => {
   const otBreakdown = finalOtHours
     ? Object.entries(finalOtHours).filter(([, hours]) => hours > 0)
     : [];
+  const otTimeRanges = selectedDate.otTimeRanges || [];
 
   return (
     <div className="p-3 bg-orange-50 border border-orange-100 rounded-lg">
@@ -455,7 +448,7 @@ const OTInfo = memo(({ selectedDate }) => {
         </span>
       </div>
       <div className="space-y-1">
-        {selectedDate.otTimeRanges.map((ot, idx) => (
+        {otTimeRanges.length > 0 ? otTimeRanges.map((ot, idx) => (
           <div
             key={idx}
             className="flex items-center justify-between text-xs bg-white px-2 py-1.5 rounded"
@@ -478,16 +471,20 @@ const OTInfo = memo(({ selectedDate }) => {
             </div>
             <div className="text-right">
               <div className="font-mono font-bold text-orange-600">
-                {ot.startTime} - {ot.endTime}
+                {ot.startTime || "--:--"} - {ot.endTime || "--:--"}
               </div>
-              {ot.approvedHours && (
+              {(ot.approvedHours || ot.totalHours) && (
                 <div className="text-[10px] text-gray-500">
-                  {ot.approvedHours}h duyệt
+                  {ot.approvedHours || ot.totalHours}h duyệt
                 </div>
               )}
             </div>
           </div>
-        ))}
+        )) : (
+          <div className="text-xs bg-white px-2 py-1.5 rounded text-gray-600">
+            Chưa có khung giờ OT chi tiết
+          </div>
+        )}
       </div>
 
       {otBreakdown.length > 0 && (
