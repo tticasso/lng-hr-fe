@@ -70,6 +70,7 @@ export const formatMoney = (amount) =>
 
 export const formatHours = (amount) => `${Number(amount || 0).toFixed(2)}h`;
 export const formatDays = (amount) => `${Number(amount || 0).toFixed(2)} ngày`;
+export const formatPercent = (amount) => `${(Number(amount || 0) * 100).toFixed(0)}%`;
 
 export const getPayrollStatusLabel = (status) => {
   switch (status) {
@@ -142,6 +143,57 @@ export const getAllowanceBreakdownItems = (row) =>
       value: Number(value || 0),
     }))
     .filter((item) => item.value > 0);
+
+export const getSalaryPeriodBreakdownItems = (row) => {
+  const breakdown = row?.salaryPeriodBreakdown || {};
+  const baseDailyRate = Number(breakdown.baseDailyRate || row?.baseSalary / (row?.standardWorkDays || 1) || 0);
+  const fallbackDailyRate = Number(row?.dailyRate || 0);
+  const fallbackAmount = Number(row?.salaryFromWork || 0);
+  const fallbackDays = Number(row?.actualWorkDays || 0);
+  const fallbackMultiplier = Number(row?.salaryMultiplier || 1);
+  const hasSavedBreakdown =
+    Number(breakdown.probation?.workDays || 0) > 0 ||
+    Number(breakdown.official?.workDays || 0) > 0 ||
+    Number(breakdown.totalAmount || 0) > 0;
+
+  const rawItems = hasSavedBreakdown
+    ? [
+        {
+          key: "probation",
+          label: "Công thử việc",
+          workDays: Number(breakdown.probation?.workDays || 0),
+          multiplier: Number(breakdown.probation?.multiplier || 0.85),
+          dailyRate: Number(breakdown.probation?.dailyRate || baseDailyRate * 0.85),
+          value: Number(breakdown.probation?.amount || 0),
+        },
+        {
+          key: "official",
+          label: "Công chính thức",
+          workDays: Number(breakdown.official?.workDays || 0),
+          multiplier: Number(breakdown.official?.multiplier || 1),
+          dailyRate: Number(breakdown.official?.dailyRate || baseDailyRate),
+          value: Number(breakdown.official?.amount || 0),
+        },
+      ]
+    : [
+        {
+          key: fallbackMultiplier < 1 ? "probation" : "official",
+          label: fallbackMultiplier < 1 ? "Công theo hệ số thử việc" : "Công chính thức",
+          workDays: fallbackDays,
+          multiplier: fallbackMultiplier,
+          dailyRate: fallbackDailyRate,
+          value: fallbackAmount,
+        },
+      ];
+
+  return rawItems
+    .map((item) => ({
+      ...item,
+      value: Math.round(Number(item.value || 0)),
+      formulaText: `${formatDays(item.workDays)} x ${formatMoney(item.dailyRate)} x ${formatPercent(item.multiplier)}`,
+    }))
+    .filter((item) => item.workDays > 0 || item.value > 0);
+};
 
 export const getAdjustmentBreakdownItems = (row) =>
   (row?.adjustmentBreakdown || [])

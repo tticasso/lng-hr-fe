@@ -20,6 +20,10 @@ import logo from "../../assets/logo-sm.webp";
 import { payrollAPI } from "../../apis/payrollAPI";
 import { employeeApi } from "../../apis/employeeApi";
 import { toast } from "react-toastify";
+import {
+  getAdjustmentBreakdownItems,
+  getSalaryPeriodBreakdownItems,
+} from "./overview/payrollOverviewUtils";
 
 const OT_TYPE_LABELS = {
   weekday: "OT ngày thường",
@@ -332,6 +336,22 @@ const MyPayslip = () => {
       })
       .filter((item) => item.sortValue > 0);
 
+    const salaryPeriodBreakdown = getSalaryPeriodBreakdownItems(selectedPayroll)
+      .map((item) => ({
+        ...item,
+        valueText: formatCurrency(item.value),
+        sortValue: item.workDays,
+      }));
+
+    const adjustmentBreakdown = getAdjustmentBreakdownItems(selectedPayroll)
+      .map((item) => ({
+        ...item,
+        valueText: formatCurrency(Math.abs(item.value)),
+        sortValue: Math.abs(item.value),
+      }));
+    const adjustmentEarnings = adjustmentBreakdown.filter((item) => item.value > 0);
+    const adjustmentDeductions = adjustmentBreakdown.filter((item) => item.value < 0);
+
     const totalOtHours = Object.values(otHoursByType).reduce(
       (sum, hours) => sum + Number(hours || 0),
       0,
@@ -343,6 +363,10 @@ const MyPayslip = () => {
         id: selectedPayroll.employeeId?.employeeCode || "--",
         department: selectedPayroll.departmentId?.name || employeeDetail?.department || "--",
         position: selectedPayroll.employeeId?.jobTitle || employeeDetail?.jobTitle || "--",
+        status: selectedPayroll.employeeId?.status || selectedPayroll.employeeStatus || "--",
+        startDate: selectedPayroll.employeeId?.startDate || employeeDetail?.startDate,
+        probationEndDate: selectedPayroll.employeeId?.probationEndDate || employeeDetail?.probationEndDate,
+        endDate: selectedPayroll.employeeId?.endDate || employeeDetail?.endDate,
         taxId: employeeDetail?.taxIdentification || "--",
         bankAccount: employeeDetail?.bankAccount
           ?             `${employeeDetail.bankAccount.accountNumber} (${employeeDetail.bankAccount.bankName})`
@@ -368,8 +392,15 @@ const MyPayslip = () => {
         {
           label: `Lương theo công (${(selectedPayroll.actualWorkDays || 0).toFixed(2)}/${selectedPayroll.standardWorkDays || 0} ngày)`,
           value: selectedPayroll.salaryFromWork || 0,
-          details: leaveBreakdown,
+          details: salaryPeriodBreakdown,
         },
+        ...(Number(selectedPayroll.totalAdjustmentEarnings || 0) > 0
+          ? [{
+              label: "Điều chỉnh cộng",
+              value: selectedPayroll.totalAdjustmentEarnings || 0,
+              details: adjustmentEarnings,
+            }]
+          : []),
         {
           label: "Phụ cấp (Tổng)",
           value: selectedPayroll.totalAllowance || 0,
@@ -396,10 +427,23 @@ const MyPayslip = () => {
           label: "BHTN (1%)",
           value: selectedPayroll.insurance?.bhtn || 0,
         },
+        ...(Number(selectedPayroll.pit || 0) > 0
+          ? [{
+              label: "Thuế TNCN",
+              value: selectedPayroll.pit || 0,
+            }]
+          : []),
+        ...(Number(selectedPayroll.totalAdjustmentDeductions || 0) > 0
+          ? [{
+              label: "Điều chỉnh trừ",
+              value: selectedPayroll.totalAdjustmentDeductions || 0,
+              details: adjustmentDeductions,
+            }]
+          : []),
       ],
 
       totalIncome: selectedPayroll.grossIncome || 0,
-      totalDeduction: selectedPayroll.insurance?.total || 0,
+      totalDeduction: selectedPayroll.totalDeduction || selectedPayroll.insurance?.total || 0,
       netSalary: selectedPayroll.netIncome || 0,
     };
   };
@@ -550,6 +594,22 @@ const MyPayslip = () => {
                 value={payslipData?.employee.position}
               />
               <InfoBlock
+                label="Trạng thái nhân viên"
+                value={payslipData?.employee.status}
+              />
+              <InfoBlock
+                label="Ngày vào làm"
+                value={formatDate(payslipData?.employee.startDate)}
+              />
+              <InfoBlock
+                label="Kết thúc thử việc"
+                value={formatDate(payslipData?.employee.probationEndDate)}
+              />
+              <InfoBlock
+                label="Ngày nghỉ việc"
+                value={formatDate(payslipData?.employee.endDate)}
+              />
+              <InfoBlock
                 label="Mã số thuế"
                 value={payslipData?.employee.taxId}
               />
@@ -639,17 +699,40 @@ const MyPayslip = () => {
                 </h3>
                 <div className="space-y-3">
                   {payslipData?.deductions.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="flex justify-between items-center text-sm group"
-                      title={item.note || ""}
-                    >
-                      <span className="text-gray-600 group-hover:text-gray-900">
-                        {item.label}
-                      </span>
-                      <span className=" font-medium text-red-600/80">
-                        {item.value > 0 ? `-${formatCurrency(item.value)}` : formatCurrency(0)}
-                      </span>
+                    <div key={idx} className="space-y-2">
+                      <div
+                        className="flex justify-between items-center text-sm group"
+                        title={item.note || ""}
+                      >
+                        <span className="text-gray-600 group-hover:text-gray-900">
+                          {item.label}
+                        </span>
+                        <span className=" font-medium text-red-600/80">
+                          {item.value > 0 ? `-${formatCurrency(item.value)}` : formatCurrency(0)}
+                        </span>
+                      </div>
+                      {item.details?.length > 0 && (
+                        <div className="ml-4 rounded-lg bg-gray-50 px-3 py-2">
+                          {item.details.map((detail) => (
+                            <div
+                              key={detail.key}
+                              className="flex items-center justify-between py-1 text-xs text-gray-500"
+                            >
+                              <span className="min-w-0">
+                                <span className="block">{detail.label}</span>
+                                {detail.formulaText && (
+                                  <span className="block font-mono text-[11px] text-gray-400">
+                                    {detail.formulaText}
+                                  </span>
+                                )}
+                              </span>
+                              <span className="font-mono font-semibold text-red-600/80">
+                                -{detail.valueText}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
 

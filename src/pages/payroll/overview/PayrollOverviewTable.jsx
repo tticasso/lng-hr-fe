@@ -2,6 +2,7 @@
 
 import { RotateCcw } from "lucide-react";
 import { CircleDollarSign } from "lucide-react";
+import { Eye } from "lucide-react";
 
 import {
   formatMoney,
@@ -80,6 +81,7 @@ const PayrollOverviewTable = ({
   onSendPayrollEmail,
   onReopenPayroll,
   onManageAdjustments,
+  onViewDetails,
 }) => {
   const loadingLabel = "Đang tải dữ liệu lương...";
   const emptyTitle = "Không có dữ liệu lương";
@@ -156,6 +158,15 @@ const PayrollOverviewTable = ({
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <StatusBadge status={row.status} />
+                <button
+                  type="button"
+                  onClick={() => onViewDetails(row)}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
+                  title="Xem chi tiết tiền lương"
+                >
+                  <Eye size={16} />
+                  Chi tiết
+                </button>
                 <button
                   type="button"
                   onClick={() => onManageAdjustments(row)}
@@ -298,6 +309,15 @@ const PayrollOverviewTable = ({
                 </td>
                 <td className="sticky right-0 border-l border-gray-100 bg-white p-3 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.28)] group-hover:bg-blue-50">
                   <div className="flex flex-col items-stretch justify-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => onViewDetails(row)}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
+                      title="Xem chi tiết tiền lương"
+                    >
+                      <Eye size={16} />
+                      Chi tiết
+                    </button>
                     <button
                       type="button"
                       onClick={() => onManageAdjustments(row)}

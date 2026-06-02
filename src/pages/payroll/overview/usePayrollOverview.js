@@ -2,6 +2,7 @@
 
 import { toast } from "react-toastify";
 
+import { employeeApi } from "../../../apis/employeeApi";
 import { payrollAPI } from "../../../apis/payrollAPI";
 import {
   ALLOWANCE_TYPE_LABELS,
@@ -11,8 +12,11 @@ import {
   getCurrentPayrollPeriod,
   getLeaveBreakdownItems,
   getPayrollStatusLabel,
+  getSalaryPeriodBreakdownItems,
   OT_TYPE_LABELS,
 } from "./payrollOverviewUtils";
+
+const getEmployeeId = (employee) => employee?._id || employee?.id || employee;
 
 export const usePayrollOverview = () => {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentPayrollPeriod());
@@ -20,6 +24,7 @@ export const usePayrollOverview = () => {
   const [loading, setLoading] = useState(false);
   const [sendingBulkEmails, setSendingBulkEmails] = useState(false);
   const [adjustmentModalPayroll, setAdjustmentModalPayroll] = useState(null);
+  const [detailModalPayroll, setDetailModalPayroll] = useState(null);
   const [selectedRows, setSelectedRows] = useState([]);
   const [filters, setFilters] = useState({
     search: "",
@@ -201,6 +206,45 @@ const handleReopenPayroll = async (payroll) => {
     setAdjustmentModalPayroll(null);
   };
 
+  const handleOpenDetails = async (payroll) => {
+    setDetailModalPayroll(payroll);
+
+    const employee = payroll?.employeeId;
+    const employeeId = getEmployeeId(employee);
+    const hasEmployeeDates =
+      employee && typeof employee === "object" &&
+      (employee.startDate || employee.probationEndDate || employee.endDate);
+
+    if (!employeeId || hasEmployeeDates) return;
+
+    try {
+      const res = await employeeApi.getById(employeeId);
+      const responseBody = res.data || {};
+      const employeeDetail = responseBody.data || responseBody;
+
+      if (!employeeDetail?._id && !employeeDetail?.id) return;
+
+      const enrichedPayroll = {
+        ...payroll,
+        employeeId: {
+          ...(typeof employee === "object" ? employee : {}),
+          ...employeeDetail,
+        },
+      };
+
+      setDetailModalPayroll(enrichedPayroll);
+      setPayrollData((prev) =>
+        prev.map((item) => (item._id === payroll._id ? enrichedPayroll : item)),
+      );
+    } catch (error) {
+      console.error("[ERROR] Error fetching employee detail for payroll modal:", error);
+    }
+  };
+
+  const handleCloseDetails = () => {
+    setDetailModalPayroll(null);
+  };
+
   const handleSendPayrollEmailsBulk = async () => {
     const [year, month] = selectedMonth.split("-");
     const emailReadyCount = payrollData.filter((item) =>
@@ -266,6 +310,9 @@ const handleReopenPayroll = async (payroll) => {
           (sum, detail) => sum + Number(detail.value || 0),
           0,
         );
+        const salaryPeriodDetails = getSalaryPeriodBreakdownItems(item);
+        const probationSalary = salaryPeriodDetails.find((detail) => detail.key === "probation");
+        const officialSalary = salaryPeriodDetails.find((detail) => detail.key === "official");
 
         return {
           "Số thứ tự": index + 1,
@@ -277,6 +324,15 @@ const handleReopenPayroll = async (payroll) => {
           "Lương theo giờ": Number(item.dailyRate || 0) / 8,
           "Công chuẩn": item.standardWorkDays || 0,
           "Công tính lương": item.actualWorkDays || 0,
+          "Công thử việc": probationSalary?.workDays || 0,
+          "Đơn giá thử việc": probationSalary?.dailyRate || 0,
+          "Tiền công thử việc": probationSalary?.value || 0,
+          "Công chính thức": officialSalary?.workDays || 0,
+          "Đơn giá chính thức": officialSalary?.dailyRate || 0,
+          "Tiền công chính thức": officialSalary?.value || 0,
+          "Chi tiết lương theo giai đoạn": salaryPeriodDetails
+            .map((detail) => `${detail.label}: ${detail.formulaText} = ${formatMoney(detail.value)}`)
+            .join(" | "),
           "Nghỉ phép hưởng lương": item.paidLeaveDays || 0,
           "Tổng ngày nghỉ": Number(totalLeaveDays.toFixed(2)),
           "Tổng tiền nghỉ": Math.round(totalLeaveAmount),
@@ -377,11 +433,14 @@ const handleReopenPayroll = async (payroll) => {
     handleOpenAdjustments,
     handleOpenBulkAdjustments,
     handleCloseAdjustments,
+    handleOpenDetails,
+    handleCloseDetails,
     isAllSelected,
     isSomeSelected,
     loading,
     sendingBulkEmails,
     adjustmentModalPayroll,
+    detailModalPayroll,
     selectedPayrollItems,
     selectedMonth,
     selectedRows,

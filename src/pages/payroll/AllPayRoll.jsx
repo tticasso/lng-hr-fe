@@ -4,6 +4,7 @@ import PayrollOverviewTable from "./overview/PayrollOverviewTable";
 import PayrollSummaryCards from "./overview/PayrollSummaryCards";
 import { usePayrollOverview } from "./overview/usePayrollOverview";
 import PayrollAdjustmentModal from "../../components/modals/PayrollAdjustmentModal";
+import PayrollDetailModal from "../../components/modals/PayrollDetailModal";
 
 const AllPayRoll = () => {
   const {
@@ -23,11 +24,14 @@ const AllPayRoll = () => {
     handleOpenAdjustments,
     handleOpenBulkAdjustments,
     handleCloseAdjustments,
+    handleOpenDetails,
+    handleCloseDetails,
     isAllSelected,
     isSomeSelected,
     loading,
     sendingBulkEmails,
     adjustmentModalPayroll,
+    detailModalPayroll,
     selectedPayrollItems,
     selectedMonth,
     selectedRows,
@@ -76,6 +80,7 @@ const AllPayRoll = () => {
         onSendPayrollEmail={handleSendPayrollEmail}
         onReopenPayroll={handleReopenPayroll}
         onManageAdjustments={handleOpenAdjustments}
+        onViewDetails={handleOpenDetails}
       />
 
       <PayrollAdjustmentModal
@@ -85,6 +90,12 @@ const AllPayRoll = () => {
         bulkPayrolls={adjustmentModalPayroll?.__bulk ? selectedPayrollItems : []}
         selectedMonth={selectedMonth}
         onChanged={fetchPayrollData}
+      />
+
+      <PayrollDetailModal
+        isOpen={Boolean(detailModalPayroll)}
+        onClose={handleCloseDetails}
+        payroll={detailModalPayroll}
       />
     </div>
   );

@@ -1,5 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Loader2, Pencil, Plus, Trash2, Users, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Calculator,
+  CheckCircle2,
+  Loader2,
+  MinusCircle,
+  Pencil,
+  Plus,
+  PlusCircle,
+  Trash2,
+  Users,
+  X,
+} from "lucide-react";
 import { toast } from "react-toastify";
 
 import { payrollAdjustmentAPI } from "../../apis/payrollAdjustmentAPI";
@@ -27,6 +39,46 @@ const formatInputMoney = (value) => {
 const parseInputMoney = (value) => Number(String(value || "").replace(/[^\d]/g, "")) || 0;
 
 const getEmployeeId = (employee) => employee?._id || employee?.id || employee;
+
+const adjustmentTypeOptions = [
+  {
+    value: "EARNING",
+    icon: PlusCircle,
+    title: "Cộng thu nhập",
+    description: "Thưởng, truy lĩnh hoặc khoản cộng vào tổng thu nhập.",
+    tone: "green",
+  },
+  {
+    value: "ALLOWANCE",
+    icon: CheckCircle2,
+    title: "Phụ cấp bổ sung",
+    description: "Khoản phụ cấp phát sinh ngoài phụ cấp cố định.",
+    tone: "blue",
+  },
+  {
+    value: "DEDUCTION",
+    icon: MinusCircle,
+    title: "Khấu trừ",
+    description: "Tạm ứng, phạt hoặc khoản trừ khỏi lương thực nhận.",
+    tone: "red",
+  },
+];
+
+const getTypeToneClass = (tone, active) => {
+  const toneMap = {
+    green: active
+      ? "border-green-400 bg-green-50 text-green-800"
+      : "border-gray-200 bg-white text-gray-700 hover:border-green-200 hover:bg-green-50",
+    blue: active
+      ? "border-blue-400 bg-blue-50 text-blue-800"
+      : "border-gray-200 bg-white text-gray-700 hover:border-blue-200 hover:bg-blue-50",
+    red: active
+      ? "border-red-400 bg-red-50 text-red-800"
+      : "border-gray-200 bg-white text-gray-700 hover:border-red-200 hover:bg-red-50",
+  };
+
+  return toneMap[tone] || toneMap.green;
+};
 
 const PayrollAdjustmentModal = ({
   isOpen,
@@ -65,6 +117,41 @@ const PayrollAdjustmentModal = ({
     }
     return employees;
   }, [employees, lockedEmployeeId, payrollEmployee]);
+
+  const preview = useMemo(() => {
+    const amount = parseInputMoney(form.amount);
+    const isDeduction = form.type === "DEDUCTION";
+    const currentAdjustment = editingId
+      ? adjustments.find((item) => item._id === editingId)
+      : null;
+    const oldAmount = Number(currentAdjustment?.amount || 0);
+    const oldIsDeduction = currentAdjustment?.type === "DEDUCTION";
+    const oldGrossImpact = currentAdjustment && !oldIsDeduction ? oldAmount : 0;
+    const oldDeductionImpact = currentAdjustment && oldIsDeduction ? oldAmount : 0;
+    const newGrossImpact = !isDeduction ? amount : 0;
+    const newDeductionImpact = isDeduction ? amount : 0;
+    const grossDelta = newGrossImpact - oldGrossImpact;
+    const deductionDelta = newDeductionImpact - oldDeductionImpact;
+    const netDelta = grossDelta - deductionDelta;
+    const targetCount = isBulkMode ? bulkEmployeeIds.length : 1;
+    const grossIncome = Number(payroll?.grossIncome || 0);
+    const totalDeduction = Number(payroll?.totalDeduction || 0);
+    const netIncome = Number(payroll?.netIncome || 0);
+
+    return {
+      amount,
+      targetCount,
+      isDeduction,
+      grossDelta,
+      deductionDelta,
+      netDelta,
+      nextGrossIncome: grossIncome + grossDelta,
+      nextTotalDeduction: totalDeduction + deductionDelta,
+      nextNetIncome: netIncome + netDelta,
+      totalNetDelta: netDelta * targetCount,
+      hasPayrollSnapshot: Boolean(payroll?._id && !payroll?.__bulk),
+    };
+  }, [adjustments, bulkEmployeeIds.length, editingId, form.amount, form.type, isBulkMode, payroll]);
 
   const fetchAdjustments = async () => {
     if (!isOpen) return;
@@ -260,7 +347,7 @@ const PayrollAdjustmentModal = ({
         )}
 
         <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[380px_minmax(0,1fr)]">
-          <form onSubmit={handleSubmit} className="space-y-4 border-r border-gray-200 p-5">
+          <form onSubmit={handleSubmit} className="min-h-0 space-y-4 overflow-auto border-r border-gray-200 p-5">
             {isBulkMode ? (
               <div className="rounded-lg border border-purple-200 bg-purple-50 p-3 text-sm text-purple-800">
                 <div className="flex items-start gap-2">
@@ -291,20 +378,34 @@ const PayrollAdjustmentModal = ({
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Loại</label>
-                <select
-                  value={form.type}
-                  onChange={(e) => setForm((prev) => ({ ...prev, type: e.target.value }))}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                >
-                  {Object.entries(ADJUSTMENT_TYPE_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                Loại khoản điều chỉnh
+              </label>
+              <div className="grid grid-cols-1 gap-2">
+                {adjustmentTypeOptions.map((option) => {
+                  const Icon = option.icon;
+                  const active = form.type === option.value;
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setForm((prev) => ({ ...prev, type: option.value }))}
+                      className={`flex items-start gap-3 rounded-lg border p-3 text-left transition ${getTypeToneClass(option.tone, active)}`}
+                    >
+                      <Icon size={18} className="mt-0.5 shrink-0" />
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold">{option.title}</span>
+                        <span className="mt-0.5 block text-xs opacity-80">{option.description}</span>
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
-              <div>
+            </div>
+
+            <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">Mã khoản</label>
                 <select
                   value={form.code}
@@ -316,7 +417,6 @@ const PayrollAdjustmentModal = ({
                   ))}
                 </select>
               </div>
-            </div>
 
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Tên khoản</label>
@@ -347,6 +447,80 @@ const PayrollAdjustmentModal = ({
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
                 placeholder="Lý do điều chỉnh"
               />
+            </div>
+
+            <div className="rounded-lg border border-blue-100 bg-blue-50 p-4">
+              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-800">
+                <Calculator size={16} />
+                Xem trước ảnh hưởng
+              </div>
+
+              {preview.amount <= 0 ? (
+                <p className="text-sm text-blue-700/70">
+                  Nhập số tiền để xem khoản này sẽ làm lương tăng hoặc giảm như thế nào.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="rounded-lg bg-white/80 p-3">
+                      <p className="text-xs uppercase text-blue-500">Mỗi nhân viên</p>
+                      <p className={`mt-1 font-mono text-lg font-bold ${preview.netDelta < 0 ? "text-red-600" : "text-green-700"}`}>
+                        {preview.netDelta < 0 ? "-" : "+"}
+                        {formatMoney(Math.abs(preview.netDelta))}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-white/80 p-3">
+                      <p className="text-xs uppercase text-blue-500">Số nhân viên</p>
+                      <p className="mt-1 font-mono text-lg font-bold text-blue-900">
+                        {preview.targetCount}
+                      </p>
+                    </div>
+                  </div>
+
+                  {isBulkMode ? (
+                    <div className="rounded-lg bg-white/80 p-3 text-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-gray-600">Tổng ảnh hưởng dự kiến</span>
+                        <span className={`font-mono font-bold ${preview.totalNetDelta < 0 ? "text-red-600" : "text-green-700"}`}>
+                          {preview.totalNetDelta < 0 ? "-" : "+"}
+                          {formatMoney(Math.abs(preview.totalNetDelta))}
+                        </span>
+                      </div>
+                    </div>
+                  ) : preview.hasPayrollSnapshot ? (
+                    <div className="space-y-2 rounded-lg bg-white/80 p-3 text-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-gray-600">Tổng thu nhập</span>
+                        <span className="font-mono text-gray-800">
+                          {formatMoney(payroll.grossIncome)} → {formatMoney(preview.nextGrossIncome)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-gray-600">Tổng khấu trừ</span>
+                        <span className="font-mono text-gray-800">
+                          {formatMoney(payroll.totalDeduction)} → {formatMoney(preview.nextTotalDeduction)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 border-t border-blue-100 pt-2">
+                        <span className="font-semibold text-gray-700">Thực nhận</span>
+                        <span className={`font-mono font-bold ${preview.netDelta < 0 ? "text-red-600" : "text-green-700"}`}>
+                          {formatMoney(payroll.netIncome)} → {formatMoney(preview.nextNetIncome)}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-blue-700/80">
+                      Khoản này sẽ được áp dụng khi chạy tính lương cho kỳ đã chọn.
+                    </p>
+                  )}
+
+                  {isPayrollLocked && (
+                    <p className="rounded-md bg-amber-100 px-3 py-2 text-xs font-medium text-amber-800">
+                      Phiếu đã chốt/thanh toán: preview chỉ để tham khảo. Cần mở lại và tính lại lương để số tiền này đi vào phiếu.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2">
