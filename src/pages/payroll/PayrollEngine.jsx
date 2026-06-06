@@ -200,28 +200,80 @@ const PayrollEngine = () => {
     if (currentStep > 1) setCurrentStep((prev) => prev - 1);
   };
 
-  // Handle finalize payroll (nút "Chốt kỳ lương & Lưu")
-  const handleFinalize = async () => {
+  const getPayrollPeriodPayload = () => {
+    const [year, month] = selectedMonth.split("-");
+    return {
+      month: parseInt(month, 10),
+      year: parseInt(year, 10),
+    };
+  };
+
+  const showPayrollEmailResult = (res) => {
+    const result = res.data?.data || {};
+    const alreadySentCount = Number(result.skippedAlreadySent || 0);
+    const skippedCount =
+      Number(result.skippedNoEmployee || 0) +
+      Number(result.skippedNoEmail || 0) +
+      Number(result.skippedInvalidEmail || 0) +
+      alreadySentCount;
+
+    if (res.data?.status === "partial_success") {
+      toast.warning(
+        `Đã gửi mới ${result.sent || 0}/${result.total || 0} email. Đã gửi trước đó: ${alreadySentCount}. Lỗi: ${result.failed || 0}, bỏ qua: ${skippedCount}.`,
+      );
+      return;
+    }
+
+    toast.success(
+      `Đã gửi mới ${result.sent || 0}/${result.total || 0} email. Đã gửi trước đó: ${alreadySentCount}.`,
+    );
+  };
+
+  const sendPayrollEmailsForSelectedMonth = async (payload) => {
+    const res = await payrollAPI.sendEmailsBulk(payload);
+    showPayrollEmailResult(res);
+  };
+
+  const handleSendPayrollEmails = async () => {
+    const payload = getPayrollPeriodPayload();
+
+    if (
+      !window.confirm(
+        `Gửi email phiếu lương tháng ${payload.month}/${payload.year} cho nhân viên?`,
+      )
+    ) {
+      return;
+    }
+
     try {
       setIsProcessing(true);
-
-      const [year, month] = selectedMonth.split("-");
-
-      const payload = {
-        month: parseInt(month, 10),
-        year: parseInt(year, 10),
-      };
-
-
-      const res = await payrollAPI.finalize(payload);
-
-      toast.success(`Đã chốt kỳ lương thành công!`);
-
-      // TODO: Có thể redirect về trang khác hoặc reset form
-      // navigate('/payroll/all');
+      await sendPayrollEmailsForSelectedMonth(payload);
     } catch (error) {
-      console.error("Lỗi API finalize:", error);
-      toast.error(error.response?.data?.message || "Chốt kỳ lương thất bại. Vui lòng thử lại.");
+      toast.error(error.normalizedMessage || "Gửi email phiếu lương thất bại");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Handle finalize payroll (nút "Chốt kỳ lương & Lưu")
+  const handleFinalize = async () => {
+    let finalized = false;
+
+    try {
+      setIsProcessing(true);
+      const payload = getPayrollPeriodPayload();
+
+      await payrollAPI.finalize(payload);
+      finalized = true;
+      toast.success(`Đã chốt kỳ lương thành công!`);
+      await sendPayrollEmailsForSelectedMonth(payload);
+    } catch (error) {
+      if (finalized) {
+        toast.error(error.normalizedMessage || "Chốt lương thành công nhưng gửi email thất bại");
+      } else {
+        console.error("Lỗi API finalize:", error);
+        toast.error(error.response?.data?.message || "Chốt kỳ lương thất bại. Vui lòng thử lại.");
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -696,6 +748,8 @@ const PayrollEngine = () => {
                 <>
                   <Button
                     variant="secondary"
+                    onClick={handleSendPayrollEmails}
+                    disabled={isProcessing}
                     className="border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
                   >
                     <Send size={18} className="mr-2" /> Gửi email phiếu lương
@@ -712,7 +766,7 @@ const PayrollEngine = () => {
                       </div>
                     ) : (
                       <>
-                        <Lock size={18} className="mr-2" /> Chốt kỳ lương & Lưu
+                        <Lock size={18} className="mr-2" /> Chốt kỳ lương, lưu & gửi mail
                       </>
                     )}
                   </Button>
