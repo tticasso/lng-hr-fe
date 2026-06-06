@@ -5,6 +5,8 @@ import { toast } from "react-toastify";
 import { attendancesAPI } from "../../../apis/attendancesAPI";
 import { payrollAPI } from "../../../apis/payrollAPI";
 import { departmentApi } from "../../../apis/departmentApi";
+import { useAuth } from "../../../context/AuthContext";
+import { hasPermission } from "../../../utils/authPermissions";
 import { getListData, getPagination, hasPaginationMetadata } from "../../../shared/apiResponse";
 import {
   extractDateRangeFromGrid,
@@ -53,6 +55,8 @@ const buildExportRows = (employees) =>
   });
 
 export const useAttendanceAdmin = () => {
+  const { user } = useAuth();
+  const canWriteAttendance = hasPermission(user, "WRITE_ATTENDANCE");
   const [selectedPeriod, setSelectedPeriod] = useState(getCurrentPeriod());
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -152,11 +156,20 @@ export const useAttendanceAdmin = () => {
   };
 
   const handleOpenEditModal = (log) => {
+    if (!canWriteAttendance) {
+      toast.error("Bạn không có quyền WRITE_ATTENDANCE để chỉnh sửa chấm công");
+      return;
+    }
     setSelectedAttendanceLog(log);
     setIsEditModalOpen(true);
   };
 
   const handleSaveAttendance = async (formData) => {
+    if (!canWriteAttendance) {
+      toast.error("Bạn không có quyền WRITE_ATTENDANCE để chỉnh sửa chấm công");
+      return;
+    }
+
     try {
       const id = selectedAttendanceLog?._id;
       const payload = {
@@ -268,12 +281,21 @@ export const useAttendanceAdmin = () => {
   };
 
   const handleImportClick = () => {
+    if (!canWriteAttendance) {
+      toast.error("Bạn không có quyền WRITE_ATTENDANCE để import chấm công");
+      return;
+    }
     fileInputRef.current?.click();
   };
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!canWriteAttendance) {
+      toast.error("Bạn không có quyền WRITE_ATTENDANCE để import chấm công");
+      e.target.value = "";
+      return;
+    }
 
     try {
       setLoading(true);
@@ -323,6 +345,10 @@ export const useAttendanceAdmin = () => {
   };
 
   const handleSyncData = async () => {
+    if (!canWriteAttendance) {
+      toast.error("Bạn không có quyền WRITE_ATTENDANCE để đồng bộ chấm công");
+      return;
+    }
     try {
       await payrollAPI.syncdata({ month, year });
       toast.success("ĐỒNG BỘ THÀNH CÔNG");
@@ -333,6 +359,10 @@ export const useAttendanceAdmin = () => {
   };
 
   const handleSyncHoliday = async () => {
+    if (!canWriteAttendance) {
+      toast.error("Bạn không có quyền WRITE_ATTENDANCE để đồng bộ chấm công");
+      return;
+    }
     try {
       await payrollAPI.syncdata({ month, year });
       toast.success("ĐỒNG BỘ THÀNH CÔNG");
@@ -343,6 +373,11 @@ export const useAttendanceAdmin = () => {
   };
 
   const handleBulkAttendanceSubmit = async (payload) => {
+    if (!canWriteAttendance) {
+      toast.error("Bạn không có quyền WRITE_ATTENDANCE để tạo công hàng loạt");
+      return null;
+    }
+
     try {
       setBulkAttendanceLoading(true);
       const res = await attendancesAPI.bulkWrite(payload);
@@ -494,6 +529,7 @@ export const useAttendanceAdmin = () => {
     OT_TYPE_LABELS,
     bulkAttendanceLoading,
     bulkAttendanceResult,
+    canWriteAttendance,
     departments,
     employeeDetail,
     errorCount,

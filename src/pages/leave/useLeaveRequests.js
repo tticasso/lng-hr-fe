@@ -1,18 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { leaveAPI } from "../../apis/leaveAPI";
+import { useAuth } from "../../context/AuthContext";
+import { hasAllPermissions, hasPermission } from "../../utils/authPermissions";
 import {
   getEntityId,
-  getRoleFlags,
-  getStoredRole,
   normalizeStatus,
 } from "./shared";
 
 const currentEmployeeId = () => localStorage.getItem("employee_ID") || "";
 
 export const useLeaveRequests = ({ mode }) => {
-  const role = useMemo(() => getStoredRole(), []);
-  const { canApprove, isSuperApprover } = useMemo(() => getRoleFlags(role), [role]);
+  const { user } = useAuth();
+  const canApprove = useMemo(() => hasPermission(user, "APPROVE_LEAVE"), [user]);
+  const isSuperApprover = useMemo(
+    () => hasAllPermissions(user, ["APPROVE_LEAVE", "DELETE_LEAVE"]),
+    [user],
+  );
 
   const [loading, setLoading] = useState(true);
   const [leaves, setLeaves] = useState([]);

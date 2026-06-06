@@ -4,6 +4,8 @@ import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import { leavebalanceAPI } from "../../apis/leavebalaneAPI";
 import { toast } from "react-toastify";
+import { useAuth } from "../../context/AuthContext";
+import { hasPermission } from "../../utils/authPermissions";
 
 const buildPageList = (current, total) => {
     if (total <= 1) return [1];
@@ -23,6 +25,8 @@ const buildPageList = (current, total) => {
 };
 
 const LeaveBalance = () => {
+    const { user } = useAuth();
+    const canUpdateLeave = hasPermission(user, "UPDATE_LEAVE");
     const [leaveBalances, setLeaveBalances] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -103,6 +107,11 @@ const LeaveBalance = () => {
 
     // Edit Modal Functions
     const openEditModal = (leaveBalance) => {
+        if (!canUpdateLeave) {
+            toast.error("Bạn không có quyền UPDATE_LEAVE để điều chỉnh công phép");
+            return;
+        }
+
         setSelectedLeaveBalance(leaveBalance);
         setEditForm({
             totalAccrued: leaveBalance.totalAccrued,
@@ -160,6 +169,11 @@ const LeaveBalance = () => {
     };
 
     const handleUpdateLeaveBalance = async () => {
+        if (!canUpdateLeave) {
+            toast.error("Bạn không có quyền UPDATE_LEAVE để điều chỉnh công phép");
+            return;
+        }
+
         
         if (!selectedLeaveBalance) {
             return;
@@ -193,6 +207,11 @@ const LeaveBalance = () => {
 
     // Adjust Modal Functions
     const openAdjustModal = (leaveBalance) => {
+        if (!canUpdateLeave) {
+            toast.error("Bạn không có quyền UPDATE_LEAVE để điều chỉnh công phép");
+            return;
+        }
+
         setSelectedLeaveBalance(leaveBalance);
         setAdjustForm({
             amount: 0,
@@ -251,6 +270,11 @@ const LeaveBalance = () => {
     };
 
     const handleAdjustLeaveBalance = async () => {
+        if (!canUpdateLeave) {
+            toast.error("Bạn không có quyền UPDATE_LEAVE để điều chỉnh công phép");
+            return;
+        }
+
         if (!selectedLeaveBalance) {
             return;
         }
@@ -287,6 +311,11 @@ const LeaveBalance = () => {
     };
 
     const runLeaveBalanceJob = async (type) => {
+        if (!canUpdateLeave) {
+            toast.error("Bạn không có quyền UPDATE_LEAVE để vận hành công phép");
+            return;
+        }
+
         const selectedYear = Number(yearFilter || new Date().getFullYear());
         const labels = {
             accrual: "chạy cộng phép thủ công",
@@ -316,6 +345,11 @@ const LeaveBalance = () => {
     };
 
     const handleDeleteLeaveBalance = async (leaveBalance) => {
+        if (!canUpdateLeave) {
+            toast.error("Bạn không có quyền UPDATE_LEAVE để xóa số dư phép");
+            return;
+        }
+
         if (!window.confirm(`Xóa số dư phép của ${leaveBalance.employeeId?.fullName || "nhân viên này"}?`)) return;
 
         try {
@@ -372,6 +406,7 @@ const LeaveBalance = () => {
                         />
                     </div>
 
+                    {canUpdateLeave && (
                     <div className="flex flex-wrap gap-2">
                         <Button variant="secondary" onClick={() => runLeaveBalanceJob("accrual")}>
                             Cộng phép
@@ -383,6 +418,7 @@ const LeaveBalance = () => {
                             Reset năm
                         </Button>
                     </div>
+                    )}
 
                     <div className="flex gap-3">
                         <div className="relative">
@@ -516,6 +552,7 @@ const LeaveBalance = () => {
 
                                         {/* Actions */}
                                         <td className="p-4 text-center">
+                                            {canUpdateLeave && (
                                             <div className="flex items-center justify-center gap-2">
                                                 <button
                                                     onClick={() => openEditModal(item)}
@@ -539,6 +576,7 @@ const LeaveBalance = () => {
                                                     <X size={16} />
                                                 </button>
                                             </div>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

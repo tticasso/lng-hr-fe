@@ -28,35 +28,7 @@ import {
 import logoLNG from "../assets/LNG-sm.webp";
 import { useAuth } from "../context/AuthContext";
 import { useSidebar } from "../context/SidebarContext";
-
-const parseStoredRole = () => {
-  const raw = localStorage.getItem("role");
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (typeof parsed === "string") return parsed;
-    return parsed?.name || raw || "";
-  } catch {
-    return raw || "";
-  }
-};
-
-const getRoleName = (user) => (
-  user?.accountId?.role?.name ||
-  user?.role?.name ||
-  user?.role ||
-  parseStoredRole()
-);
-
-const getPermissionNames = (user) => {
-  const permissions =
-    user?.accountId?.role?.permissions ||
-    user?.role?.permissions ||
-    user?.permissions ||
-    [];
-
-  return permissions.map((permission) => permission?.name || permission);
-};
+import { getPermissionNames } from "../utils/authPermissions";
 
 const groupTitleClass =
   "mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400";
@@ -70,18 +42,27 @@ const Sidebar = () => {
   const { logout, user } = useAuth();
   const { isCollapsed, isMobileSidebarOpen, toggleSidebar, closeMobileSidebar } = useSidebar();
 
-  const role = getRoleName(user);
   const permissionNames = useMemo(() => getPermissionNames(user), [user]);
-  const hasPermission = (permissions = []) => permissions.some((permission) => permissionNames.includes(permission));
+  const hasPermission = (permissions = []) =>
+    permissions.some((permission) => permissionNames.includes(permission));
   const shouldCollapse = isCollapsed && !isMobileSidebarOpen;
 
-  const isAdmin = role === "ADMIN";
-  const isHR = role === "HR";
-  const isManager = role === "MANAGER";
-  const isLeader = role === "LEADER";
-  const isEmployee = role === "EMPLOYEE";
-  const canReadAccounts = isAdmin || hasPermission(["READ_ACCOUNTS"]);
-  const canManageSystem = isAdmin || hasPermission(["MANAGE_SYSTEM", "READ_ROLES", "READ_PERMISSIONS"]);
+  const canSeeOrganization = hasPermission([
+    "READ_DEPARTMENTS",
+    "WRITE_DEPARTMENTS",
+    "WRITE_TEAMS",
+    "WRITE_OWN_TEAM_MEMBERS",
+  ]);
+  const canSeeHRWorkspace = hasPermission([
+    "READ_EMPLOYEES",
+    "READ_LEAVE",
+    "READ_HOLIDAYS",
+    "READ_ANNOUNCEMENTS",
+    "WRITE_ANNOUNCEMENTS",
+  ]);
+  const canApproveRequests = hasPermission(["APPROVE_LEAVE", "APPROVE_OT"]);
+  const canSeePayrollOps = hasPermission(["READ_ATTENDANCE", "READ_PAYROLLS", "RUN_PAYROLL"]);
+  const canSeeSystem = hasPermission(["READ_USER", "MANAGE_SYSTEM", "READ_ROLES", "READ_PERMISSIONS"]);
 
   const [expandedDropdowns, setExpandedDropdowns] = useState({});
 
@@ -95,7 +76,7 @@ const Sidebar = () => {
           { path: "/payroll", label: "Phiếu lương", icon: DollarSign },
         ],
       },
-      ...(isAdmin || isHR || isManager || isLeader || isEmployee
+      ...(canSeeOrganization || canSeeHRWorkspace || canApproveRequests
         ? [
             {
               title: "Nhân sự",
@@ -110,13 +91,13 @@ const Sidebar = () => {
                       path: "/department",
                       label: "Phòng ban",
                       icon: Network,
-                      roles: ["ADMIN", "HR", "MANAGER", "LEADER", "EMPLOYEE"],
+                      permissions: ["READ_DEPARTMENTS", "WRITE_DEPARTMENTS"],
                     },
                     {
                       path: "/hr/teampages",
                       label: "Team",
                       icon: GitBranch,
-                      roles: ["ADMIN", "HR", "MANAGER", "LEADER", "EMPLOYEE"],
+                      permissions: ["READ_DEPARTMENTS", "WRITE_TEAMS", "WRITE_OWN_TEAM_MEMBERS"],
                     },
                   ],
                 },
@@ -130,25 +111,25 @@ const Sidebar = () => {
                       path: "/hr/employees",
                       label: "Nhân viên",
                       icon: User,
-                      roles: ["ADMIN", "HR"],
+                      permissions: ["READ_EMPLOYEES"],
                     },
                     {
                       path: "/hr/leavebalance",
                       label: "Công phép",
                       icon: CalendarCheck,
-                      roles: ["ADMIN", "HR"],
+                      permissions: ["READ_LEAVE", "UPDATE_LEAVE"],
                     },
                     {
                       path: "/holiday",
                       label: "Lịch nghỉ",
                       icon: Timer,
-                      roles: ["ADMIN", "HR"],
+                      permissions: ["READ_HOLIDAYS", "WRITE_HOLIDAYS"],
                     },
                     {
                       path: "/hr/announcements",
                       label: "Thông báo",
                       icon: Bell,
-                      roles: ["ADMIN", "HR"],
+                      permissions: ["READ_ANNOUNCEMENTS", "WRITE_ANNOUNCEMENTS"],
                     },
                   ],
                 },
@@ -162,25 +143,23 @@ const Sidebar = () => {
                       path: "/leave/my",
                       label: "Đơn nghỉ",
                       icon: CalendarMinus,
-                      roles: ["ADMIN", "HR", "MANAGER", "LEADER", "EMPLOYEE"],
                     },
                     {
                       path: "/leave/approvals",
                       label: "Duyệt đơn nghỉ",
                       icon: ClipboardCheck,
-                      roles: ["ADMIN", "HR", "MANAGER", "LEADER"],
+                      permissions: ["APPROVE_LEAVE"],
                     },
                     {
                       path: "/ot/my",
                       label: "Đơn OT",
                       icon: Timer,
-                      roles: ["ADMIN", "HR", "MANAGER", "LEADER", "EMPLOYEE"],
                     },
                     {
                       path: "/ot/approvals",
                       label: "Duyệt đơn OT",
                       icon: ClipboardCheck,
-                      roles: ["ADMIN", "HR", "MANAGER", "LEADER"],
+                      permissions: ["APPROVE_OT"],
                     },
                   ],
                 },
@@ -188,7 +167,7 @@ const Sidebar = () => {
             },
           ]
         : []),
-      ...(isAdmin || isHR
+      ...(canSeePayrollOps
         ? [
             {
               title: "Tiền lương",
@@ -203,16 +182,19 @@ const Sidebar = () => {
                       path: "/hr/attendance-admin",
                       label: "Chấm công",
                       icon: ClipboardCheck,
+                      permissions: ["READ_ATTENDANCE"],
                     },
                     {
                       path: "/allpayroll",
                       label: "Bảng lương",
                       icon: FileSpreadsheet,
+                      permissions: ["READ_PAYROLLS"],
                     },
                     {
                       path: "/hr/payroll-engine",
                       label: "Tính lương",
                       icon: Landmark,
+                      permissions: ["RUN_PAYROLL"],
                     },
                   ],
                 },
@@ -220,7 +202,7 @@ const Sidebar = () => {
             },
           ]
         : []),
-      ...(canReadAccounts || canManageSystem
+      ...(canSeeSystem
         ? [
             {
               title: "Hệ thống",
@@ -229,7 +211,7 @@ const Sidebar = () => {
                   path: "/admin/user-management",
                   label: "Quản lý tài khoản",
                   icon: UserCog,
-                  permissions: ["READ_ACCOUNTS"],
+                  permissions: ["READ_USER"],
                 },
                 {
                   path: "/admin/system-admin",
@@ -242,7 +224,7 @@ const Sidebar = () => {
           ]
         : []),
     ],
-    [canManageSystem, canReadAccounts, isAdmin, isEmployee, isHR, isLeader, isManager]
+    [canApproveRequests, canSeeHRWorkspace, canSeeOrganization, canSeePayrollOps, canSeeSystem],
   );
 
   useEffect(() => {
@@ -256,7 +238,7 @@ const Sidebar = () => {
       for (const item of group.items) {
         if (item.type !== "dropdown") continue;
         const hasActiveChild = item.children.some((child) =>
-          location.pathname.startsWith(child.path)
+          location.pathname.startsWith(child.path),
         );
         if (hasActiveChild) nextExpanded[item.key] = true;
       }
@@ -287,9 +269,8 @@ const Sidebar = () => {
   };
 
   const renderNavItem = (item, isChild = false) => {
-    const hasRoleAccess = !item.roles || item.roles.includes(role);
-    const hasPermissionAccess = !item.permissions || isAdmin || hasPermission(item.permissions);
-    if (!hasRoleAccess || !hasPermissionAccess) return null;
+    const hasPermissionAccess = !item.permissions || hasPermission(item.permissions);
+    if (!hasPermissionAccess) return null;
 
     const Icon = item.icon;
 
@@ -330,18 +311,14 @@ const Sidebar = () => {
 
   const renderDropdown = (item) => {
     const visibleChildren = item.children.filter(
-      (child) => {
-        const hasRoleAccess = !child.roles || child.roles.includes(role);
-        const hasPermissionAccess = !child.permissions || isAdmin || hasPermission(child.permissions);
-        return hasRoleAccess && hasPermissionAccess;
-      }
+      (child) => !child.permissions || hasPermission(child.permissions),
     );
     if (!visibleChildren.length) return null;
 
     const Icon = item.icon;
     const isExpanded = !!expandedDropdowns[item.key];
     const isActive = visibleChildren.some((child) =>
-      location.pathname.startsWith(child.path)
+      location.pathname.startsWith(child.path),
     );
 
     return (
@@ -436,7 +413,7 @@ const Sidebar = () => {
                 {!shouldCollapse && <h3 className={groupTitleClass}>{group.title}</h3>}
                 <div className="space-y-1">
                   {group.items.map((item) =>
-                    item.type === "dropdown" ? renderDropdown(item) : renderNavItem(item)
+                    item.type === "dropdown" ? renderDropdown(item) : renderNavItem(item),
                   )}
                 </div>
               </section>
@@ -462,13 +439,6 @@ const Sidebar = () => {
             </span>
             {!shouldCollapse && <span>Đăng xuất</span>}
           </button>
-
-          {/* {!shouldCollapse && (
-            <div className="mt-3 flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-500">
-              <Plane size={14} />
-              <span className="truncate">© 2026 LNG Inc.</span>
-            </div>
-          )} */}
         </div>
       </aside>
     </>

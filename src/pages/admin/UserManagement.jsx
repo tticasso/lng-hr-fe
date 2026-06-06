@@ -30,7 +30,7 @@ import UserDetailModal from "../../components/modals/UserDetailModal";
 import ActionModal from "../../components/modals/ActionModal";
 import { useAuth } from "../../context/AuthContext";
 import { getListData, getPagination, hasPaginationMetadata } from "../../shared/apiResponse";
-import { getPermissionNames } from "../../utils/authPermissions";
+import { getPermissionNames, hasAnyPermission } from "../../utils/authPermissions";
 
 const USER_PAGE_SIZE = 50;
 const MAX_USER_PREFETCH = 500;
@@ -40,7 +40,7 @@ const UserManagement = () => {
   const { user } = useAuth();
   const userInfo = user;
   const permissionNames = getPermissionNames(user);
-  const canWriteAccounts = permissionNames.includes("WRITE_ACCOUNTS");
+  const canWriteAccounts = hasAnyPermission(user, ["CREATE_USER", "UPDATE_USER", "DELETE_USER"]);
   const canImportProfiles = permissionNames.includes("WRITE_EMPLOYEES");
   const [users, setUsers] = useState([]);
   const [rolesList, setRolesList] = useState([]);
@@ -236,7 +236,7 @@ const UserManagement = () => {
   const handleConfirmAction = async () => {
     if (!actionData.user) return;
     if (!canWriteAccounts) {
-      toast.error("Bạn không có quyền WRITE_ACCOUNTS để thay đổi tài khoản");
+      toast.error("Bạn cần quyền CREATE_USER/UPDATE_USER/DELETE_USER để thay đổi tài khoản");
       setActionData({ type: null, user: null });
       return;
     }
@@ -405,13 +405,13 @@ const UserManagement = () => {
             className="bg-blue-600 text-white flex gap-2 items-center w-full sm:w-auto"
             onClick={() => {
               if (!canWriteAccounts) {
-                toast.error("Bạn không có quyền WRITE_ACCOUNTS để tạo tài khoản");
+                toast.error("Bạn cần quyền CREATE_USER để tạo tài khoản");
                 return;
               }
               setIsCreateOpen(true);
             }}
             disabled={!canWriteAccounts}
-            title={canWriteAccounts ? "Tạo tài khoản" : "Cần quyền WRITE_ACCOUNTS"}
+            title={canWriteAccounts ? "Tạo tài khoản" : "Cần quyền CREATE_USER/UPDATE_USER/DELETE_USER"}
           >
             <Plus size={18} /> Tạo tài khoản
           </Button>

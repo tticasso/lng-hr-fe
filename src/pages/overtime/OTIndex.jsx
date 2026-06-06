@@ -1,8 +1,11 @@
 import { Navigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { hasPermission } from "../../utils/authPermissions";
 
 const OTIndex = () => {
-  const role = localStorage.getItem("role");
-  if (["ADMIN", "HR", "MANAGER", "LEADER"].includes(role)) {
+  const { user } = useAuth();
+
+  if (hasPermission(user, "APPROVE_OT")) {
     return <Navigate to="/ot/approvals" replace />;
   }
 

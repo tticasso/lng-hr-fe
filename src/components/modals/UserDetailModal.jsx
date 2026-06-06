@@ -145,7 +145,7 @@ const PermissionCell = ({ items }) => (
   </td>
 );
 
-const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh, canWriteAccounts = true }) => {
+const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh, canWriteAccounts = false }) => {
   const [selectedRole, setSelectedRole] = useState(user.role?._id || "");
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
   const selectedRoleObj = useMemo(
@@ -183,7 +183,7 @@ const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh, canWri
   // Handle Update Role
   const handleUpdateRole = async () => {
     if (!canWriteAccounts) {
-      toast.error("Bạn không có quyền WRITE_ACCOUNTS để thay đổi tài khoản");
+      toast.error("Bạn cần quyền CREATE_USER/UPDATE_USER/DELETE_USER để thay đổi tài khoản");
       return;
     }
     if (selectedRole === user.role?._id) return; // Không đổi thì không gọi

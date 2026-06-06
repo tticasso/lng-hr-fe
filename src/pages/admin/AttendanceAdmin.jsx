@@ -14,6 +14,7 @@ const AttendanceAdmin = () => {
     OT_TYPE_LABELS,
     bulkAttendanceLoading,
     bulkAttendanceResult,
+    canWriteAttendance,
     departments,
     employeeDetail,
     errorCount,
@@ -80,6 +81,7 @@ const AttendanceAdmin = () => {
         onSyncHoliday={handleSyncHoliday}
         onToggleLock={() => setIsPeriodLocked((prev) => !prev)}
         isExportDisabled={filteredAttendanceData.length === 0}
+        canWriteAttendance={canWriteAttendance}
       />
 
       <AttendanceOverviewTable
@@ -102,6 +104,7 @@ const AttendanceAdmin = () => {
         onClose={() => setSelectedEmployee(null)}
         onOpenEditModal={handleOpenEditModal}
         otTypeLabels={OT_TYPE_LABELS}
+        canWriteAttendance={canWriteAttendance}
       />
 
       <EditAttendanceModal
@@ -110,6 +113,7 @@ const AttendanceAdmin = () => {
         attendanceLog={selectedAttendanceLog}
         employee={selectedEmployee}
         onSave={handleSaveAttendance}
+        canWriteAttendance={canWriteAttendance}
       />
 
       <BulkAttendanceModal
@@ -120,6 +124,7 @@ const AttendanceAdmin = () => {
         onClose={() => setIsBulkAttendanceModalOpen(false)}
         onSubmit={handleBulkAttendanceSubmit}
         result={bulkAttendanceResult}
+        canWriteAttendance={canWriteAttendance}
       />
     </div>
   );

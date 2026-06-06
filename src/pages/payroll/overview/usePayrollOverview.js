@@ -4,6 +4,8 @@ import { toast } from "react-toastify";
 
 import { employeeApi } from "../../../apis/employeeApi";
 import { payrollAPI } from "../../../apis/payrollAPI";
+import { useAuth } from "../../../context/AuthContext";
+import { hasPermission } from "../../../utils/authPermissions";
 import {
   ALLOWANCE_TYPE_LABELS,
   formatMoney,
@@ -19,6 +21,8 @@ import {
 const getEmployeeId = (employee) => employee?._id || employee?.id || employee;
 
 export const usePayrollOverview = () => {
+  const { user } = useAuth();
+  const canRunPayroll = hasPermission(user, "RUN_PAYROLL");
   const [selectedMonth, setSelectedMonth] = useState(getCurrentPayrollPeriod());
   const [payrollData, setPayrollData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -131,6 +135,11 @@ export const usePayrollOverview = () => {
   };
 
   const handlePayment = async () => {
+    if (!canRunPayroll) {
+      toast.error("Bạn không có quyền RUN_PAYROLL để thanh toán bảng lương.");
+      return;
+    }
+
     if (selectedRows.length === 0) {
       toast.warning("Vui lòng chọn ít nhất một bản lương để thanh toán.");
       return;
@@ -168,6 +177,11 @@ export const usePayrollOverview = () => {
   };
 
 const handleReopenPayroll = async (payroll) => {
+    if (!canRunPayroll) {
+      toast.error("Bạn không có quyền RUN_PAYROLL để mở lại phiếu lương.");
+      return;
+    }
+
     if (!payroll?._id) return;
 
     const employeeName = payroll.employeeId?.fullName || payroll.employeeId?.employeeCode || "nhân viên này";
@@ -190,10 +204,19 @@ const handleReopenPayroll = async (payroll) => {
   };
 
   const handleOpenAdjustments = (payroll) => {
+    if (!canRunPayroll) {
+      toast.error("Bạn không có quyền RUN_PAYROLL để điều chỉnh bảng lương.");
+      return;
+    }
     setAdjustmentModalPayroll(payroll);
   };
 
   const handleOpenBulkAdjustments = () => {
+    if (!canRunPayroll) {
+      toast.error("Bạn không có quyền RUN_PAYROLL để điều chỉnh bảng lương.");
+      return;
+    }
+
     if (selectedRows.length === 0) {
       toast.warning("Vui lòng chọn ít nhất một bản lương để điều chỉnh hàng loạt.");
       return;
@@ -246,6 +269,11 @@ const handleReopenPayroll = async (payroll) => {
   };
 
   const handleSendPayrollEmailsBulk = async () => {
+    if (!canRunPayroll) {
+      toast.error("Bạn không có quyền RUN_PAYROLL để gửi email phiếu lương hàng loạt.");
+      return;
+    }
+
     const [year, month] = selectedMonth.split("-");
     const emailReadyCount = payrollData.filter((item) =>
       ["FINALIZED", "PAID"].includes(item.status),
@@ -418,6 +446,7 @@ const handleReopenPayroll = async (payroll) => {
 
   return {
     departments,
+    canRunPayroll,
     fetchPayrollData,
     filteredData,
     filters,

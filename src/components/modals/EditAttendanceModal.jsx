@@ -16,7 +16,7 @@ const OT_TYPE_LABELS = {
   holiday_night: "Đêm ngày lễ",
 };
 
-const EditAttendanceModal = ({ isOpen, onClose, attendanceLog, employee, onSave, onDelete }) => {
+const EditAttendanceModal = ({ isOpen, onClose, attendanceLog, employee, onSave, onDelete, canWriteAttendance = false }) => {
   const [formData, setFormData] = useState({
     checkIn: "",
     checkOut: "",
@@ -43,6 +43,11 @@ const EditAttendanceModal = ({ isOpen, onClose, attendanceLog, employee, onSave,
   };
 
   const handleSave = () => {
+    if (!canWriteAttendance) {
+      toast.error("Bạn không có quyền WRITE_ATTENDANCE để chỉnh sửa chấm công");
+      return;
+    }
+
     // Validate
     if (!formData.checkIn || !formData.checkOut) {
       toast.error("Vui lòng nhập đầy đủ giờ vào và giờ ra");
@@ -72,6 +77,11 @@ const EditAttendanceModal = ({ isOpen, onClose, attendanceLog, employee, onSave,
   };
 
   const handleDelete = async () => {
+    if (!canWriteAttendance) {
+      toast.error("Bạn không có quyền WRITE_ATTENDANCE để xóa chấm công");
+      return;
+    }
+
     if (!attendanceLog?._id) {
       toast.error("Không tìm thấy ID bản ghi chấm công");
       return;

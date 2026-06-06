@@ -9,6 +9,7 @@ import PayrollDetailModal from "../../components/modals/PayrollDetailModal";
 const AllPayRoll = () => {
   const {
     departments,
+    canRunPayroll,
     fetchPayrollData,
     filteredData,
     filters,
@@ -64,6 +65,7 @@ const AllPayRoll = () => {
         selectedCount={selectedRows.length}
         exportDisabled={filteredData.length === 0}
         emailDisabled={summary.emailReadyCount === 0}
+        canRunPayroll={canRunPayroll}
       />
 
       <PayrollSummaryCards summary={summary} formatMoney={formatMoney} />
@@ -81,6 +83,7 @@ const AllPayRoll = () => {
         onReopenPayroll={handleReopenPayroll}
         onManageAdjustments={handleOpenAdjustments}
         onViewDetails={handleOpenDetails}
+        canRunPayroll={canRunPayroll}
       />
 
       <PayrollAdjustmentModal
@@ -90,6 +93,7 @@ const AllPayRoll = () => {
         bulkPayrolls={adjustmentModalPayroll?.__bulk ? selectedPayrollItems : []}
         selectedMonth={selectedMonth}
         onChanged={fetchPayrollData}
+        canRunPayroll={canRunPayroll}
       />
 
       <PayrollDetailModal

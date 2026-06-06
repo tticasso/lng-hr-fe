@@ -128,6 +128,7 @@ const AttendanceDetailDrawer = ({
   onClose,
   onOpenEditModal,
   otTypeLabels,
+  canWriteAttendance = false,
 }) => {
   if (!selectedEmployee) return null;
 
@@ -437,6 +438,7 @@ const AttendanceDetailDrawer = ({
                             )}
                           </td>
                           <td className="p-4 text-right">
+                            {canWriteAttendance && (
                             <button
                               onClick={() => onOpenEditModal(log)}
                               className="rounded p-1.5 text-blue-600 transition hover:bg-blue-100"
@@ -444,6 +446,7 @@ const AttendanceDetailDrawer = ({
                             >
                               <Edit size={14} />
                             </button>
+                            )}
                           </td>
                         </tr>
                       );

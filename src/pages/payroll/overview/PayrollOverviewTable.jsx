@@ -82,6 +82,7 @@ const PayrollOverviewTable = ({
   onReopenPayroll,
   onManageAdjustments,
   onViewDetails,
+  canRunPayroll = false,
 }) => {
   const loadingLabel = "Đang tải dữ liệu lương...";
   const emptyTitle = "Không có dữ liệu lương";
@@ -112,12 +113,14 @@ const PayrollOverviewTable = ({
                   {row.employeeId?.employeeCode || "--"}
                 </p>
               </div>
-              <input
-                type="checkbox"
-                checked={isSelected}
-                onChange={() => onSelectRow(row._id)}
-                className="mt-1 h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
+              {canRunPayroll && (
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => onSelectRow(row._id)}
+                  className="mt-1 h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+              )}
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
@@ -167,15 +170,17 @@ const PayrollOverviewTable = ({
                   <Eye size={16} />
                   Chi tiết
                 </button>
-                <button
-                  type="button"
-                  onClick={() => onManageAdjustments(row)}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-semibold text-purple-700 transition hover:bg-purple-100"
-                  title="Quản lý điều chỉnh"
-                >
-                  <CircleDollarSign size={16} />
-                  Điều chỉnh
-                </button>
+                {canRunPayroll && (
+                  <button
+                    type="button"
+                    onClick={() => onManageAdjustments(row)}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-semibold text-purple-700 transition hover:bg-purple-100"
+                    title="Quản lý điều chỉnh"
+                  >
+                    <CircleDollarSign size={16} />
+                    Điều chỉnh
+                  </button>
+                )}
                 {["FINALIZED", "PAID"].includes(row.status) && (
                   <button
                     type="button"
@@ -187,7 +192,7 @@ const PayrollOverviewTable = ({
                     Email
                   </button>
                 )}
-                {row.status === "FINALIZED" && (
+                {canRunPayroll && row.status === "FINALIZED" && (
                   <button
                     type="button"
                     onClick={() => onReopenPayroll(row)}
@@ -225,15 +230,17 @@ const PayrollOverviewTable = ({
           <tr>
             <th className="p-4">
               <div className="flex items-center justify-center">
-                <input
-                  type="checkbox"
-                  checked={isAllSelected}
-                  ref={(el) => {
-                    if (el) el.indeterminate = isSomeSelected;
-                  }}
-                  onChange={onSelectAll}
-                  className="h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
+                {canRunPayroll && (
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = isSomeSelected;
+                    }}
+                    onChange={onSelectAll}
+                    className="h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                )}
               </div>
             </th>
             <th className="p-4">#</th>
@@ -265,12 +272,14 @@ const PayrollOverviewTable = ({
               >
                 <td className="p-4">
                   <div className="flex items-center justify-center">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => onSelectRow(row._id)}
-                      className="h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
+                    {canRunPayroll && (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => onSelectRow(row._id)}
+                        className="h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    )}
                   </div>
                 </td>
                 <td className="p-4 font-mono text-xs text-gray-500">{index + 1}</td>
@@ -318,15 +327,17 @@ const PayrollOverviewTable = ({
                       <Eye size={16} />
                       Chi tiết
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => onManageAdjustments(row)}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-2.5 py-1.5 text-xs font-semibold text-purple-700 transition hover:bg-purple-100"
-                      title="Quản lý điều chỉnh"
-                    >
-                      <CircleDollarSign size={16} />
-                      Điều chỉnh
-                    </button>
+                    {canRunPayroll && (
+                      <button
+                        type="button"
+                        onClick={() => onManageAdjustments(row)}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-2.5 py-1.5 text-xs font-semibold text-purple-700 transition hover:bg-purple-100"
+                        title="Quản lý điều chỉnh"
+                      >
+                        <CircleDollarSign size={16} />
+                        Điều chỉnh
+                      </button>
+                    )}
                     {["FINALIZED", "PAID"].includes(row.status) && (
                       <button
                         type="button"
@@ -338,7 +349,7 @@ const PayrollOverviewTable = ({
                         Email
                       </button>
                     )}
-                    {row.status === "FINALIZED" && (
+                    {canRunPayroll && row.status === "FINALIZED" && (
                       <button
                         type="button"
                         onClick={() => onReopenPayroll(row)}

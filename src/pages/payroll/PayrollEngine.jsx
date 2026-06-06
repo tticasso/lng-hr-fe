@@ -24,6 +24,8 @@ import PayrollAdjustmentModal from "../../components/modals/PayrollAdjustmentMod
 import { payrollAPI } from "../../apis/payrollAPI";
 import { toast } from "react-toastify";
 import { employeeApi } from "../../apis/employeeApi";
+import { useAuth } from "../../context/AuthContext";
+import { hasPermission } from "../../utils/authPermissions";
 import {
   getAdjustmentBreakdownItems,
   getAllowanceBreakdownItems,
@@ -32,6 +34,8 @@ import {
 } from "./overview/payrollOverviewUtils";
 
 const PayrollEngine = () => {
+  const { user } = useAuth();
+  const canRunPayroll = hasPermission(user, "RUN_PAYROLL");
   const [currentStep, setCurrentStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -130,6 +134,11 @@ const PayrollEngine = () => {
 
   // Xử lý chuyển bước
   const handleNext = async () => {
+    if (!canRunPayroll) {
+      toast.error("Bạn không có quyền RUN_PAYROLL để vận hành bảng lương");
+      return;
+    }
+
     if (currentStep === 1) {
       // Log ra ngày đã chọn (không phải ngày chi trả)
 
@@ -176,6 +185,11 @@ const PayrollEngine = () => {
   };
 
   const handleCalculateBatch = async () => {
+    if (!canRunPayroll) {
+      toast.error("Bạn không có quyền RUN_PAYROLL để tính lương");
+      return;
+    }
+
     const [year, month] = selectedMonth.split("-");
     const payload = {
       month: parseInt(month, 10),
@@ -235,6 +249,11 @@ const PayrollEngine = () => {
   };
 
   const handleSendPayrollEmails = async () => {
+    if (!canRunPayroll) {
+      toast.error("Bạn không có quyền RUN_PAYROLL để gửi email phiếu lương");
+      return;
+    }
+
     const payload = getPayrollPeriodPayload();
 
     if (
@@ -257,6 +276,11 @@ const PayrollEngine = () => {
 
   // Handle finalize payroll (nút "Chốt kỳ lương & Lưu")
   const handleFinalize = async () => {
+    if (!canRunPayroll) {
+      toast.error("Bạn không có quyền RUN_PAYROLL để chốt kỳ lương");
+      return;
+    }
+
     let finalized = false;
 
     try {
@@ -407,7 +431,7 @@ const PayrollEngine = () => {
                     type="button"
                     variant="secondary"
                     onClick={handleCalculateBatch}
-                    disabled={isProcessing}
+                    disabled={isProcessing || !canRunPayroll}
                     className="border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
                   >
                     <Calculator size={18} className="mr-2" />
@@ -441,10 +465,11 @@ const PayrollEngine = () => {
                     className="w-full rounded-md border border-gray-300 py-1.5 pl-9 pr-3 text-sm outline-none focus:border-blue-500 md:w-60"
                   />
                 </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setAdjustmentModalPayroll({})}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setAdjustmentModalPayroll({})}
+                    disabled={!canRunPayroll}
                   className="border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100"
                 >
                   <CircleDollarSign size={18} className="mr-2" />
@@ -749,14 +774,14 @@ const PayrollEngine = () => {
                   <Button
                     variant="secondary"
                     onClick={handleSendPayrollEmails}
-                    disabled={isProcessing}
+                    disabled={isProcessing || !canRunPayroll}
                     className="border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
                   >
                     <Send size={18} className="mr-2" /> Gửi email phiếu lương
                   </Button>
                   <Button
                     onClick={handleFinalize}
-                    disabled={isProcessing}
+                    disabled={isProcessing || !canRunPayroll}
                     className="text-white shadow-lg shadow-blue-200 disabled:opacity-70 disabled:cursor-not-allowed"
                   >
                     {isProcessing ? (
@@ -774,7 +799,7 @@ const PayrollEngine = () => {
               ) : (
                 <Button
                   onClick={handleNext}
-                  disabled={isProcessing}
+                  disabled={isProcessing || !canRunPayroll}
                   className="bg-blue-600 hover:bg-blue-700 text-white min-w-[140px] disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isProcessing ? (
@@ -798,6 +823,7 @@ const PayrollEngine = () => {
         onClose={() => setAdjustmentModalPayroll(null)}
         payroll={adjustmentModalPayroll}
         selectedMonth={selectedMonth}
+        canRunPayroll={canRunPayroll}
       />
     </div>
   );

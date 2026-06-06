@@ -24,6 +24,7 @@ const AttendanceAdminHeader = ({
   onSyncHoliday,
   onToggleLock,
   isExportDisabled,
+  canWriteAttendance = false,
 }) => {
   const meta = isPeriodLocked ? (
     <span className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-100 px-2 py-1 text-xs text-red-600">
@@ -45,21 +46,25 @@ const AttendanceAdminHeader = ({
         className="w-full min-w-0"
       />
 
-      <Button
-        variant="secondary"
-        className="h-14 min-w-0 gap-2 rounded-xl px-3 text-sm"
-        onClick={onImport}
-      >
-        <Upload size={16} /> Import dữ liệu
-      </Button>
+      {canWriteAttendance && (
+        <Button
+          variant="secondary"
+          className="h-14 min-w-0 gap-2 rounded-xl px-3 text-sm"
+          onClick={onImport}
+        >
+          <Upload size={16} /> Import dữ liệu
+        </Button>
+      )}
 
-      <Button
-        variant="secondary"
-        className="h-14 min-w-0 gap-2 rounded-xl px-3 text-sm"
-        onClick={onOpenBulkAttendance}
-      >
-        <UserPlus size={16} /> Tạo công hàng loạt
-      </Button>
+      {canWriteAttendance && (
+        <Button
+          variant="secondary"
+          className="h-14 min-w-0 gap-2 rounded-xl px-3 text-sm"
+          onClick={onOpenBulkAttendance}
+        >
+          <UserPlus size={16} /> Tạo công hàng loạt
+        </Button>
+      )}
 
       <Button
         variant="secondary"
@@ -70,33 +75,39 @@ const AttendanceAdminHeader = ({
         <Download size={16} /> Xuất Excel
       </Button>
 
-      <Button
-        onClick={onSyncData}
-        variant="secondary"
-        className="h-14 min-w-0 gap-2 rounded-xl px-3 text-sm"
-      >
-        <RefreshCcw size={16} /> Đồng bộ dữ liệu
-      </Button>
+      {canWriteAttendance && (
+        <Button
+          onClick={onSyncData}
+          variant="secondary"
+          className="h-14 min-w-0 gap-2 rounded-xl px-3 text-sm"
+        >
+          <RefreshCcw size={16} /> Đồng bộ dữ liệu
+        </Button>
+      )}
 
-      <Button
-        onClick={onSyncHoliday}
-        variant="secondary"
-        className="h-14 min-w-0 gap-2 rounded-xl px-3 text-sm"
-      >
-        <RefreshCcw size={16} /> Đồng bộ lịch nghỉ
-      </Button>
+      {canWriteAttendance && (
+        <Button
+          onClick={onSyncHoliday}
+          variant="secondary"
+          className="h-14 min-w-0 gap-2 rounded-xl px-3 text-sm"
+        >
+          <RefreshCcw size={16} /> Đồng bộ lịch nghỉ
+        </Button>
+      )}
 
-      <Button
-        className={`h-14 min-w-0 gap-2 rounded-xl px-3 text-sm text-white shadow-md ${
-          isPeriodLocked
-            ? "bg-gray-500 hover:bg-gray-600"
-            : "bg-blue-600 hover:bg-blue-700"
-        }`}
-        onClick={onToggleLock}
-      >
-        {isPeriodLocked ? <Unlock size={16} /> : <Lock size={16} />}
-        {isPeriodLocked ? "Mở khóa sổ" : "Khóa sổ công"}
-      </Button>
+      {canWriteAttendance && (
+        <Button
+          className={`h-14 min-w-0 gap-2 rounded-xl px-3 text-sm text-white shadow-md ${
+            isPeriodLocked
+              ? "bg-gray-500 hover:bg-gray-600"
+              : "bg-blue-600 hover:bg-blue-700"
+          }`}
+          onClick={onToggleLock}
+        >
+          {isPeriodLocked ? <Unlock size={16} /> : <Lock size={16} />}
+          {isPeriodLocked ? "Mở khóa sổ" : "Khóa sổ công"}
+        </Button>
+      )}
     </div>
   );
 

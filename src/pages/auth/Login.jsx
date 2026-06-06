@@ -39,7 +39,6 @@ const Login = () => {
 
       // Lấy token từ response (cấu trúc có thể là res.data.accessToken hoặc res.accessToken)
       const payload = res.data || res;
-      localStorage.setItem("role", res.data.data.role)
       const accessToken = payload.accessToken || payload.token;
 
       if (!accessToken) {

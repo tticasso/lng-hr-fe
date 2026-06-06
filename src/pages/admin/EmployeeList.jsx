@@ -21,12 +21,16 @@ import { employeeApi } from "../../apis/employeeApi";
 import { departmentApi } from "../../apis/departmentApi";
 import { toast } from "react-toastify";
 import { getListData, getPagination, hasPaginationMetadata } from "../../shared/apiResponse";
+import { useAuth } from "../../context/AuthContext";
+import { hasPermission } from "../../utils/authPermissions";
 
 // Import Modal vừa tạo
 import EditEmployeeModal from "../../components/modals/EditEmployeeModal";
 
 const EmployeeList = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canWriteEmployees = hasPermission(user, "WRITE_EMPLOYEES");
 
   // --- STATE ---
   const [employees, setEmployees] = useState([]);
@@ -163,6 +167,10 @@ const EmployeeList = () => {
   };
 
   const handleOpenEdit = (employee) => {
+    if (!canWriteEmployees) {
+      toast.error("Bạn không có quyền WRITE_EMPLOYEES để chỉnh sửa nhân viên");
+      return;
+    }
     setSelectedEmployee(employee);
     setIsEditModalOpen(true);
   };
@@ -191,6 +199,11 @@ const EmployeeList = () => {
   };
 
   const handleChangeStatus = async (employee, nextStatus) => {
+    if (!canWriteEmployees) {
+      toast.error("Bạn không có quyền WRITE_EMPLOYEES để cập nhật trạng thái nhân viên");
+      return;
+    }
+
     const payload = { status: nextStatus };
     if (["Resigned", "Suspended"].includes(nextStatus)) {
       payload.endDate = new Date().toISOString();
@@ -210,6 +223,11 @@ const EmployeeList = () => {
   };
 
   const handleRestoreEmployee = async (employee) => {
+    if (!canWriteEmployees) {
+      toast.error("Bạn không có quyền WRITE_EMPLOYEES để khôi phục nhân viên");
+      return;
+    }
+
     if (!window.confirm(`Khôi phục nhân viên ${employee.fullName || employee.employeeCode}?`)) {
       return;
     }
@@ -648,6 +666,8 @@ const EmployeeList = () => {
                         >
                           <Eye size={18} />
                         </button>
+                        {canWriteEmployees && (
+                        <>
                         <button
                           onClick={() => handleOpenEdit(emp)}
                           className="p-2 text-orange-500 hover:bg-orange-100 rounded-lg transition"
@@ -676,6 +696,8 @@ const EmployeeList = () => {
                           >
                             <Power size={18} />
                           </button>
+                        )}
+                        </>
                         )}
                       </div>
                     </td>

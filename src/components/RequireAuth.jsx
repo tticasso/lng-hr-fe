@@ -1,18 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Loader2 } from "lucide-react";
-
-const getRoleName = (user) => user?.accountId?.role?.name || user?.role?.name || user?.role || "USER";
-
-const getPermissionNames = (user) => {
-  const permissions =
-    user?.accountId?.role?.permissions ||
-    user?.role?.permissions ||
-    user?.permissions ||
-    [];
-
-  return permissions.map((permission) => permission?.name || permission);
-};
+import { getPermissionNames, getRoleName } from "../utils/authPermissions";
 
 const RequireAuth = ({ children, roles: allowedRoles, permissions: allowedPermissions }) => {
   const { user, loading } = useAuth();

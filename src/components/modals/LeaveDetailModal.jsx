@@ -16,7 +16,9 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { leaveAPI } from "../../apis/leaveAPI";
-import { getRoleFlags, getStoredRole, leaveTypeLabel } from "../../pages/leave/shared";
+import { useAuth } from "../../context/AuthContext";
+import { hasAllPermissions } from "../../utils/authPermissions";
+import { leaveTypeLabel } from "../../pages/leave/shared";
 
 const leaveScopeLabel = {
     FULL_DAY: "Cả ngày",
@@ -79,6 +81,7 @@ const StatusBadge = ({ statusKey, statusText }) => {
 };
 
 const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
+    const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [leaveDetail, setLeaveDetail] = useState(null);
     const [approvalStatusData, setApprovalStatusData] = useState(null);
@@ -191,8 +194,10 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
 
     const displayStatus = normalizeStatus(leaveDetail?.status);
     const approvalSteps = approvalStatusData?.approximateStatus || leaveDetail?.approvalChain || [];
-    const roleFlags = getRoleFlags(getStoredRole());
-    const canRefund = roleFlags.isSuperApprover && displayStatus === "APPROVED" && !leaveDetail?.isRefunded;
+    const canRefund =
+        hasAllPermissions(user, ["APPROVE_LEAVE", "DELETE_LEAVE"]) &&
+        displayStatus === "APPROVED" &&
+        !leaveDetail?.isRefunded;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50 p-0 sm:items-center sm:p-4">

@@ -5,6 +5,7 @@ import { OTApi } from "../../../apis/OTAPI";
 import { announcementAPI } from "../../../apis/announcements";
 import { dashboardAPI } from "../../../apis/dashboardAPI";
 import { getAnnouncementDashboardMeta } from "../../../shared/announcementSchedule";
+import { hasAnyPermission } from "../../../utils/authPermissions";
 
 const DASHBOARD_REQUEST_LIMIT = 5;
 const DASHBOARD_ANNOUNCEMENT_LIMIT = 3;
@@ -21,7 +22,8 @@ const formatLocalDate = (date) => {
 
 const getRoleName = (user) => user?.accountId?.role?.name || user?.role?.name || user?.role || "";
 
-export const isHRDashboardUser = (user) => ["ADMIN", "HR"].includes(getRoleName(user));
+export const isHRDashboardUser = (user) =>
+  hasAnyPermission(user, ["READ_ATTENDANCE", "READ_EMPLOYEES", "READ_PAYROLLS", "RUN_PAYROLL", "READ_LEAVE"]);
 
 const canReadAttendance = (user) => {
   const roleName = getRoleName(user);

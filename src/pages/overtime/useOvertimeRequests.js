@@ -1,18 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { OTApi } from "../../apis/OTAPI";
+import { useAuth } from "../../context/AuthContext";
+import { hasAllPermissions, hasPermission } from "../../utils/authPermissions";
 import {
   getEntityId,
-  getRoleFlags,
-  getStoredRole,
   normalizeStatus,
 } from "./shared";
 
 const currentEmployeeId = () => localStorage.getItem("employee_ID") || "";
 
 export const useOvertimeRequests = ({ mode }) => {
-  const role = useMemo(() => getStoredRole(), []);
-  const { canApprove, isSuperApprover } = useMemo(() => getRoleFlags(role), [role]);
+  const { user } = useAuth();
+  const canApprove = useMemo(() => hasPermission(user, "APPROVE_OT"), [user]);
+  const isSuperApprover = useMemo(
+    () => hasAllPermissions(user, ["APPROVE_OT", "DELETE_OT"]),
+    [user],
+  );
 
   const [loading, setLoading] = useState(true);
   const [ots, setOts] = useState([]);

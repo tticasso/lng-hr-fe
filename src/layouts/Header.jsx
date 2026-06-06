@@ -9,6 +9,7 @@ import { useNotification } from "../context/NotificationContext";
 import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "../context/AuthContext";
 import AnnouncementDetailModal from "../components/modals/AnnouncementDetailModal";
+import { getPermissionNames } from "../utils/authPermissions";
 
 // âœ… Format thá»i gian thĂ´ng bĂ¡o: rĂµ rĂ ng + chuyĂªn nghiá»‡p
 const formatNotifyTime = (dateInput) => {
@@ -81,6 +82,11 @@ const Header = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
   const navigate = useNavigate();
+  const permissionNames = useMemo(() => getPermissionNames(user), [user]);
+  const hasPagePermission = useCallback(
+    (permissions = []) => permissions.some((permission) => permissionNames.includes(permission)),
+    [permissionNames],
+  );
 
   const initials = useMemo(() => {
     const s = fullName.trim();
@@ -262,10 +268,7 @@ const Header = () => {
     // âœ… Xá»­ lĂ½ Ä‘iá»u hÆ°á»›ng theo relatedModel
     if (relatedModel === "Overtime") {
       setOpenNotify(false);
-      const role = localStorage.getItem("role");
-      const otPath = ["ADMIN", "HR", "MANAGER", "LEADER"].includes(role)
-        ? "/ot/approvals"
-        : "/ot/my";
+      const otPath = hasPagePermission(["APPROVE_OT"]) ? "/ot/approvals" : "/ot/my";
       navigate(otPath);
     }
     else if (relatedModel === "Payroll") {
@@ -274,10 +277,7 @@ const Header = () => {
       navigate("/payroll");
     } else if (relatedModel === "Leave") {
       setOpenNotify(false);
-      const role = localStorage.getItem("role");
-      const leavePath = ["ADMIN", "HR", "MANAGER", "LEADER"].includes(role)
-        ? "/leave/approvals"
-        : "/leave/my";
+      const leavePath = hasPagePermission(["APPROVE_LEAVE"]) ? "/leave/approvals" : "/leave/my";
       navigate(leavePath);
     } else if (relatedModel === "Announcement") {
       // // Hiá»ƒn thá»‹ modal chi tiáº¿t thĂ´ng bĂ¡o
@@ -297,27 +297,59 @@ const Header = () => {
 
   // âœ… Danh sĂ¡ch táº¥t cáº£ pages cĂ³ thá»ƒ tĂ¬m kiáº¿m (láº¥y tá»« Sidebar)
   const allPages = useMemo(() => {
-    const role = localStorage.getItem("role");
-    const isAdmin = role === "ADMIN";
-    const isHR = role === "HR";
-    const isManager = role === "MANAGER";
-    const isLeader = role === "LEADER";
-    const isEmployee = role === "EMPLOYEE";
-
     const pages = [
       { path: "/", label: "Tổng quan", keywords: ["tong quan", "dashboard", "home"] },
       { path: "/timesheet", label: "Lịch làm việc", keywords: ["lich lam viec", "timesheet", "cham cong"] },
       { path: "/payroll", label: "Bảng lương", keywords: ["bang luong", "payroll", "luong"] },
     ];
 
+    pages.push(
+      { path: "/leave/my", label: "Đơn nghỉ của tôi", keywords: ["yeu cau", "nghi phep", "leave", "request"] },
+      { path: "/ot/my", label: "Đơn OT của tôi", keywords: ["ot", "overtime", "tang ca"] },
+    );
+
+    if (hasPagePermission(["APPROVE_LEAVE"])) {
+      pages.push({ path: "/leave/approvals", label: "Phê duyệt đơn nghỉ", keywords: ["quan ly yeu cau", "duyet don", "leave management"] });
+    }
+
+    if (hasPagePermission(["APPROVE_OT"])) {
+      pages.push({ path: "/ot/approvals", label: "Phê duyệt đơn OT", keywords: ["duyet ot", "overtime approvals", "duyet tang ca"] });
+    }
+
+    if (hasPagePermission(["READ_EMPLOYEES"])) {
+      pages.push({ path: "/hr/employees", label: "Nhân viên", keywords: ["nhan vien", "employee", "staff"] });
+    }
+
+    if (hasPagePermission(["READ_ATTENDANCE"])) {
+      pages.push({ path: "/hr/attendance-admin", label: "Quản lý chấm công", keywords: ["quan ly cham cong", "attendance", "checkin"] });
+    }
+
+    if (hasPagePermission(["READ_ANNOUNCEMENTS", "WRITE_ANNOUNCEMENTS"])) {
+      pages.push({ path: "/hr/announcements", label: "Thông báo", keywords: ["thong bao", "announcement", "notice"] });
+    }
+
+    if (hasPagePermission(["RUN_PAYROLL"])) {
+      pages.push({ path: "/hr/payroll-engine", label: "Công cụ tính lương", keywords: ["cong cu tinh luong", "payroll engine", "tinh luong"] });
+    }
+
+    if (hasPagePermission(["READ_USER"])) {
+      pages.push({ path: "/admin/user-management", label: "Quản lý người dùng", keywords: ["quan ly nguoi dung", "user management", "account"] });
+    }
+
+    if (hasPagePermission(["MANAGE_SYSTEM", "READ_ROLES", "READ_PERMISSIONS"])) {
+      pages.push({ path: "/admin/system-admin", label: "Cài đặt hệ thống", keywords: ["cai dat he thong", "system admin", "settings"] });
+    }
+
+    const includeLegacyRolePages = false;
+
     // Employee pages
-    if (isEmployee) {
+    if (includeLegacyRolePages) {
       pages.push({ path: "/leave/my", label: "Đơn nghỉ của tôi", keywords: ["yeu cau", "nghi phep", "leave", "request"] });
       pages.push({ path: "/ot/my", label: "Đơn OT của tôi", keywords: ["ot", "overtime", "tang ca"] });
     }
 
     // Admin, HR, Manager pages
-    if (isAdmin || isHR || isManager || isLeader) {
+    if (includeLegacyRolePages) {
       pages.push({ path: "/leave/approvals", label: "Phê duyệt đơn nghỉ", keywords: ["quan ly yeu cau", "duyet don", "leave management"] });
       pages.push({ path: "/leave/my", label: "Đơn nghỉ của tôi", keywords: ["don nghi cua toi", "leave request"] });
       pages.push({ path: "/ot/my", label: "Đơn OT của tôi", keywords: ["ot", "overtime", "tang ca"] });
@@ -325,7 +357,7 @@ const Header = () => {
     }
 
     // Admin vĂ  HR pages
-    if (isAdmin || isHR) {
+    if (includeLegacyRolePages) {
       pages.push(
         { path: "/hr/employees", label: "Nhân viên", keywords: ["nhan vien", "employee", "staff"] },
         { path: "/hr/attendance-admin", label: "Quản lý chấm công", keywords: ["quan ly cham cong", "attendance", "checkin"] },
@@ -338,7 +370,7 @@ const Header = () => {
     }
 
     // Admin only pages
-    if (isAdmin) {
+    if (includeLegacyRolePages) {
       pages.push(
         { path: "/admin/user-management", label: "Quản lý người dùng", keywords: ["quan ly nguoi dung", "user management", "account"] },
         { path: "/admin/system-admin", label: "Cài đặt hệ thống", keywords: ["cai dat he thong", "system admin", "settings"] }
@@ -346,7 +378,7 @@ const Header = () => {
     }
 
     return pages;
-  }, []);
+  }, [hasPagePermission]);
 
   // âœ… Lá»c káº¿t quáº£ tĂ¬m kiáº¿m
   const searchResults = useMemo(() => {

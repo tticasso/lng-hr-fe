@@ -87,6 +87,7 @@ const PayrollAdjustmentModal = ({
   bulkPayrolls = [],
   selectedMonth,
   onChanged,
+  canRunPayroll = false,
 }) => {
   const [adjustments, setAdjustments] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -225,6 +226,11 @@ const PayrollAdjustmentModal = ({
   };
 
   const handleEdit = (item) => {
+    if (!canRunPayroll) {
+      toast.error("Bạn không có quyền RUN_PAYROLL để điều chỉnh bảng lương");
+      return;
+    }
+
     if (isBulkMode) {
       toast.warning("Chế độ hàng loạt chỉ dùng để thêm khoản điều chỉnh mới");
       return;
@@ -243,6 +249,10 @@ const PayrollAdjustmentModal = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canRunPayroll) {
+      toast.error("Bạn không có quyền RUN_PAYROLL để điều chỉnh bảng lương");
+      return;
+    }
 
     const payload = {
       employeeId: lockedEmployeeId || form.employeeId,
@@ -300,6 +310,11 @@ const PayrollAdjustmentModal = ({
   };
 
   const handleCancel = async (item) => {
+    if (!canRunPayroll) {
+      toast.error("Bạn không có quyền RUN_PAYROLL để điều chỉnh bảng lương");
+      return;
+    }
+
     if (!window.confirm(`Hủy khoản điều chỉnh "${item.name}"?`)) return;
 
     try {

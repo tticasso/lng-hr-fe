@@ -104,18 +104,32 @@ function App() {
                   }
                 >
                   <Route index element={<Dashboard />} />
-                  <Route path="allpayroll" element={<AllPayRoll />} />
+                  <Route
+                    path="allpayroll"
+                    element={
+                      <RequireAuth permissions={["READ_PAYROLLS"]}>
+                        <AllPayRoll />
+                      </RequireAuth>
+                    }
+                  />
                   <Route path="profile" element={<MyProfile />} />
                   <Route path="timesheet" element={<MyTimesheet />} />
                   <Route path="payroll" element={<MyPayslip />} />
-                  <Route path="department" element={<Department />} />
+                  <Route
+                    path="department"
+                    element={
+                      <RequireAuth permissions={["READ_DEPARTMENTS", "WRITE_DEPARTMENTS"]}>
+                        <Department />
+                      </RequireAuth>
+                    }
+                  />
                   <Route path="requests" element={<MyRequests />} />
                   <Route path="leave" element={<LeaveIndex />} />
                   <Route path="leave/my" element={<MyLeaveRequests />} />
                   <Route
                     path="leave/approvals"
                     element={
-                      <RequireAuth roles={["ADMIN", "HR", "MANAGER", "LEADER"]}>
+                      <RequireAuth permissions={["APPROVE_LEAVE"]}>
                         <LeaveApprovals />
                       </RequireAuth>
                     }
@@ -126,53 +140,152 @@ function App() {
                   <Route
                     path="ot/approvals"
                     element={
-                      <RequireAuth roles={["ADMIN", "HR", "MANAGER", "LEADER"]}>
+                      <RequireAuth permissions={["APPROVE_OT"]}>
                         <OTApprovals />
                       </RequireAuth>
                     }
                   />
-                  <Route path="holiday" element={<Holiday />} />
+                  <Route
+                    path="holiday"
+                    element={
+                      <RequireAuth permissions={["READ_HOLIDAYS", "WRITE_HOLIDAYS"]}>
+                        <Holiday />
+                      </RequireAuth>
+                    }
+                  />
                   <Route path="notifications/viewer" element={<NotificationViewer />} />
 
                   <Route
                     path="admin"
                     element={
                       <RequireAuth
-                        roles={["ADMIN"]}
-                        permissions={["READ_ACCOUNTS", "MANAGE_SYSTEM", "READ_ROLES", "READ_PERMISSIONS"]}
+                        permissions={["READ_USER", "MANAGE_SYSTEM", "READ_ROLES", "READ_PERMISSIONS"]}
                       >
                         <Outlet />
                       </RequireAuth>
                     }
                   >
-                    <Route path="register" element={<Register />} />
-                    <Route path="system-admin" element={<SystemAdmin />} />
-                    <Route path="user-management" element={<UserManagement />} />
+                    <Route
+                      path="register"
+                      element={
+                        <RequireAuth permissions={["CREATE_USER"]}>
+                          <Register />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
+                      path="system-admin"
+                      element={
+                        <RequireAuth permissions={["MANAGE_SYSTEM", "READ_ROLES", "READ_PERMISSIONS"]}>
+                          <SystemAdmin />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
+                      path="user-management"
+                      element={
+                        <RequireAuth permissions={["READ_USER"]}>
+                          <UserManagement />
+                        </RequireAuth>
+                      }
+                    />
                   </Route>
 
                   <Route
                     path="hr"
                     element={
-                      <RequireAuth roles={["ADMIN", "HR"]}>
+                      <RequireAuth
+                        permissions={[
+                          "READ_EMPLOYEES",
+                          "READ_ATTENDANCE",
+                          "READ_PAYROLLS",
+                          "RUN_PAYROLL",
+                          "READ_ANNOUNCEMENTS",
+                          "READ_LEAVE",
+                        ]}
+                      >
                         <Outlet />
                       </RequireAuth>
                     }
                   >
-                    <Route path="payroll-engine" element={<PayrollEngine />} />
-                    <Route path="recruitment" element={<Recruitment />} />
-                    <Route path="boarding" element={<OnboardingOffboarding />} />
-                    <Route path="training" element={<TrainingPerformance />} />
-                    <Route path="attendance-admin" element={<AttendanceAdmin />} />
-                    <Route path="employees" element={<EmployeeList />} />
-                    <Route path="employees/:id" element={<EmployeeDetail />} />
-                    <Route path="announcements" element={<Announcements />} />
-                    <Route path="leavebalance" element={<LeaveBalance />} />
+                    <Route
+                      path="payroll-engine"
+                      element={
+                        <RequireAuth permissions={["RUN_PAYROLL"]}>
+                          <PayrollEngine />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
+                      path="recruitment"
+                      element={
+                        <RequireAuth permissions={["READ_EMPLOYEES"]}>
+                          <Recruitment />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
+                      path="boarding"
+                      element={
+                        <RequireAuth permissions={["READ_EMPLOYEES"]}>
+                          <OnboardingOffboarding />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
+                      path="training"
+                      element={
+                        <RequireAuth permissions={["READ_EMPLOYEES"]}>
+                          <TrainingPerformance />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
+                      path="attendance-admin"
+                      element={
+                        <RequireAuth permissions={["READ_ATTENDANCE"]}>
+                          <AttendanceAdmin />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
+                      path="employees"
+                      element={
+                        <RequireAuth permissions={["READ_EMPLOYEES"]}>
+                          <EmployeeList />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
+                      path="employees/:id"
+                      element={
+                        <RequireAuth permissions={["READ_EMPLOYEES"]}>
+                          <EmployeeDetail />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
+                      path="announcements"
+                      element={
+                        <RequireAuth permissions={["READ_ANNOUNCEMENTS", "WRITE_ANNOUNCEMENTS"]}>
+                          <Announcements />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
+                      path="leavebalance"
+                      element={
+                        <RequireAuth permissions={["READ_LEAVE", "UPDATE_LEAVE"]}>
+                          <LeaveBalance />
+                        </RequireAuth>
+                      }
+                    />
                   </Route>
 
                   <Route
                     path="hr/teampages"
                     element={
-                      <RequireAuth roles={["ADMIN", "HR", "MANAGER", "LEADER", "EMPLOYEE"]}>
+                      <RequireAuth permissions={["READ_DEPARTMENTS", "WRITE_TEAMS", "WRITE_OWN_TEAM_MEMBERS"]}>
                         <TeamPages />
                       </RequireAuth>
                     }
