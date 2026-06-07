@@ -6,6 +6,7 @@ import { employeeApi } from "../../../apis/employeeApi";
 import { payrollAPI } from "../../../apis/payrollAPI";
 import { useAuth } from "../../../context/AuthContext";
 import { hasPermission } from "../../../utils/authPermissions";
+import { formatEmployeeCode } from "../../../utils/employeeDisplay";
 import { ACCESS } from "../../../config/accessControl";
 import {
   ALLOWANCE_TYPE_LABELS,
@@ -97,7 +98,7 @@ export const usePayrollOverview = () => {
 
   const summary = useMemo(
     () => ({
-      totalEmployees: filteredData.length,
+      totalPayrolls: filteredData.length,
       totalGross: filteredData.reduce((sum, item) => sum + (item.grossIncome || 0), 0),
       totalNet: filteredData.reduce((sum, item) => sum + (item.netIncome || 0), 0),
       totalDeduction: filteredData.reduce(
@@ -137,7 +138,7 @@ export const usePayrollOverview = () => {
 
   const handlePayment = async () => {
     if (!canRunPayroll) {
-      toast.error("Bạn không có quyền RUN_PAYROLL để thanh toán bảng lương.");
+      toast.error("Bạn không có quyền WRITE_PAYROLLS để thanh toán bảng lương.");
       return;
     }
 
@@ -179,7 +180,7 @@ export const usePayrollOverview = () => {
 
 const handleReopenPayroll = async (payroll) => {
     if (!canRunPayroll) {
-      toast.error("Bạn không có quyền RUN_PAYROLL để mở lại phiếu lương.");
+      toast.error("Bạn không có quyền WRITE_PAYROLLS để mở lại phiếu lương.");
       return;
     }
 
@@ -206,7 +207,7 @@ const handleReopenPayroll = async (payroll) => {
 
   const handleOpenAdjustments = (payroll) => {
     if (!canRunPayroll) {
-      toast.error("Bạn không có quyền RUN_PAYROLL để điều chỉnh bảng lương.");
+      toast.error("Bạn không có quyền WRITE_PAYROLLS để điều chỉnh bảng lương.");
       return;
     }
     setAdjustmentModalPayroll(payroll);
@@ -214,7 +215,7 @@ const handleReopenPayroll = async (payroll) => {
 
   const handleOpenBulkAdjustments = () => {
     if (!canRunPayroll) {
-      toast.error("Bạn không có quyền RUN_PAYROLL để điều chỉnh bảng lương.");
+      toast.error("Bạn không có quyền WRITE_PAYROLLS để điều chỉnh bảng lương.");
       return;
     }
 
@@ -271,7 +272,7 @@ const handleReopenPayroll = async (payroll) => {
 
   const handleSendPayrollEmailsBulk = async () => {
     if (!canRunPayroll) {
-      toast.error("Bạn không có quyền RUN_PAYROLL để gửi email phiếu lương hàng loạt.");
+      toast.error("Bạn không có quyền WRITE_PAYROLLS để gửi email phiếu lương hàng loạt.");
       return;
     }
 
@@ -345,7 +346,7 @@ const handleReopenPayroll = async (payroll) => {
 
         return {
           "Số thứ tự": index + 1,
-          "Mã nhân viên": item.employeeId?.employeeCode || "",
+          "Mã nhân viên": formatEmployeeCode(item.employeeId?.employeeCode, ""),
           "Họ và tên": item.employeeId?.fullName || "",
           "Phòng ban": item.departmentId?.name || "",
           "Lương cơ bản": item.baseSalary || 0,

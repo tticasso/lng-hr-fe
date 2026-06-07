@@ -11,6 +11,8 @@ import { useAuth } from "../context/AuthContext";
 import AnnouncementDetailModal from "../components/modals/AnnouncementDetailModal";
 import { hasAnyPermission } from "../utils/authPermissions";
 import { ACCESS } from "../config/accessControl";
+import { ROUTES } from "../config/routes";
+import logoImage from "../assets/logo-sm.webp";
 
 // âœ… Format thá»i gian thĂ´ng bĂ¡o: rĂµ rĂ ng + chuyĂªn nghiá»‡p
 const formatNotifyTime = (dateInput) => {
@@ -96,7 +98,6 @@ const Header = () => {
   }, [fullName]);
 
   // âœ… áº¢nh logo cho táº¥t cáº£ thĂ´ng bĂ¡o
-  const NOTIFICATION_AVATAR = "https://res.cloudinary.com/dplhdyxgl/image/upload/v1772177306/logo_j0iody.jpg";
   // Notification badge is cheap; full list is loaded only when the panel opens.
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoaded, setNotificationsLoaded] = useState(false);
@@ -176,9 +177,9 @@ const Header = () => {
         // XĂ¡c Ä‘á»‹nh route vĂ  tab dá»±a trĂªn type
         const handleToastClick = () => {
           if (data.type === "LEAVE_CREATED") {
-            navigate("/leave/my");
+            navigate(ROUTES.LEAVE);
           } else if (data.type === "OT_CREATED") {
-            navigate("/ot/my");
+            navigate(ROUTES.OVERTIME);
           }
         };
 
@@ -268,23 +269,29 @@ const Header = () => {
     // âœ… Xá»­ lĂ½ Ä‘iá»u hÆ°á»›ng theo relatedModel
     if (relatedModel === "Overtime") {
       setOpenNotify(false);
-      const otPath = hasPagePermission(ACCESS.OT_APPROVALS) ? "/ot/approvals" : "/ot/my";
+      const otPath = hasPagePermission(ACCESS.OT_APPROVALS)
+        ? ROUTES.OVERTIME_APPROVALS
+        : ROUTES.OVERTIME;
       navigate(otPath);
     }
     else if (relatedModel === "Payroll") {
       // Äiá»u hÆ°á»›ng Ä‘áº¿n trang Myleave vá»›i tab LEAVE
       setOpenNotify(false);
-      navigate("/payroll");
+      navigate(ROUTES.MY_PAYSLIP);
     } else if (relatedModel === "Leave") {
       setOpenNotify(false);
-      const leavePath = hasPagePermission(ACCESS.LEAVE_APPROVALS) ? "/leave/approvals" : "/leave/my";
+      const leavePath = hasPagePermission(ACCESS.LEAVE_APPROVALS)
+        ? ROUTES.LEAVE_APPROVALS
+        : ROUTES.LEAVE;
       navigate(leavePath);
     } else if (relatedModel === "Announcement") {
       // // Hiá»ƒn thá»‹ modal chi tiáº¿t thĂ´ng bĂ¡o
       // setSelectedAnnouncementId(relatedId);
       // setIsAnnouncementModalOpen(true);
       // Fallback: má»Ÿ modal chi tiáº¿t thĂ´ng bĂ¡o cÅ©
-      setSelectedNotification(notification);
+      setOpenNotify(false);
+      setSelectedAnnouncementId(notification.relatedId);
+      setIsAnnouncementModalOpen(true);
     } else {
       // Fallback: má»Ÿ modal chi tiáº¿t thĂ´ng bĂ¡o cÅ©
       setSelectedNotification(notification);
@@ -298,82 +305,89 @@ const Header = () => {
   // âœ… Danh sĂ¡ch táº¥t cáº£ pages cĂ³ thá»ƒ tĂ¬m kiáº¿m (láº¥y tá»« Sidebar)
   const allPages = useMemo(() => {
     const pages = [
-      { path: "/", label: "Tổng quan", keywords: ["tong quan", "dashboard", "home"] },
-      { path: "/timesheet", label: "Lịch làm việc", keywords: ["lich lam viec", "timesheet", "cham cong"] },
-      { path: "/payroll", label: "Bảng lương", keywords: ["bang luong", "payroll", "luong"] },
+      { path: ROUTES.DASHBOARD, label: "Tổng quan", keywords: ["tong quan", "dashboard", "home"] },
+      { path: ROUTES.TIMESHEET, label: "Lịch làm việc", keywords: ["lich lam viec", "timesheet", "cham cong"] },
+      { path: ROUTES.MY_PAYSLIP, label: "Phiếu lương", keywords: ["phieu luong", "payslip", "luong"] },
     ];
 
     pages.push(
-      { path: "/leave/my", label: "Đơn nghỉ của tôi", keywords: ["yeu cau", "nghi phep", "leave", "request"] },
-      { path: "/ot/my", label: "Đơn OT của tôi", keywords: ["ot", "overtime", "tang ca"] },
+      { path: ROUTES.LEAVE, label: "Đơn nghỉ của tôi", keywords: ["yeu cau", "nghi phep", "leave", "request"] },
+      { path: ROUTES.OVERTIME, label: "Đơn OT của tôi", keywords: ["ot", "overtime", "tang ca"] },
     );
 
     if (hasPagePermission(ACCESS.LEAVE_APPROVALS)) {
-      pages.push({ path: "/leave/approvals", label: "Phê duyệt đơn nghỉ", keywords: ["quan ly yeu cau", "duyet don", "leave management"] });
+      pages.push({ path: ROUTES.LEAVE_APPROVALS, label: "Phê duyệt đơn nghỉ", keywords: ["quan ly yeu cau", "duyet don", "leave management"] });
     }
 
     if (hasPagePermission(ACCESS.OT_APPROVALS)) {
-      pages.push({ path: "/ot/approvals", label: "Phê duyệt đơn OT", keywords: ["duyet ot", "overtime approvals", "duyet tang ca"] });
+      pages.push({ path: ROUTES.OVERTIME_APPROVALS, label: "Phê duyệt đơn OT", keywords: ["duyet ot", "overtime approvals", "duyet tang ca"] });
     }
 
     if (hasPagePermission(ACCESS.EMPLOYEES)) {
-      pages.push({ path: "/hr/employees", label: "Nhân viên", keywords: ["nhan vien", "employee", "staff"] });
+      pages.push({ path: ROUTES.EMPLOYEES, label: "Nhân viên", keywords: ["nhan vien", "employee", "staff"] });
     }
 
     if (hasPagePermission(ACCESS.ATTENDANCE_ADMIN)) {
-      pages.push({ path: "/hr/attendance-admin", label: "Quản lý chấm công", keywords: ["quan ly cham cong", "attendance", "checkin"] });
+      pages.push({ path: ROUTES.ATTENDANCE, label: "Quản lý chấm công", keywords: ["quan ly cham cong", "attendance", "checkin"] });
+    }
+
+    if (hasPagePermission(ACCESS.LEAVE_BALANCE)) {
+      pages.push({ path: ROUTES.LEAVE_BALANCES, label: "Công phép", keywords: ["cong phep", "leave balance", "so du phep"] });
     }
 
     if (hasPagePermission(ACCESS.ANNOUNCEMENTS)) {
-      pages.push({ path: "/hr/announcements", label: "Thông báo", keywords: ["thong bao", "announcement", "notice"] });
+      pages.push({ path: ROUTES.ANNOUNCEMENTS, label: "Thông báo", keywords: ["thong bao", "announcement", "notice"] });
+    }
+
+    if (hasPagePermission(ACCESS.PAYROLL_LIST)) {
+      pages.push({ path: ROUTES.PAYROLLS, label: "Bảng lương tháng", keywords: ["bang luong thang", "payroll list", "luong thang"] });
     }
 
     if (hasPagePermission(ACCESS.PAYROLL_ENGINE)) {
-      pages.push({ path: "/hr/payroll-engine", label: "Công cụ tính lương", keywords: ["cong cu tinh luong", "payroll engine", "tinh luong"] });
+      pages.push({ path: ROUTES.PAYROLL_ENGINE, label: "Công cụ tính lương", keywords: ["cong cu tinh luong", "payroll engine", "tinh luong"] });
     }
 
     if (hasPagePermission(ACCESS.USER_MANAGEMENT)) {
-      pages.push({ path: "/admin/user-management", label: "Quản lý người dùng", keywords: ["quan ly nguoi dung", "user management", "account"] });
+      pages.push({ path: ROUTES.SYSTEM_ACCOUNTS, label: "Quản lý tài khoản", keywords: ["quan ly tai khoan", "user management", "account"] });
     }
 
     if (hasPagePermission(ACCESS.SYSTEM_ADMIN)) {
-      pages.push({ path: "/admin/system-admin", label: "Cài đặt hệ thống", keywords: ["cai dat he thong", "system admin", "settings"] });
+      pages.push({ path: ROUTES.SYSTEM_SETTINGS, label: "Cài đặt hệ thống", keywords: ["cai dat he thong", "system admin", "settings"] });
     }
 
     const includeLegacyRolePages = false;
 
     // Employee pages
     if (includeLegacyRolePages) {
-      pages.push({ path: "/leave/my", label: "Đơn nghỉ của tôi", keywords: ["yeu cau", "nghi phep", "leave", "request"] });
-      pages.push({ path: "/ot/my", label: "Đơn OT của tôi", keywords: ["ot", "overtime", "tang ca"] });
+      pages.push({ path: ROUTES.LEAVE, label: "Đơn nghỉ của tôi", keywords: ["yeu cau", "nghi phep", "leave", "request"] });
+      pages.push({ path: ROUTES.OVERTIME, label: "Đơn OT của tôi", keywords: ["ot", "overtime", "tang ca"] });
     }
 
     // Admin, HR, Manager pages
     if (includeLegacyRolePages) {
-      pages.push({ path: "/leave/approvals", label: "Phê duyệt đơn nghỉ", keywords: ["quan ly yeu cau", "duyet don", "leave management"] });
-      pages.push({ path: "/leave/my", label: "Đơn nghỉ của tôi", keywords: ["don nghi cua toi", "leave request"] });
-      pages.push({ path: "/ot/my", label: "Đơn OT của tôi", keywords: ["ot", "overtime", "tang ca"] });
-      pages.push({ path: "/ot/approvals", label: "Phê duyệt đơn OT", keywords: ["duyet ot", "overtime approvals", "duyet tang ca"] });
+      pages.push({ path: ROUTES.LEAVE_APPROVALS, label: "Phê duyệt đơn nghỉ", keywords: ["quan ly yeu cau", "duyet don", "leave management"] });
+      pages.push({ path: ROUTES.LEAVE, label: "Đơn nghỉ của tôi", keywords: ["don nghi cua toi", "leave request"] });
+      pages.push({ path: ROUTES.OVERTIME, label: "Đơn OT của tôi", keywords: ["ot", "overtime", "tang ca"] });
+      pages.push({ path: ROUTES.OVERTIME_APPROVALS, label: "Phê duyệt đơn OT", keywords: ["duyet ot", "overtime approvals", "duyet tang ca"] });
     }
 
     // Admin vĂ  HR pages
     if (includeLegacyRolePages) {
       pages.push(
-        { path: "/hr/employees", label: "Nhân viên", keywords: ["nhan vien", "employee", "staff"] },
-        { path: "/hr/attendance-admin", label: "Quản lý chấm công", keywords: ["quan ly cham cong", "attendance", "checkin"] },
-        { path: "/hr/announcements", label: "Thông báo", keywords: ["thong bao", "announcement", "notice"] },
-        { path: "/hr/recruitment", label: "Tuyển dụng", keywords: ["tuyen dung", "recruitment", "hiring"] },
-        { path: "/hr/boarding", label: "On/Off Boarding", keywords: ["onboarding", "offboarding", "nhan vien moi"] },
-        { path: "/hr/reports", label: "Báo cáo", keywords: ["bao cao", "report", "thong ke"] },
-        { path: "/hr/payroll-engine", label: "Công cụ tính lương", keywords: ["cong cu tinh luong", "payroll engine", "tinh luong"] }
+        { path: ROUTES.EMPLOYEES, label: "Nhân viên", keywords: ["nhan vien", "employee", "staff"] },
+        { path: ROUTES.ATTENDANCE, label: "Quản lý chấm công", keywords: ["quan ly cham cong", "attendance", "checkin"] },
+        { path: ROUTES.ANNOUNCEMENTS, label: "Thông báo", keywords: ["thong bao", "announcement", "notice"] },
+        { path: ROUTES.RECRUITMENT, label: "Tuyển dụng", keywords: ["tuyen dung", "recruitment", "hiring"] },
+        { path: ROUTES.BOARDING, label: "On/Off Boarding", keywords: ["onboarding", "offboarding", "nhan vien moi"] },
+        { path: ROUTES.PAYROLL_ENGINE, label: "Công cụ tính lương", keywords: ["cong cu tinh luong", "payroll engine", "tinh luong"] }
       );
     }
 
     // Admin only pages
     if (includeLegacyRolePages) {
       pages.push(
-        { path: "/admin/user-management", label: "Quản lý người dùng", keywords: ["quan ly nguoi dung", "user management", "account"] },
-        { path: "/admin/system-admin", label: "Cài đặt hệ thống", keywords: ["cai dat he thong", "system admin", "settings"] }
+        { path: ROUTES.SYSTEM_ACCOUNTS, label: "Quản lý tài khoản", keywords: ["quan ly tai khoan", "user management", "account"] },
+        { path: ROUTES.SYSTEM_SETTINGS, label: "Cài đặt hệ thống", keywords: ["cai dat he thong", "system admin", "settings"] }
       );
     }
 
@@ -489,7 +503,7 @@ const Header = () => {
           </button>
 
           <Link
-            to="/profile"
+            to={ROUTES.PROFILE}
             className="flex items-center gap-2 sm:gap-3 p-1.5 sm:p-2 hover:bg-gray-100 rounded-full min-w-0"
           >
             <div
@@ -616,9 +630,9 @@ const Header = () => {
                     {/* Avatar */}
                     <div className="relative shrink-0">
                       <img
-                        src={NOTIFICATION_AVATAR}
+                        src={logoImage}
                         alt="notification"
-                        className="h-11 w-11 rounded-full border border-gray-200 bg-white object-cover p-1"
+                        className="h-11 w-11 rounded-full border border-gray-200 bg-white object-contain p-1"
                       />
 
                       {n.unread && (

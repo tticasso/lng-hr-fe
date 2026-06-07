@@ -25,6 +25,7 @@ import { systemSettingApi } from "../../apis/systemSettingApi";
 import { officeNetworkApi } from "../../apis/officeNetworkApi";
 import { useAuth } from "../../context/AuthContext";
 import { hasAnyPermission, hasPermission as userHasPermission } from "../../utils/authPermissions";
+import { COMPATIBILITY_PERMISSION_ALIASES } from "../../config/accessControl";
 import { toast } from "react-toastify";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button"; // Đảm bảo component này tồn tại
@@ -52,6 +53,8 @@ const DEFAULT_APPROVAL_POLICIES = {
     ],
   },
 };
+
+const COMPATIBILITY_PERMISSION_ALIAS_SET = new Set(COMPATIBILITY_PERMISSION_ALIASES);
 
 const SETTING_CATEGORY_FILTERS = [
   { value: "", label: "Tất cả" },
@@ -212,8 +215,9 @@ const SystemAdmin = () => {
     "UPDATE_REQUEST": "Cập nhật yêu cầu",
 
     // PAYROLL Module
-    "RUN_PAYROLL": "Chạy bảng lương",
+    "WRITE_PAYROLLS": "Quản lý bảng lương",
     "READ_PAYROLLS": "Xem bảng lương",
+    "READ_ALL_PAYROLLS": "Xem tất cả bảng lương",
     "READ_MY_PAYSLIP": "Xem phiếu lương của tôi",
     "CREATE_PAYROLL": "Tạo bảng lương",
     "UPDATE_PAYROLL": "Cập nhật bảng lương",
@@ -226,23 +230,23 @@ const SystemAdmin = () => {
 
     // LEAVE Module
     "CREATE_LEAVE": "Tạo đơn nghỉ",
-    "READ_LEAVE": "Xem đơn nghỉ",
-    "UPDATE_LEAVE": "Cập nhật đơn nghỉ",
+    "READ_LEAVES": "Xem đơn nghỉ trong phạm vi",
+    "READ_ALL_LEAVES": "Xem tất cả đơn nghỉ",
+    "WRITE_LEAVE": "Tạo và cập nhật đơn nghỉ cá nhân",
     "DELETE_LEAVE": "Xóa đơn nghỉ",
-    "APPROVE_LEAVE": "Duyệt đơn nghỉ",
+    "APPROVE_ALL_LEAVES": "Duyệt tất cả đơn nghỉ",
+    "APPROVE_LEAVE_OVERRIDE": "Duyệt vượt cấp đơn nghỉ",
 
     // OT Module
     "CREATE_OT": "Tạo đơn OT",
     "READ_OT": "Xem đơn OT",
+    "READ_ALL_OTS": "Xem tất cả đơn OT",
     "UPDATE_OT": "Cập nhật đơn OT",
     "DELETE_OT": "Xóa đơn OT",
-    "APPROVE_OT": "Duyệt đơn OT",
 
     // USER Module
-    "CREATE_USER": "Tạo người dùng",
-    "READ_USER": "Xem người dùng",
-    "UPDATE_USER": "Cập nhật người dùng",
-    "DELETE_USER": "Xóa người dùng",
+    "READ_ACCOUNTS": "Xem tài khoản",
+    "WRITE_ACCOUNTS": "Quản lý tài khoản",
     //ANNOUNCEMENT 
     "READ_ANNOUNCEMENTS":"Đọc thông báo",
     "WRITE_ANNOUNCEMENTS":"Viết thông báo",
@@ -363,7 +367,10 @@ const SystemAdmin = () => {
 
       // Xử lý dữ liệu trả về an toàn
       const rolesData = rolesRes.data?.data || rolesRes.data || [];
-      const permsData = permsRes.data?.data || permsRes.data || [];
+      const rawPermsData = permsRes.data?.data || permsRes.data || [];
+      const permsData = rawPermsData.filter(
+        (permission) => !COMPATIBILITY_PERMISSION_ALIAS_SET.has(permission?.name),
+      );
 
       setRoles(rolesData);
       setPermissions(permsData);
@@ -471,13 +478,19 @@ const SystemAdmin = () => {
       toast.warning("Vui lòng nhập mã quyền, tên hiển thị và module");
       return;
     }
+    if (COMPATIBILITY_PERMISSION_ALIAS_SET.has(newPermData.name.trim().toUpperCase())) {
+      toast.warning("Quyền này là alias tương thích. Vui lòng dùng quyền canonical từ BE catalog.");
+      return;
+    }
 
     try {
       const res = await permissionApi.create(newPermData);
       toast.success("Tạo quyền hạn mới thành công");
 
       const newPerm = res.data?.data || res.data;
-      setPermissions([...permissions, newPerm]); // Cập nhật list ngay lập tức
+      if (!COMPATIBILITY_PERMISSION_ALIAS_SET.has(newPerm?.name)) {
+        setPermissions([...permissions, newPerm]); // Cập nhật list ngay lập tức
+      }
 
       // Reset form
       setNewPermData({ name: "", displayName: "", module: "", description: "" });

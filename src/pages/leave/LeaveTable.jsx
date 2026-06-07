@@ -1,4 +1,5 @@
 import { CheckCircle2, Edit, Eye, Loader2, Trash2, XCircle } from "lucide-react";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 import {
   actionButtonClass,
   formatDateRange,
@@ -144,7 +145,9 @@ const LeaveTable = ({
                   <p className="truncate font-semibold text-gray-800">
                     {leave.employeeId?.fullName || "--"}
                   </p>
-                  <p className="text-xs text-gray-500">{leave.employeeId?.employeeCode || ""}</p>
+                  <p className="text-xs text-gray-500">
+                    {formatEmployeeCode(leave.employeeId?.employeeCode, "")}
+                  </p>
                 </div>
                 <StatusBadge
                   statusKey={row.displayStatus}
@@ -207,7 +210,9 @@ const LeaveTable = ({
                     <p className="font-semibold text-gray-800">
                       {leave.employeeId?.fullName || "--"}
                     </p>
-                    <p className="text-xs text-gray-500">{leave.employeeId?.employeeCode || ""}</p>
+                    <p className="text-xs text-gray-500">
+                      {formatEmployeeCode(leave.employeeId?.employeeCode, "")}
+                    </p>
                   </td>
 
                   <td className="px-2.5 py-3 text-gray-700">

@@ -1,3 +1,5 @@
+import { DATA_SCOPE_POLICIES } from "../config/accessControl";
+
 const LEGACY_PERMISSION_ALIASES = {
   READ_ACCOUNTS: ["READ_USER"],
   READ_USER: ["READ_ACCOUNTS"],
@@ -82,3 +84,31 @@ export const hasAllPermissions = (user, permissionNames = []) =>
   isSuperAdmin(user) || permissionNames.every((permissionName) => hasPermission(user, permissionName));
 
 export const hasRole = (user, roleName) => isSuperAdmin(user) || getRoleName(user) === roleName;
+
+export const DATA_SCOPE_LEVELS = {
+  NONE: "none",
+  OWN: "own",
+  SCOPED: "scoped",
+  ALL: "all",
+};
+
+export const getDataScope = (user, policyOrKey) => {
+  const policy =
+    typeof policyOrKey === "string" ? DATA_SCOPE_POLICIES[policyOrKey] : policyOrKey;
+
+  if (!policy || !user) return DATA_SCOPE_LEVELS.NONE;
+  if (isSuperAdmin(user) || hasAnyPermission(user, policy.fullAccess || [policy.all])) {
+    return DATA_SCOPE_LEVELS.ALL;
+  }
+  if (policy.scoped && hasPermission(user, policy.scoped)) {
+    return DATA_SCOPE_LEVELS.SCOPED;
+  }
+  if (policy.own && hasPermission(user, policy.own)) {
+    return DATA_SCOPE_LEVELS.OWN;
+  }
+
+  return DATA_SCOPE_LEVELS.NONE;
+};
+
+export const isScopedDataAccess = (user, policyOrKey) =>
+  getDataScope(user, policyOrKey) === DATA_SCOPE_LEVELS.SCOPED;

@@ -3,6 +3,7 @@ import "antd/dist/reset.css";
 import { CheckCircle2, Clock, UserCheck, X, XCircle } from "lucide-react";
 import { TimePicker } from "antd";
 import dayjs from "../../untils/dayjs";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 const statusLabel = {
   PENDING: "Chờ duyệt",
@@ -24,8 +25,8 @@ const getPersonLabel = (person) => {
   if (typeof person === "string") return person;
 
   const name = person.fullName || person.username || person.name || "--";
-  const code = person.employeeCode ? ` (${person.employeeCode})` : "";
-  return `${name}${code}`;
+  const code = formatEmployeeCode(person.employeeCode, "");
+  return code ? `${name} (${code})` : name;
 };
 
 const getApprovalChain = (otData) => {
@@ -169,6 +170,9 @@ const ApproveOTModalContent = ({ onClose, otData, onConfirm }) => {
             <div className="rounded-lg border border-gray-200 bg-white p-3">
               <p className="text-xs font-medium uppercase text-gray-400">Nhân sự</p>
               <p className="mt-1 font-semibold text-gray-800">{otData.employeeId?.fullName || "--"}</p>
+              <p className="mt-0.5 text-xs text-gray-500">
+                {formatEmployeeCode(otData.employeeId?.employeeCode, "")}
+              </p>
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-3">
               <p className="text-xs font-medium uppercase text-gray-400">Tổng giờ đăng ký</p>

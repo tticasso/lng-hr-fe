@@ -48,35 +48,3 @@ export const getEntityId = (value) => {
   if (typeof value === "string") return value;
   return value._id || value.id || "";
 };
-
-export const getStoredRole = () => {
-  const raw = localStorage.getItem("role");
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return raw;
-  }
-};
-
-export const hasRole = (role, target) => {
-  if (typeof role === "string") return role === target;
-  if (Array.isArray(role)) return role.includes(target);
-  if (role?.name) return role.name === target;
-  return false;
-};
-
-export const getRoleFlags = (role) => {
-  const isAdmin = hasRole(role, "ADMIN");
-  const isHR = hasRole(role, "HR");
-  const isManager = hasRole(role, "MANAGER");
-  const isLeader = hasRole(role, "LEADER");
-
-  return {
-    isAdmin,
-    isHR,
-    isManager,
-    isLeader,
-    canApprove: isAdmin || isHR || isManager || isLeader,
-    isSuperApprover: isAdmin || isHR,
-  };
-};

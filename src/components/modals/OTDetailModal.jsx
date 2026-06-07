@@ -10,6 +10,7 @@ import {
   X,
   XCircle,
 } from "lucide-react";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 const otTypeLabel = {
   WEEKDAY: "Ngày thường",
@@ -68,7 +69,7 @@ const getPersonName = (person) => {
 
 const getPersonCode = (person) => {
   if (!person || typeof person === "string") return "--";
-  return person.employeeCode || "--";
+  return formatEmployeeCode(person.employeeCode);
 };
 
 const getPersonLabel = (person) => {
@@ -76,8 +77,8 @@ const getPersonLabel = (person) => {
   if (typeof person === "string") return person;
 
   const name = person.fullName || person.username || person.name || "--";
-  const code = person.employeeCode ? ` (${person.employeeCode})` : "";
-  return `${name}${code}`;
+  const code = formatEmployeeCode(person.employeeCode, "");
+  return code ? `${name} (${code})` : name;
 };
 
 const getApprovalChain = (otData) => {
@@ -311,7 +312,7 @@ const OTDetailModal = ({ isOpen, onClose, otData }) => {
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <DetailField label="Họ tên" value={otData.employeeId?.fullName || "--"} />
-                  <DetailField label="Mã nhân viên" value={otData.employeeId?.employeeCode || "--"} />
+                  <DetailField label="Mã nhân viên" value={formatEmployeeCode(otData.employeeId?.employeeCode)} />
                 </div>
               </div>
 

@@ -7,6 +7,7 @@ import { payrollAPI } from "../../../apis/payrollAPI";
 import { departmentApi } from "../../../apis/departmentApi";
 import { useAuth } from "../../../context/AuthContext";
 import { hasPermission } from "../../../utils/authPermissions";
+import { formatEmployeeCode } from "../../../utils/employeeDisplay";
 import { getListData, getPagination, hasPaginationMetadata } from "../../../shared/apiResponse";
 import {
   extractDateRangeFromGrid,
@@ -33,7 +34,7 @@ const buildExportRows = (employees) =>
 
     return {
       STT: index + 1,
-      "Mã nhân viên": emp.employeeCode || "",
+      "Mã nhân viên": formatEmployeeCode(emp.employeeCode, ""),
       "Họ và tên": emp.fullName || "",
       "Phòng ban": emp.department || "",
       "Công chuẩn": standardWorkday === "--" ? "" : standardWorkday,
@@ -564,3 +565,4 @@ export const useAttendanceAdmin = () => {
     year,
   };
 };
+

@@ -12,6 +12,10 @@ import ModalOT from "../../components/modals/OTModal";
 import OTDetailModal from "../../components/modals/OTDetailModal";
 import { toast } from "react-toastify";
 import { leaveTypeLabel, leaveTypeOptions } from "./shared";
+import { useAuth } from "../../context/AuthContext";
+import { hasAnyPermission } from "../../utils/authPermissions";
+import { ACCESS } from "../../config/accessControl";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 
 const otTypeLabel = {
@@ -96,6 +100,7 @@ const menuButtonClass =
 
 
 const MyLeave = () => {
+    const { user } = useAuth();
     const location = useLocation();
     const isOTOnlyPage = location.pathname === "/leave/ot";
     const initialTab = isOTOnlyPage ? "OT" : location.state?.activeTab || "LEAVE";
@@ -238,51 +243,21 @@ const MyLeave = () => {
         return ots.filter((ot) => normalizeStatus(ot?.status) === "PENDING").length;
     }, [ots]);
 
-    const role = useMemo(() => {
-        const raw = localStorage.getItem("role");
-        try {
-            return JSON.parse(raw);
-        } catch {
-            return raw;
-        }
-    }, []);
-
-    const isAdmin = useMemo(() => {
-        if (typeof role === "string") return role === "ADMIN";
-        if (Array.isArray(role)) return role.includes("ADMIN");
-        if (role?.name) return role.name === "ADMIN";
-        return false;
-    }, [role]);
-
-    const isHR = useMemo(() => {
-        if (typeof role === "string") return role === "HR";
-        if (Array.isArray(role)) return role.includes("HR");
-        if (role?.name) return role.name === "HR";
-        return false;
-    }, [role]);
-
-    const isManager = useMemo(() => {
-        if (typeof role === "string") return role === "MANAGER";
-        if (Array.isArray(role)) return role.includes("MANAGER");
-        if (role?.name) return role.name === "MANAGER";
-        return false;
-    }, [role]);
-
-    const isLEADER = useMemo(() => {
-        if (typeof role === "string") return role === "LEADER";
-        if (Array.isArray(role)) return role.includes("LEADER");
-        if (role?.name) return role.name === "LEADER";
-        return false;
-    }, [role]);
-
-    // Kiểm tra có quyền duyệt không (ADMIN, HR, MANAGER)
-    const canApprove = useMemo(() => {
-        return isAdmin || isHR || isManager || isLEADER;
-    }, [isAdmin, isHR, isManager, isLEADER]);
-
-    const isSuperApprover = useMemo(() => {
-        return isAdmin || isHR;
-    }, [isAdmin, isHR]);
+    const canReadScopedLeaves = useMemo(
+        () => hasAnyPermission(user, ["READ_LEAVES", "READ_ALL_LEAVES", ...ACCESS.LEAVE_APPROVALS]),
+        [user],
+    );
+    const canReadScopedOTs = useMemo(
+        () => hasAnyPermission(user, ["READ_OT", "READ_ALL_OTS", ...ACCESS.OT_APPROVALS]),
+        [user],
+    );
+    const canApproveLeave = useMemo(() => hasAnyPermission(user, ACCESS.LEAVE_APPROVALS), [user]);
+    const canApproveOTRequests = useMemo(() => hasAnyPermission(user, ACCESS.OT_APPROVALS), [user]);
+    const canApprove = activeTab === "OT" ? canApproveOTRequests : canApproveLeave;
+    const isSuperApprover = useMemo(
+        () => hasAnyPermission(user, ["MANAGE_SYSTEM", "APPROVE_ALL_LEAVES", "APPROVE_LEAVE_OVERRIDE"]),
+        [user],
+    );
 
     const getEntityId = (value) => {
         if (!value) return "";
@@ -321,7 +296,7 @@ const MyLeave = () => {
                 canAction: true,
                 approvalLevel: getSuperApprovalLevel(leave),
                 userApproval: null,
-                title: "Duyệt nhanh với quyền Admin/HR",
+                title: "Duyệt nhanh bằng APPROVE_ALL_LEAVES",
             };
         }
 
@@ -380,11 +355,10 @@ const MyLeave = () => {
     const fetchLeaves = async (page = pagination.page, limit = pagination.limit) => {
         setLoading(true);
         try {
-            const raw = localStorage.getItem("role");
             let res;
 
-            // ADMIN, HR, MANAGER, LEADER gọi API getbyADMIN, còn lại gọi getbyUSER
-            if (raw === "ADMIN" || raw === "HR" || raw === "MANAGER" || raw === "LEADER") {
+            // Scoped/full leave readers use the scoped list endpoint; BE enforces data scope.
+            if (canReadScopedLeaves) {
                 res = await leaveAPI.getbyADMIN(page, limit);
             } else {
                 res = await leaveAPI.getbyUSER(page, limit);
@@ -417,11 +391,10 @@ const MyLeave = () => {
     const fetchOTs = async (page = otPagination.page, limit = otPagination.limit) => {
         setOtLoading(true);
         try {
-            const raw = localStorage.getItem("role");
             let res;
 
-            // ADMIN, HR, MANAGER gọi API getALL, còn lại gọi get
-            if (raw === "ADMIN" || raw === "HR" || raw === "MANAGER") {
+            // Scoped/full OT readers use the scoped list endpoint; BE enforces data scope.
+            if (canReadScopedOTs) {
                 res = await OTApi.getALL(page, limit);
             } else {
                 res = await OTApi.get(page, limit);
@@ -901,7 +874,7 @@ const MyLeave = () => {
                                                     <p className="font-semibold text-gray-800">
                                                         {lv.employeeId?.fullName || "--"}
                                                     </p>
-                                                    <p className="text-xs text-gray-500">{lv.employeeId?.employeeCode || ""}</p>
+                                                    <p className="text-xs text-gray-500">{formatEmployeeCode(lv.employeeId?.employeeCode, "")}</p>
                                                 </td>
 
                                                 <td className="px-2.5 py-3 text-gray-700">
@@ -1200,6 +1173,9 @@ const MyLeave = () => {
                                                 <td className="px-2.5 py-3">
                                                     <p className="font-semibold text-gray-800">
                                                         {ot?.employeeId?.fullName || "--"}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500">
+                                                        {formatEmployeeCode(ot?.employeeId?.employeeCode, "")}
                                                     </p>
                                                 </td>
 

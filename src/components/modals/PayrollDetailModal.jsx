@@ -11,6 +11,7 @@ import {
   getPayrollStatusLabel,
   getSalaryPeriodBreakdownItems,
 } from "../../pages/payroll/overview/payrollOverviewUtils";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 const MoneyRow = ({ label, value, tone = "default", formulaText }) => {
   const toneClass = {
@@ -68,7 +69,7 @@ const PayrollDetailModal = ({ isOpen, onClose, payroll }) => {
           <div className="min-w-0">
             <h3 className="text-lg font-bold text-gray-900">Chi tiết tiền lương</h3>
             <p className="mt-1 text-sm text-gray-500">
-              {payroll.employeeId?.fullName || "--"} ({payroll.employeeId?.employeeCode || "--"}) - Tháng{" "}
+              {payroll.employeeId?.fullName || "--"} ({formatEmployeeCode(payroll.employeeId?.employeeCode)}) - Tháng{" "}
               {payroll.month}/{payroll.year} - {getPayrollStatusLabel(payroll.status)}
             </p>
           </div>
@@ -235,3 +236,4 @@ const PayrollDetailModal = ({ isOpen, onClose, payroll }) => {
 };
 
 export default PayrollDetailModal;
+

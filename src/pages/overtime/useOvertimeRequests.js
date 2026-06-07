@@ -76,7 +76,7 @@ export const useOvertimeRequests = ({ mode }) => {
       return {
         canAction: true,
         approvalLevel: getSuperApprovalLevel(ot),
-        title: "Duyệt nhanh với quyền Admin/HR",
+        title: "Duyệt nhanh bằng READ_ALL_OTS",
       };
     }
 

@@ -11,11 +11,13 @@ import {
   Save,
   Loader2,
   LogIn,
+  Key,
 } from "lucide-react";
 import Button from "../common/Button";
 import StatusBadge from "../common/StatusBadge";
-import { accountApi } from "../../apis/accountApi"; // Cần thêm hàm updateRole nếu backend tách riêng, hoặc dùng update chung
+import { accountApi } from "../../apis/accountApi";
 import { toast } from "react-toastify";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 const permissionActionColumns = [
   { key: "read", label: "Xem" },
@@ -145,12 +147,23 @@ const PermissionCell = ({ items }) => (
   </td>
 );
 
+const getInitialRoleId = (user, rolesList) => (
+  user.role?._id ||
+  rolesList.find((role) => role.name === user.role?.name)?._id ||
+  ""
+);
+
 const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh, canWriteAccounts = false }) => {
-  const [selectedRole, setSelectedRole] = useState(user.role?._id || "");
-  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
+  const [accountForm, setAccountForm] = useState({
+    username: user.username || "",
+    password: "",
+    roleId: getInitialRoleId(user, rolesList),
+    isActive: user.isActive !== false,
+  });
+  const [isUpdatingAccount, setIsUpdatingAccount] = useState(false);
   const selectedRoleObj = useMemo(
-    () => rolesList.find((role) => role._id === selectedRole) || user.role,
-    [rolesList, selectedRole, user.role],
+    () => rolesList.find((role) => role._id === accountForm.roleId) || user.role,
+    [accountForm.roleId, rolesList, user.role],
   );
   const permissionRows = useMemo(
     () => buildPermissionRows(selectedRoleObj?.permissions || []),
@@ -180,37 +193,51 @@ const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh, canWri
     return name.charAt(0).toUpperCase();
   };
 
-  // Handle Update Role
-  const handleUpdateRole = async () => {
+  const handleAccountFieldChange = (field, value) => {
+    setAccountForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleUpdateAccount = async () => {
     if (!canWriteAccounts) {
-      toast.error("Bạn cần quyền CREATE_USER/UPDATE_USER/DELETE_USER để thay đổi tài khoản");
+      toast.error("Bạn cần quyền WRITE_ACCOUNTS để thay đổi tài khoản");
       return;
     }
-    if (selectedRole === user.role?._id) return; // Không đổi thì không gọi
-    
-    // Tìm role object từ selectedRole ID
-    const selectedRoleObj = rolesList.find((r) => r._id === selectedRole);
+    const username = accountForm.username.trim();
+    if (!username) {
+      toast.error("Tên đăng nhập không được để trống");
+      return;
+    }
+    if (accountForm.password && accountForm.password.length < 6) {
+      toast.error("Mật khẩu mới phải có ít nhất 6 ký tự");
+      return;
+    }
+
+    const selectedRoleObj = rolesList.find((r) => r._id === accountForm.roleId);
     const roleName = selectedRoleObj?.name;
     
     if (!roleName) {
       toast.error("Không tìm thấy vai trò");
       return;
     }
-    
-    
-    setIsUpdatingRole(true);
+
+    const payload = {
+      username,
+      roleName,
+      isActive: accountForm.isActive,
+    };
+    if (accountForm.password) payload.password = accountForm.password;
+
+    setIsUpdatingAccount(true);
     try {
-      // Gọi API update với roleName
-      const res = await accountApi.updateRole(user._id, roleName);
-      toast.success(`Cập nhật vai trò thành công! Vai trò mới: ${roleName}`);
+      await accountApi.update(user._id, payload);
+      toast.success("Cập nhật tài khoản thành công");
       onRefresh();
-      onClose(); // Đóng modal sau khi cập nhật thành công
-       
+      onClose();
     } catch (error) {
-      console.error("Lỗi cập nhật vai trò:", error);
-      toast.error("Cập nhật vai trò thất bại");
+      console.error("Lỗi cập nhật tài khoản:", error);
+      toast.error(error.response?.data?.message || "Cập nhật tài khoản thất bại");
     } finally {
-      setIsUpdatingRole(false);
+      setIsUpdatingAccount(false);
     }
   };
 
@@ -253,7 +280,7 @@ const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh, canWri
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Info Cards */}
           <div className="grid grid-cols-2 gap-4">
-            <InfoCard label="Mã nhân viên" value={user.employee?.employeeCode} />
+            <InfoCard label="Mã nhân viên" value={formatEmployeeCode(user.employee?.employeeCode)} />
             <InfoCard
               label="Phòng ban"
               value={user.employee?.department?.name}
@@ -299,24 +326,49 @@ const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh, canWri
             </div>
           )}
 
-          {/* Role & Permissions Section */}
+          {/* Account & Permissions Section */}
           <div className="border rounded-lg p-5 bg-white shadow-sm">
             <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <Shield size={18} className="text-blue-600" /> Phân quyền & Vai
-              trò
+              <Shield size={18} className="text-blue-600" /> Tài khoản & phân quyền
             </h3>
 
-            {/* Change Role Logic */}
-            <div className="mb-6 flex gap-3 items-end">
-              <div className="flex-1">
+            <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="text-xs text-gray-500 uppercase block mb-1 font-semibold">
+                  Tên đăng nhập
+                </label>
+                <input
+                  className="w-full border border-gray-300 rounded-lg p-2.5 bg-white font-medium text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-50"
+                  value={accountForm.username}
+                  onChange={(e) => handleAccountFieldChange("username", e.target.value)}
+                  disabled={!canWriteAccounts || isUpdatingAccount}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 uppercase block mb-1 font-semibold">
+                  Mật khẩu mới
+                </label>
+                <div className="relative">
+                  <Key size={15} className="absolute left-3 top-3 text-gray-400" />
+                  <input
+                    type="password"
+                    className="w-full border border-gray-300 rounded-lg py-2.5 pl-9 pr-3 bg-white font-medium text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-50"
+                    value={accountForm.password}
+                    onChange={(e) => handleAccountFieldChange("password", e.target.value)}
+                    disabled={!canWriteAccounts || isUpdatingAccount}
+                    placeholder="Để trống nếu không đổi"
+                  />
+                </div>
+              </div>
+              <div>
                 <label className="text-xs text-gray-500 uppercase block mb-1 font-semibold">
                   Vai trò hiện tại
                 </label>
                 <select
                   className="w-full border border-gray-300 rounded-lg p-2.5 bg-gray-50 font-medium text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
-                  value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value)}
-                  disabled={!canWriteAccounts}
+                  value={accountForm.roleId}
+                  onChange={(e) => handleAccountFieldChange("roleId", e.target.value)}
+                  disabled={!canWriteAccounts || isUpdatingAccount}
                 >
                   {rolesList.map((r) => (
                     <option key={r._id} value={r._id}>
@@ -325,17 +377,35 @@ const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh, canWri
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="text-xs text-gray-500 uppercase block mb-1 font-semibold">
+                  Trạng thái
+                </label>
+                <select
+                  className="w-full border border-gray-300 rounded-lg p-2.5 bg-white font-medium text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-50"
+                  value={accountForm.isActive ? "active" : "locked"}
+                  onChange={(e) => handleAccountFieldChange("isActive", e.target.value === "active")}
+                  disabled={!canWriteAccounts || isUpdatingAccount}
+                >
+                  <option value="active">Hoạt động</option>
+                  <option value="locked">Đã khóa</option>
+                </select>
+              </div>
+              <div className="md:col-span-2 flex justify-end">
               <Button
-                onClick={handleUpdateRole}
-                disabled={!canWriteAccounts || selectedRole === user.role?._id || isUpdatingRole}
-                className="mb-[1px]"
+                onClick={handleUpdateAccount}
+                disabled={!canWriteAccounts || isUpdatingAccount}
+                className="min-w-32 justify-center"
               >
-                {isUpdatingRole ? (
+                {isUpdatingAccount ? (
                   <Loader2 size={16} className="animate-spin" />
                 ) : (
-                  <Save size={16} />
+                  <>
+                    <Save size={16} className="mr-2" /> Lưu tài khoản
+                  </>
                 )}
               </Button>
+              </div>
             </div>
 
             {/* Read-only Permission Matrix */}

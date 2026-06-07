@@ -21,6 +21,7 @@ import {
   ADJUSTMENT_TYPE_LABELS,
   formatMoney,
 } from "../../pages/payroll/overview/payrollOverviewUtils";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 const emptyForm = {
   employeeId: "",
@@ -227,7 +228,7 @@ const PayrollAdjustmentModal = ({
 
   const handleEdit = (item) => {
     if (!canRunPayroll) {
-      toast.error("Bạn không có quyền RUN_PAYROLL để điều chỉnh bảng lương");
+      toast.error("Bạn không có quyền WRITE_PAYROLLS để điều chỉnh bảng lương");
       return;
     }
 
@@ -250,7 +251,7 @@ const PayrollAdjustmentModal = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!canRunPayroll) {
-      toast.error("Bạn không có quyền RUN_PAYROLL để điều chỉnh bảng lương");
+      toast.error("Bạn không có quyền WRITE_PAYROLLS để điều chỉnh bảng lương");
       return;
     }
 
@@ -311,7 +312,7 @@ const PayrollAdjustmentModal = ({
 
   const handleCancel = async (item) => {
     if (!canRunPayroll) {
-      toast.error("Bạn không có quyền RUN_PAYROLL để điều chỉnh bảng lương");
+      toast.error("Bạn không có quyền WRITE_PAYROLLS để điều chỉnh bảng lương");
       return;
     }
 
@@ -386,7 +387,7 @@ const PayrollAdjustmentModal = ({
                   <option value="">Chọn nhân viên</option>
                   {employeeOptions.map((employee) => (
                     <option key={employee._id} value={employee._id}>
-                      {employee.fullName} ({employee.employeeCode})
+                      {employee.fullName} ({formatEmployeeCode(employee.employeeCode)})
                     </option>
                   ))}
                 </select>
@@ -585,7 +586,7 @@ const PayrollAdjustmentModal = ({
                             </span>
                           </div>
                           <p className="mt-1 text-xs text-gray-500">
-                            {employee.fullName ? `${employee.fullName} (${employee.employeeCode})` : "--"} - {ADJUSTMENT_CODE_LABELS[item.code] || item.code}
+                            {employee.fullName ? `${employee.fullName} (${formatEmployeeCode(employee.employeeCode)})` : "--"} - {ADJUSTMENT_CODE_LABELS[item.code] || item.code}
                           </p>
                           {item.note ? <p className="mt-2 text-sm text-gray-500">{item.note}</p> : null}
                         </div>
@@ -628,3 +629,4 @@ const PayrollAdjustmentModal = ({
 };
 
 export default PayrollAdjustmentModal;
+

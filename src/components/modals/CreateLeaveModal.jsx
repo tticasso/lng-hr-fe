@@ -10,21 +10,22 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { employeeApi } from "../../apis/employeeApi";
 
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
+import { DatePicker } from "antd";
+import dayjs from "../../untils/dayjs";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 const pad2 = (n) => String(n).padStart(2, "0");
 
-// ISO (YYYY-MM-DD) -> Date (local, không lệch timezone)
-const isoToDate = (iso) => {
+const isoToDayjs = (iso) => {
   if (!iso || typeof iso !== "string") return null;
-  const [y, m, d] = iso.split("-").map(Number);
-  if (!y || !m || !d) return null;
-  return new Date(y, m - 1, d);
+
+  const parsed = dayjs(iso);
+  return parsed.isValid() ? parsed : null;
 };
 
 // Date -> ISO (YYYY-MM-DD) theo local date (không dùng toISOString để tránh lệch ngày)
 const dateToISO = (date) => {
+  if (date?.format) return date.format("YYYY-MM-DD");
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
   const y = date.getFullYear();
   const m = pad2(date.getMonth() + 1);
@@ -48,13 +49,12 @@ const LeaveRequestModal = ({
   submitLabel = "Xác nhận",
 }) => {
   const { user } = useAuth();
-  const currentRole = user?.accountId?.role || user?.role || null;
   const currentEmployeeId = getEntityId(user);
-  const canUseControlledLeaveTypes = canUseHRControlledLeaveTypes(currentRole);
+  const canUseControlledLeaveTypes = canUseHRControlledLeaveTypes(user);
   const initialEmployeeId = getEntityId(initialValues?.employeeId) || currentEmployeeId;
   const allowedLeaveTypeOptions = useMemo(
-    () => getLeaveTypeOptionsForRole(currentRole, initialValues?.leaveType || ""),
-    [currentRole, initialValues?.leaveType],
+    () => getLeaveTypeOptionsForRole(user, initialValues?.leaveType || ""),
+    [user, initialValues?.leaveType],
   );
   const normalizedDefaultLeaveType = allowedLeaveTypeOptions.some(
     (option) => option.value === defaultLeaveType,
@@ -247,9 +247,8 @@ const LeaveRequestModal = ({
     return list;
   }, [currentEmployeeId, employees, initialValues?.employeeId, user]);
 
-  // ✅ style input của react-datepicker để giống input thường (Tailwind)
   const datePickerInputClass = (field) =>
-    `${inputClass(field)} bg-white`; // react-datepicker render <input> bên trong
+    `${inputClass(field)} bg-white`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -290,13 +289,13 @@ const LeaveRequestModal = ({
                   const employeeId = getEntityId(employee);
                   return (
                     <option key={employeeId} value={employeeId}>
-                      {employee.fullName || "Chưa có tên"} ({employee.employeeCode || "--"})
+                      {employee.fullName || "Chưa có tên"} ({formatEmployeeCode(employee.employeeCode)})
                     </option>
                   );
                 })}
               </select>
               <p className="mt-1 text-xs text-gray-500">
-                HR/Admin có thể tạo hoặc ghi nhận đơn nghỉ cho nhân viên khác.
+                Người có quyền quản lý nghỉ phép có thể tạo hoặc ghi nhận đơn nghỉ cho nhân viên khác.
               </p>
               <ErrorMsg field="employeeId" />
             </div>
@@ -319,12 +318,12 @@ const LeaveRequestModal = ({
             </select>
             {!canUseControlledLeaveTypes && (
               <p className="mt-1 text-xs text-gray-500">
-                Một số loại nghỉ đặc biệt có lương cần HR/Admin tạo hoặc hướng dẫn hồ sơ.
+                Một số loại nghỉ đặc biệt có lương cần người có quyền quản lý nghỉ phép tạo hoặc hướng dẫn hồ sơ.
               </p>
             )}
             {canUseControlledLeaveTypes && hrControlledLeaveTypes.includes(formData.leaveType) && (
               <p className="mt-1 text-xs font-medium text-amber-700">
-                Loại nghỉ này thuộc nhóm HR kiểm soát, cần kiểm tra hồ sơ/chính sách trước khi duyệt.
+                Loại nghỉ này thuộc nhóm quyền quản lý nghỉ phép, cần kiểm tra hồ sơ/chính sách trước khi duyệt.
               </p>
             )}
             <ErrorMsg field="leaveType" />
@@ -373,7 +372,7 @@ const LeaveRequestModal = ({
               <label className={labelClass}>Từ ngày *</label>
 
               <DatePicker
-                selected={isoToDate(formData.fromDate)}
+                value={isoToDayjs(formData.fromDate)}
                 onChange={(date) => {
                   const iso = dateToISO(date);
                   setFormData((p) => ({
@@ -386,10 +385,11 @@ const LeaveRequestModal = ({
                   setPreviewError("");
                   if (errors.fromDate) setErrors((p) => ({ ...p, fromDate: "" }));
                 }}
-                dateFormat="dd/MM/yyyy"
-                placeholderText="Chọn ngày"
+                format="DD/MM/YYYY"
+                placeholder="Chọn ngày"
                 className={datePickerInputClass("fromDate")}
-                popperPlacement="bottom-start"
+                size="large"
+                status={errors.fromDate ? "error" : ""}
               />
 
               <ErrorMsg field="fromDate" />
@@ -400,7 +400,7 @@ const LeaveRequestModal = ({
                 <label className={labelClass}>Đến ngày *</label>
 
                 <DatePicker
-                  selected={isoToDate(formData.toDate)}
+                  value={isoToDayjs(formData.toDate)}
                   onChange={(date) => {
                   const iso = dateToISO(date);
                   setFormData((p) => ({ ...p, toDate: iso }));
@@ -408,11 +408,15 @@ const LeaveRequestModal = ({
                   setPreviewError("");
                   if (errors.toDate) setErrors((p) => ({ ...p, toDate: "" }));
                 }}
-                  dateFormat="dd/MM/yyyy"
-                  placeholderText="Chọn ngày"
+                  format="DD/MM/YYYY"
+                  placeholder="Chọn ngày"
                   className={datePickerInputClass("toDate")}
-                  popperPlacement="bottom-start"
-                  minDate={isoToDate(formData.fromDate) || undefined} // ✅ chặn chọn nhỏ hơn fromDate
+                  size="large"
+                  status={errors.toDate ? "error" : ""}
+                  disabledDate={(current) => {
+                    const fromDate = isoToDayjs(formData.fromDate);
+                    return Boolean(fromDate && current?.isBefore(fromDate, "day"));
+                  }}
                 />
 
                 <ErrorMsg field="toDate" />

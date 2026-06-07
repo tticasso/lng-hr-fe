@@ -17,6 +17,7 @@ import PublicRoute from "./components/PublicRoute";
 import { NotificationProvider } from "./context/NotificationContext";
 import { SidebarProvider } from "./context/SidebarContext";
 import { ACCESS, ACCESS_GROUPS } from "./config/accessControl";
+import { ROUTES, routePath } from "./config/routes";
 
 const AllPayRoll = lazy(() => import("./pages/payroll/AllPayRoll"));
 const Announcements = lazy(() => import("./pages/announce/Announcements"));
@@ -106,55 +107,74 @@ function App() {
                 >
                   <Route index element={<Dashboard />} />
                   <Route
-                    path="allpayroll"
+                    path={routePath(ROUTES.PAYROLLS)}
                     element={
                       <RequireAuth permissions={ACCESS.PAYROLL_LIST}>
                         <AllPayRoll />
                       </RequireAuth>
                     }
                   />
+                  <Route path="allpayroll" element={<Navigate to={ROUTES.PAYROLLS} replace />} />
                   <Route path="profile" element={<MyProfile />} />
                   <Route path="timesheet" element={<MyTimesheet />} />
-                  <Route path="payroll" element={<MyPayslip />} />
-                  <Route
-                    path="department"
-                    element={
-                      <RequireAuth permissions={ACCESS.DEPARTMENTS}>
-                        <Department />
-                      </RequireAuth>
-                    }
-                  />
+                  <Route path={routePath(ROUTES.MY_PAYSLIP)} element={<MyPayslip />} />
+                  <Route path="payroll" element={<Navigate to={ROUTES.MY_PAYSLIP} replace />} />
                   <Route path="requests" element={<MyRequests />} />
                   <Route path="leave" element={<LeaveIndex />} />
-                  <Route path="leave/my" element={<MyLeaveRequests />} />
+                  <Route path={routePath(ROUTES.LEAVE)} element={<MyLeaveRequests />} />
+                  <Route path="leave/my" element={<Navigate to={ROUTES.LEAVE} replace />} />
                   <Route
-                    path="leave/approvals"
+                    path={routePath(ROUTES.LEAVE_APPROVALS)}
                     element={
                       <RequireAuth permissions={ACCESS.LEAVE_APPROVALS}>
                         <LeaveApprovals />
                       </RequireAuth>
                     }
                   />
+                  <Route path="leave/approvals" element={<Navigate to={ROUTES.LEAVE_APPROVALS} replace />} />
                   <Route path="leave/ot" element={<Navigate to="/ot" replace />} />
                   <Route path="ot" element={<OTIndex />} />
-                  <Route path="ot/my" element={<MyOTRequests />} />
+                  <Route path={routePath(ROUTES.OVERTIME)} element={<MyOTRequests />} />
+                  <Route path="ot/my" element={<Navigate to={ROUTES.OVERTIME} replace />} />
                   <Route
-                    path="ot/approvals"
+                    path={routePath(ROUTES.OVERTIME_APPROVALS)}
                     element={
                       <RequireAuth permissions={ACCESS.OT_APPROVALS}>
                         <OTApprovals />
                       </RequireAuth>
                     }
                   />
+                  <Route path="ot/approvals" element={<Navigate to={ROUTES.OVERTIME_APPROVALS} replace />} />
+                  <Route path="department" element={<Navigate to={ROUTES.DEPARTMENTS} replace />} />
+                  <Route path="holiday" element={<Navigate to={ROUTES.HOLIDAYS} replace />} />
+                  <Route path={routePath(ROUTES.NOTIFICATIONS)} element={<NotificationViewer />} />
+                  <Route path="notifications/viewer" element={<Navigate to={ROUTES.NOTIFICATIONS} replace />} />
+
                   <Route
-                    path="holiday"
+                    path="organization"
                     element={
-                      <RequireAuth permissions={ACCESS.HOLIDAYS}>
-                        <Holiday />
+                      <RequireAuth permissions={ACCESS_GROUPS.ORGANIZATION}>
+                        <Outlet />
                       </RequireAuth>
                     }
-                  />
-                  <Route path="notifications/viewer" element={<NotificationViewer />} />
+                  >
+                    <Route
+                      path="departments"
+                      element={
+                        <RequireAuth permissions={ACCESS.DEPARTMENTS}>
+                          <Department />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
+                      path="teams"
+                      element={
+                        <RequireAuth permissions={ACCESS.TEAM_PAGES}>
+                          <TeamPages />
+                        </RequireAuth>
+                      }
+                    />
+                  </Route>
 
                   <Route
                     path="admin"
@@ -168,6 +188,30 @@ function App() {
                   >
                     <Route
                       path="register"
+                      element={<Navigate to={ROUTES.SYSTEM_ACCOUNT_REGISTER} replace />}
+                    />
+                    <Route
+                      path="system-admin"
+                      element={<Navigate to={ROUTES.SYSTEM_SETTINGS} replace />}
+                    />
+                    <Route
+                      path="user-management"
+                      element={<Navigate to={ROUTES.SYSTEM_ACCOUNTS} replace />}
+                    />
+                  </Route>
+
+                  <Route
+                    path="system"
+                    element={
+                      <RequireAuth
+                        permissions={ACCESS_GROUPS.SYSTEM}
+                      >
+                        <Outlet />
+                      </RequireAuth>
+                    }
+                  >
+                    <Route
+                      path="accounts/register"
                       element={
                         <RequireAuth permissions={ACCESS.USER_REGISTER}>
                           <Register />
@@ -175,7 +219,7 @@ function App() {
                       }
                     />
                     <Route
-                      path="system-admin"
+                      path="settings"
                       element={
                         <RequireAuth permissions={ACCESS.SYSTEM_ADMIN}>
                           <SystemAdmin />
@@ -183,7 +227,7 @@ function App() {
                       }
                     />
                     <Route
-                      path="user-management"
+                      path="accounts"
                       element={
                         <RequireAuth permissions={ACCESS.USER_MANAGEMENT}>
                           <UserManagement />
@@ -205,11 +249,54 @@ function App() {
                       </RequireAuth>
                     }
                   >
+                    <Route path="payroll-engine" element={<Navigate to={ROUTES.PAYROLL_ENGINE} replace />} />
+                    <Route path="attendance-admin" element={<Navigate to={ROUTES.ATTENDANCE} replace />} />
+                    <Route path="leavebalance" element={<Navigate to={ROUTES.LEAVE_BALANCES} replace />} />
                     <Route
-                      path="payroll-engine"
+                      path="attendance"
                       element={
-                        <RequireAuth permissions={ACCESS.PAYROLL_ENGINE}>
-                          <PayrollEngine />
+                        <RequireAuth permissions={ACCESS.ATTENDANCE_ADMIN}>
+                          <AttendanceAdmin />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
+                      path="employees"
+                      element={
+                        <RequireAuth permissions={ACCESS.EMPLOYEES}>
+                          <EmployeeList />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
+                      path="employees/:id"
+                      element={
+                        <RequireAuth permissions={ACCESS.EMPLOYEES}>
+                          <EmployeeDetail />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
+                      path="leave-balances"
+                      element={
+                        <RequireAuth permissions={ACCESS.LEAVE_BALANCE}>
+                          <LeaveBalance />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
+                      path="holidays"
+                      element={
+                        <RequireAuth permissions={ACCESS.HOLIDAYS}>
+                          <Holiday />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
+                      path="announcements"
+                      element={
+                        <RequireAuth permissions={ACCESS.ANNOUNCEMENTS}>
+                          <Announcements />
                         </RequireAuth>
                       }
                     />
@@ -237,55 +324,25 @@ function App() {
                         </RequireAuth>
                       }
                     />
-                    <Route
-                      path="attendance-admin"
-                      element={
-                        <RequireAuth permissions={ACCESS.ATTENDANCE_ADMIN}>
-                          <AttendanceAdmin />
-                        </RequireAuth>
-                      }
-                    />
-                    <Route
-                      path="employees"
-                      element={
-                        <RequireAuth permissions={ACCESS.EMPLOYEES}>
-                          <EmployeeList />
-                        </RequireAuth>
-                      }
-                    />
-                    <Route
-                      path="employees/:id"
-                      element={
-                        <RequireAuth permissions={ACCESS.EMPLOYEES}>
-                          <EmployeeDetail />
-                        </RequireAuth>
-                      }
-                    />
-                    <Route
-                      path="announcements"
-                      element={
-                        <RequireAuth permissions={ACCESS.ANNOUNCEMENTS}>
-                          <Announcements />
-                        </RequireAuth>
-                      }
-                    />
-                    <Route
-                      path="leavebalance"
-                      element={
-                        <RequireAuth permissions={ACCESS.LEAVE_BALANCE}>
-                          <LeaveBalance />
-                        </RequireAuth>
-                      }
-                    />
                   </Route>
 
                   <Route
-                    path="hr/teampages"
+                    path={routePath(ROUTES.PAYROLL_ENGINE)}
                     element={
-                      <RequireAuth permissions={ACCESS.TEAM_PAGES}>
-                        <TeamPages />
+                      <RequireAuth permissions={ACCESS.PAYROLL_ENGINE}>
+                        <PayrollEngine />
                       </RequireAuth>
                     }
+                  />
+
+                  <Route
+                    path="hr/teampages"
+                    element={<Navigate to={ROUTES.TEAMS} replace />}
+                  />
+
+                  <Route
+                    path="hr/holiday"
+                    element={<Navigate to={ROUTES.HOLIDAYS} replace />}
                   />
 
                   <Route path="*" element={<NotFound />} />

@@ -23,6 +23,7 @@ import { departmentApi } from "../../apis/departmentApi";
 import { useAuth } from "../../context/AuthContext";
 import { hasPermission } from "../../utils/authPermissions";
 import { toast } from "react-toastify";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 const TeamPages = () => {
   const { user } = useAuth();
@@ -299,7 +300,7 @@ const TeamPages = () => {
                       {team.leader ? (
                         <span>
                           <span className="font-medium text-gray-800">{team.leader.fullName}</span>
-                          <span className="ml-2 text-gray-400">({team.leader.employeeCode})</span>
+                          <span className="ml-2 text-gray-400">({formatEmployeeCode(team.leader.employeeCode)})</span>
                         </span>
                       ) : (
                         <span className="italic text-gray-500">Chưa có team leader</span>

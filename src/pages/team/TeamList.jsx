@@ -3,6 +3,7 @@ import { Users, Building2, Crown, RefreshCw, Loader2, Search, Filter } from "luc
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import { teamAPI } from "../../apis/teamAPI";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 const TeamList = () => {
     const [loading, setLoading] = useState(true);
@@ -272,7 +273,7 @@ const TeamList = () => {
                                                     {team.leader.fullName}
                                                 </span>
                                                 <span className="text-gray-400 ml-2">
-                                                    ({team.leader.employeeCode})
+                                                    ({formatEmployeeCode(team.leader.employeeCode)})
                                                 </span>
                                             </div>
                                         ) : (
@@ -316,3 +317,4 @@ const TeamList = () => {
 };
 
 export default TeamList;
+

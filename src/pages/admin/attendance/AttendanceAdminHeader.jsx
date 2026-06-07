@@ -26,7 +26,7 @@ const AttendanceAdminHeader = ({
   isExportDisabled,
   canWriteAttendance = false,
 }) => {
-  const meta = isPeriodLocked ? (
+  const lockBadge = isPeriodLocked ? (
     <span className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-100 px-2 py-1 text-xs text-red-600">
       <Lock size={10} /> Đã khóa sổ
     </span>
@@ -115,7 +115,7 @@ const AttendanceAdminHeader = ({
     <PageToolbar
       title="Quản trị Chấm công"
       description="Tổng hợp dữ liệu công, tăng ca và nghỉ phép"
-      meta={meta}
+      meta={lockBadge}
       actions={actions}
     />
   );

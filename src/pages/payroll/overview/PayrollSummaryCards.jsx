@@ -5,8 +5,8 @@ import Card from "../../../components/common/Card";
 const PayrollSummaryCards = ({ summary, formatMoney }) => {
   const cards = [
     {
-      label: "Tổng nhân viên",
-      value: summary.totalEmployees,
+      label: "Tổng phiếu lương",
+      value: summary.totalPayrolls,
       icon: Users,
       tone: "blue",
     },

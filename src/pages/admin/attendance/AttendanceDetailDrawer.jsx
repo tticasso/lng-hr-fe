@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 
 import { formatStandardWorkday, getPayrollWorkDays } from "./attendanceUtils";
+import { formatEmployeeCode } from "../../../utils/employeeDisplay";
 
 const SOURCE_META = {
   WEB_APP: {
@@ -156,7 +157,7 @@ const AttendanceDetailDrawer = ({
                 {selectedEmployee.fullName || "--"}
               </h2>
               <p className="font-mono text-sm text-gray-500">
-                {selectedEmployee.employeeCode || "--"} •{" "}
+                {formatEmployeeCode(selectedEmployee.employeeCode)} •{" "}
                 {selectedEmployee.department || "--"}
               </p>
             </div>
@@ -242,6 +243,10 @@ const AttendanceDetailDrawer = ({
                             )
                           : 0;
                       const sourceMeta = getSourceMeta(log.source);
+                      const isRotationOff =
+                        log.isRotationOff ||
+                        log.status === "REST_DAY" ||
+                        log.status === "OFF";
 
                       let statusBadge;
                       if (
@@ -267,6 +272,12 @@ const AttendanceDetailDrawer = ({
                         statusBadge = (
                           <span className="rounded bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">
                             Nghỉ lễ có công
+                          </span>
+                        );
+                      } else if (isRotationOff && !log.checkIn && !log.checkOut) {
+                        statusBadge = (
+                          <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700">
+                            Nghỉ luân phiên
                           </span>
                         );
                       } else if (!log.checkOut) {
@@ -300,6 +311,12 @@ const AttendanceDetailDrawer = ({
                           </span>
                         );
                       }
+                      const rotationBadge =
+                        isRotationOff && (log.checkIn || log.checkOut) ? (
+                          <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700">
+                            Nghỉ luân phiên
+                          </span>
+                        ) : null;
 
                       return (
                         <tr key={log._id || idx} className="group hover:bg-gray-50">
@@ -430,12 +447,15 @@ const AttendanceDetailDrawer = ({
                             )}
                           </td>
                           <td className="p-4">
-                            {statusBadge}
-                            {log.deductedBlocks > 0 && (
-                              <span className="ml-2 text-xs text-red-500">
-                                (-{log.deductedBlocks} block)
-                              </span>
-                            )}
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {statusBadge}
+                              {rotationBadge}
+                              {log.deductedBlocks > 0 && (
+                                <span className="text-xs text-red-500">
+                                  (-{log.deductedBlocks} block)
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="p-4 text-right">
                             {canWriteAttendance && (
@@ -470,3 +490,4 @@ const AttendanceDetailDrawer = ({
 };
 
 export default AttendanceDetailDrawer;
+

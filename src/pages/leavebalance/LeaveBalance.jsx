@@ -7,6 +7,7 @@ import { toast } from "react-toastify";
 import { useAuth } from "../../context/AuthContext";
 import { hasPermission } from "../../utils/authPermissions";
 import { ACCESS } from "../../config/accessControl";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 const buildPageList = (current, total) => {
     if (total <= 1) return [1];
@@ -109,7 +110,7 @@ const LeaveBalance = () => {
     // Edit Modal Functions
     const openEditModal = (leaveBalance) => {
         if (!canUpdateLeave) {
-            toast.error("Bạn không có quyền UPDATE_LEAVE để điều chỉnh công phép");
+            toast.error("Bạn không có quyền WRITE_LEAVE_BALANCES để điều chỉnh công phép");
             return;
         }
 
@@ -171,7 +172,7 @@ const LeaveBalance = () => {
 
     const handleUpdateLeaveBalance = async () => {
         if (!canUpdateLeave) {
-            toast.error("Bạn không có quyền UPDATE_LEAVE để điều chỉnh công phép");
+            toast.error("Bạn không có quyền WRITE_LEAVE_BALANCES để điều chỉnh công phép");
             return;
         }
 
@@ -209,7 +210,7 @@ const LeaveBalance = () => {
     // Adjust Modal Functions
     const openAdjustModal = (leaveBalance) => {
         if (!canUpdateLeave) {
-            toast.error("Bạn không có quyền UPDATE_LEAVE để điều chỉnh công phép");
+            toast.error("Bạn không có quyền WRITE_LEAVE_BALANCES để điều chỉnh công phép");
             return;
         }
 
@@ -272,7 +273,7 @@ const LeaveBalance = () => {
 
     const handleAdjustLeaveBalance = async () => {
         if (!canUpdateLeave) {
-            toast.error("Bạn không có quyền UPDATE_LEAVE để điều chỉnh công phép");
+            toast.error("Bạn không có quyền WRITE_LEAVE_BALANCES để điều chỉnh công phép");
             return;
         }
 
@@ -313,7 +314,7 @@ const LeaveBalance = () => {
 
     const runLeaveBalanceJob = async (type) => {
         if (!canUpdateLeave) {
-            toast.error("Bạn không có quyền UPDATE_LEAVE để vận hành công phép");
+            toast.error("Bạn không có quyền WRITE_LEAVE_BALANCES để vận hành công phép");
             return;
         }
 
@@ -347,7 +348,7 @@ const LeaveBalance = () => {
 
     const handleDeleteLeaveBalance = async (leaveBalance) => {
         if (!canUpdateLeave) {
-            toast.error("Bạn không có quyền UPDATE_LEAVE để xóa số dư phép");
+            toast.error("Bạn không có quyền WRITE_LEAVE_BALANCES để xóa số dư phép");
             return;
         }
 
@@ -367,9 +368,11 @@ const LeaveBalance = () => {
             <div className="flex-shrink-0 mb-4">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-800">Quản lý số dư phép</h1>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h1 className="text-2xl font-bold text-gray-800">Quản lý số dư phép</h1>
+                        </div>
                         <p className="text-sm text-gray-500">
-                            Theo dõi số dư phép năm của nhân viên ({filteredData.length} bản ghi)
+                            Theo dõi số dư phép năm của nhân viên ({filteredData.length} nhân viên)
                         </p>
                     </div>
                     <Button
@@ -496,7 +499,7 @@ const LeaveBalance = () => {
                                                         {item.employeeId?.fullName || "N/A"}
                                                     </p>
                                                     <p className="text-xs text-gray-500">
-                                                        {item.employeeId?.employeeCode || "N/A"}
+                                                        {formatEmployeeCode(item.employeeId?.employeeCode, "N/A")}
                                                     </p>
                                                 </div>
                                             </div>
@@ -591,7 +594,7 @@ const LeaveBalance = () => {
                     <div className="flex flex-col gap-3 border-t border-gray-200 bg-gray-50 p-4 text-sm text-gray-500 md:flex-row md:items-center md:justify-between">
                         <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
                             <span>
-                                Hiển thị <strong>{(currentPage - 1) * pagination.limit + 1}</strong>-<strong>{Math.min(currentPage * pagination.limit, filteredData.length)}</strong> trong tổng số <strong>{filteredData.length}</strong> bản ghi
+                                Hiển thị <strong>{(currentPage - 1) * pagination.limit + 1}</strong>-<strong>{Math.min(currentPage * pagination.limit, filteredData.length)}</strong> trong tổng số <strong>{filteredData.length}</strong> nhân viên
                             </span>
                             <label className="flex items-center gap-2">
                                 <span>Mỗi trang</span>
@@ -674,7 +677,7 @@ const LeaveBalance = () => {
                                 <div>
                                     <h3 className="text-lg font-bold text-gray-800">Chỉnh sửa số dư phép</h3>
                                     <p className="text-xs text-gray-500">
-                                        {selectedLeaveBalance.employeeId?.fullName} ({selectedLeaveBalance.employeeId?.employeeCode})
+                                        {selectedLeaveBalance.employeeId?.fullName} ({formatEmployeeCode(selectedLeaveBalance.employeeId?.employeeCode)})
                                     </p>
                                 </div>
                             </div>
@@ -838,7 +841,7 @@ const LeaveBalance = () => {
                                 <div>
                                     <h3 className="text-lg font-bold text-gray-800">Điều chỉnh số dư phép</h3>
                                     <p className="text-xs text-gray-500">
-                                        {selectedLeaveBalance.employeeId?.fullName} ({selectedLeaveBalance.employeeId?.employeeCode})
+                                        {selectedLeaveBalance.employeeId?.fullName} ({formatEmployeeCode(selectedLeaveBalance.employeeId?.employeeCode)})
                                     </p>
                                 </div>
                             </div>
@@ -1060,4 +1063,5 @@ const LeaveBalance = () => {
 };
 
 export default LeaveBalance;
+
 

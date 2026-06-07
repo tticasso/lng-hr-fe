@@ -2,6 +2,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Loader2 } from "lucide-react";
 import { getRoleName, hasAnyPermission, isSuperAdmin } from "../utils/authPermissions";
+import { ROUTES } from "../config/routes";
 
 const RequireAuth = ({ children, roles: allowedRoles, permissions: allowedPermissions }) => {
   const { user, loading } = useAuth();
@@ -16,11 +17,11 @@ const RequireAuth = ({ children, roles: allowedRoles, permissions: allowedPermis
   }
 
   if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to={ROUTES.LOGIN} state={{ from: location }} replace />;
   }
 
-  if (user.isProfileUpdated === false && location.pathname !== "/profile") {
-    return <Navigate to="/profile" replace />;
+  if (user.isProfileUpdated === false && location.pathname !== ROUTES.PROFILE) {
+    return <Navigate to={ROUTES.PROFILE} replace />;
   }
 
   const userRoleName = getRoleName(user);

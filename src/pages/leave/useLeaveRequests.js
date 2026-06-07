@@ -74,7 +74,7 @@ export const useLeaveRequests = ({ mode }) => {
       return {
         canAction: true,
         approvalLevel: getSuperApprovalLevel(leave),
-        title: "Duyệt nhanh với quyền Admin/HR",
+        title: "Duyệt nhanh bằng APPROVE_ALL_LEAVES",
       };
     }
 
@@ -252,7 +252,7 @@ export const useLeaveRequests = ({ mode }) => {
         displayStatus,
         approvalContext,
         canApprove: canApprove && approvalContext.canAction,
-        canReject: canApprove,
+        canReject: canApprove && approvalContext.canAction,
         canEdit: false,
         canCancel: false,
         canDelete: false,

@@ -27,6 +27,7 @@ import { employeeApi } from "../../apis/employeeApi";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "../../apis/authApi";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 // --- CÁC REGEX CHUẨN VIỆT NAM ---
 const VIETNAM_PHONE_REGEX = /^(\+84|0)(3|5|7|8|9)[0-9]{8}$/;
@@ -542,7 +543,7 @@ const MyProfile = () => {
                   </span>
                 </p>
                 <div className="flex gap-3 text-sm justify-center sm:justify-start">
-                  <span>{profile.employeeCode}</span>
+                  <span>{formatEmployeeCode(profile.employeeCode)}</span>
                   <span>•</span>
                   <span>{profile.workEmail || profile.email}</span>
                 </div>
@@ -691,7 +692,7 @@ const MyProfile = () => {
                   Thông tin vị trí
                 </h3>
                 <div className="space-y-4">
-                  <ProfileField label="Mã nhân viên" value={profile.employeeCode} />
+                  <ProfileField label="Mã nhân viên" value={formatEmployeeCode(profile.employeeCode)} />
                   <ProfileField
                     label="Phòng ban"
                     value={profile.department}
@@ -1016,3 +1017,4 @@ const InputGroup = ({ label, required, children, className, error }) => (
 );
 
 export default MyProfile;
+

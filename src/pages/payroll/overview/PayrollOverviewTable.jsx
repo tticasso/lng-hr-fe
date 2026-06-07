@@ -13,6 +13,7 @@ import {
   getPayrollStatusBadgeClass,
   getPayrollStatusLabel,
 } from "./payrollOverviewUtils";
+import { formatEmployeeCode } from "../../../utils/employeeDisplay";
 
 const TableState = ({ label }) => (
   <div className="flex h-64 items-center justify-center">
@@ -110,7 +111,7 @@ const PayrollOverviewTable = ({
                   {row.employeeId?.fullName || "--"}
                 </p>
                 <p className="font-mono text-xs text-gray-500">
-                  {row.employeeId?.employeeCode || "--"}
+                  {formatEmployeeCode(row.employeeId?.employeeCode)}
                 </p>
               </div>
               {canRunPayroll && (
@@ -286,7 +287,9 @@ const PayrollOverviewTable = ({
                 <td className="p-4">
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-gray-900">{row.employeeId?.fullName || "--"}</p>
-                    <p className="truncate font-mono text-xs text-gray-500">{row.employeeId?.employeeCode || "--"}</p>
+                    <p className="truncate font-mono text-xs text-gray-500">
+                      {formatEmployeeCode(row.employeeId?.employeeCode)}
+                    </p>
                   </div>
                 </td>
                 <td className="whitespace-nowrap p-4 text-right font-mono text-gray-700">

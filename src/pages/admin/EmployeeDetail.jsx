@@ -30,6 +30,8 @@ import StatusBadge from "../../components/common/StatusBadge";
 import EditEmployeeModal from "../../components/modals/EditEmployeeModal";
 import { employeeApi } from "../../apis/employeeApi";
 import { toast } from "react-toastify";
+import { ROUTES } from "../../config/routes";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 const EmployeeDetail = () => {
   const navigate = useNavigate();
@@ -60,7 +62,7 @@ const EmployeeDetail = () => {
       } catch (error) {
         console.error("Error fetching employee:", error);
         toast.error("Không thể tải thông tin nhân viên.");
-        navigate("/hr/employees");
+        navigate(ROUTES.EMPLOYEES);
       } finally {
         setLoading(false);
       }
@@ -164,7 +166,7 @@ const EmployeeDetail = () => {
   const employee = employeeData
     ? {
         id: employeeData._id || employeeData.id,
-        employeeCode: employeeData.employeeCode || "N/A", // [MỚI]
+        employeeCode: formatEmployeeCode(employeeData.employeeCode, "N/A"), // [MỚI]
         name: employeeData.fullName || "User",
         avatar: employeeData.avatar || "default-avatar.jpg",
         position: employeeData.jobTitle || "N/A",
@@ -323,7 +325,7 @@ const EmployeeDetail = () => {
               <div className="flex gap-2 text-sm text-gray-500 items-center justify-center sm:justify-start">
                 <span>{employee.departmentId}</span>
                 <span>•</span>
-                <span>Mã NV: {employee.employeeCode}</span>
+                <span>Mã NV: {formatEmployeeCode(employee.employeeCode, "N/A")}</span>
                 <span>•</span>
                 <span>{employee.contract.workEmail}</span>
               </div>
@@ -710,3 +712,4 @@ const InfoField = ({ label, value, icon, bold }) => (
 );
 
 export default EmployeeDetail;
+

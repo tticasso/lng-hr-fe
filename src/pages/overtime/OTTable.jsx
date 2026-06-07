@@ -1,4 +1,5 @@
 import { CheckCircle2, Edit, Eye, Loader2, Trash2, XCircle } from "lucide-react";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 import { actionButtonClass, formatDate, otTypeLabel, statusLabel } from "./shared";
 
 const StatusBadge = ({ status }) => {
@@ -156,6 +157,9 @@ const OTTable = ({
                   <p className="truncate font-semibold text-gray-800">
                     {ot?.employeeId?.fullName || "--"}
                   </p>
+                  <p className="text-xs text-gray-500">
+                    {formatEmployeeCode(ot?.employeeId?.employeeCode, "")}
+                  </p>
                   <p className="text-xs text-gray-500">{formatDate(ot?.date)}</p>
                 </div>
                 <StatusBadge status={row.status} />
@@ -222,6 +226,9 @@ const OTTable = ({
                 >
                   <td className="px-2 py-2.5">
                     <p className="font-semibold text-gray-800">{ot?.employeeId?.fullName || "--"}</p>
+                    <p className="text-xs text-gray-500">
+                      {formatEmployeeCode(ot?.employeeId?.employeeCode, "")}
+                    </p>
                   </td>
                   <td className="whitespace-nowrap px-2 py-2.5 text-gray-700">{formatDate(ot?.date)}</td>
                   <td className="px-2 py-2.5 text-gray-700">

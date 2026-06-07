@@ -21,6 +21,12 @@ export const announcementAPI = {
     return apiClient.patch(`/announcements/${id}`, payload);
   },
 
+  uploadImage: (payload) => {
+    return apiClient.post("/announcements/images", payload, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+
   delete: (id) => {
     return apiClient.delete(`/announcements/${id}`);
   },

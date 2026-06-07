@@ -1,6 +1,7 @@
 import { memo } from "react";
 import Card from "../../components/common/Card";
 import { UserX } from "lucide-react";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 const DailyAbsentAttendances = memo(({ data, onViewAll }) => {
   if (!data) return null;
@@ -52,7 +53,7 @@ const DailyAbsentAttendances = memo(({ data, onViewAll }) => {
                   {attendance.employee?.fullName || "Chưa có tên"}
                 </p>
                 <p className="mt-1 truncate text-xs text-gray-500">
-                  {attendance.employee?.employeeCode || "--"}
+                  {formatEmployeeCode(attendance.employee?.employeeCode)}
                   {attendance.employee?.department?.name ? ` · ${attendance.employee.department.name}` : ""}
                 </p>
               </div>

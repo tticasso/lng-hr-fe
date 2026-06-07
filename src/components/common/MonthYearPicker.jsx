@@ -1,134 +1,52 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Calendar, ChevronDown } from "lucide-react";
+import { Calendar } from "lucide-react";
+import { DatePicker } from "antd";
+import viVN from "antd/es/date-picker/locale/vi_VN";
+import "dayjs/locale/vi";
 
-const MonthYearPicker = ({ value, onChange, className = "" }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedYear, setSelectedYear] = useState(() => {
-    if (value) return parseInt(value.split("-")[0], 10);
-    return new Date().getFullYear();
-  });
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    if (value) return parseInt(value.split("-")[1], 10);
-    return new Date().getMonth() + 1;
-  });
+import dayjs from "../../untils/dayjs";
 
-  const dropdownRef = useRef(null);
+dayjs.locale("vi");
 
-  const months = [
-    { value: 1, label: "Tháng 1" },
-    { value: 2, label: "Tháng 2" },
-    { value: 3, label: "Tháng 3" },
-    { value: 4, label: "Tháng 4" },
-    { value: 5, label: "Tháng 5" },
-    { value: 6, label: "Tháng 6" },
-    { value: 7, label: "Tháng 7" },
-    { value: 8, label: "Tháng 8" },
-    { value: 9, label: "Tháng 9" },
-    { value: 10, label: "Tháng 10" },
-    { value: 11, label: "Tháng 11" },
-    { value: 12, label: "Tháng 12" },
-  ];
+const parseMonthValue = (value) => {
+  if (!value) return null;
 
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
+  const parsed = dayjs(`${value}-01`);
+  return parsed.isValid() ? parsed : null;
+};
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
+const MonthYearPicker = ({
+  value,
+  onChange,
+  className = "",
+  disabled = false,
+  placeholder = "Chọn tháng",
+}) => {
+  const selectedValue = parseMonthValue(value);
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const handleChange = (date) => {
+    if (!date) return;
 
-  const handleMonthSelect = (month) => {
-    setSelectedMonth(month);
-    const formattedValue = `${selectedYear}-${String(month).padStart(2, "0")}`;
-    onChange({ target: { value: formattedValue } });
+    onChange?.({
+      target: {
+        value: date.format("YYYY-MM"),
+      },
+    });
   };
-
-  const handleYearSelect = (year) => {
-    setSelectedYear(year);
-    const formattedValue = `${year}-${String(selectedMonth).padStart(2, "0")}`;
-    onChange({ target: { value: formattedValue } });
-  };
-
-  const displayValue = `Tháng ${selectedMonth}/${selectedYear}`;
 
   return (
-    <div className={`relative ${className}`} ref={dropdownRef}>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="group flex h-12 w-full min-w-0 items-center justify-between rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none transition-all hover:border-blue-400 focus:ring-2 focus:ring-blue-500"
-      >
-        <div className="flex min-w-0 items-center gap-3">
-          <Calendar
-            size={20}
-            className="text-gray-400 transition-colors group-hover:text-blue-500"
-          />
-          <span className="truncate whitespace-nowrap font-semibold text-gray-700">
-            {displayValue}
-          </span>
-        </div>
-        <ChevronDown
-          size={20}
-          className={`shrink-0 text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
-        />
-      </button>
-
-      {isOpen && (
-        <div className="animate-in fade-in slide-in-from-top-2 absolute left-0 top-full z-50 mt-2 w-[min(92vw,420px)] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl duration-200 sm:left-auto sm:right-0">
-          <div className="grid grid-cols-[minmax(0,1.35fr)_minmax(112px,0.65fr)] divide-x divide-gray-200">
-            <div className="p-3">
-              <div className="mb-2 px-2 text-xs font-semibold uppercase text-gray-500">
-                Chọn tháng
-              </div>
-              <div className="grid max-h-64 grid-cols-3 gap-1 overflow-y-auto overflow-x-hidden">
-                {months.map((month) => (
-                  <button
-                    key={month.value}
-                    type="button"
-                    onClick={() => handleMonthSelect(month.value)}
-                    className={`min-w-0 rounded-md px-2 py-2 text-sm transition-all ${
-                      selectedMonth === month.value
-                        ? "bg-blue-600 font-semibold text-white shadow-md"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    Th{month.value}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="p-3">
-              <div className="mb-2 px-2 text-xs font-semibold uppercase text-gray-500">
-                Chọn năm
-              </div>
-              <div className="max-h-64 space-y-1 overflow-y-auto">
-                {years.map((year) => (
-                  <button
-                    key={year}
-                    type="button"
-                    onClick={() => handleYearSelect(year)}
-                    className={`w-full rounded-md p-2 text-left text-sm transition-all ${
-                      selectedYear === year
-                        ? "bg-blue-600 font-semibold text-white shadow-md"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    {year}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    <DatePicker
+      picker="month"
+      value={selectedValue}
+      onChange={handleChange}
+      allowClear={false}
+      disabled={disabled}
+      format="[Tháng] M/YYYY"
+      locale={viVN}
+      placeholder={placeholder}
+      size="large"
+      suffixIcon={<Calendar size={18} className="text-gray-400" />}
+      className={`h-12 w-full rounded-xl border-gray-300 px-4 text-base font-semibold ${className}`}
+    />
   );
 };
 

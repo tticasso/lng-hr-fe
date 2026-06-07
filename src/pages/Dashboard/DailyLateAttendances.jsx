@@ -1,6 +1,7 @@
 import { memo } from "react";
 import Card from "../../components/common/Card";
 import { Clock3, TimerReset, UserCheck } from "lucide-react";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 const formatMinutes = (value) => {
   const minutes = Number(value || 0);
@@ -73,7 +74,7 @@ const DailyLateAttendances = memo(({ data, onViewAll }) => {
                   {attendance.employee?.fullName || "Chưa có tên"}
                 </p>
                 <p className="mt-1 truncate text-xs text-gray-500">
-                  {attendance.employee?.employeeCode || "--"}
+                  {formatEmployeeCode(attendance.employee?.employeeCode)}
                   {attendance.employee?.department?.name ? ` · ${attendance.employee.department.name}` : ""}
                 </p>
               </div>

@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Bell,
   Building2,
@@ -30,12 +30,27 @@ import { useAuth } from "../context/AuthContext";
 import { useSidebar } from "../context/SidebarContext";
 import { hasAnyPermission } from "../utils/authPermissions";
 import { ACCESS, ACCESS_GROUPS } from "../config/accessControl";
+import { ROUTES } from "../config/routes";
 
 const groupTitleClass =
   "mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400";
 
 const itemBaseClass =
   "group relative flex min-h-11 items-center rounded-xl px-3 text-sm font-medium transition-all duration-200";
+
+const normalizeMenuPath = (path) => {
+  if (!path) return "";
+  const cleanPath = path.split(/[?#]/)[0].replace(/\/+$/, "");
+  return cleanPath || "/";
+};
+
+const isPathMatch = (pathname, path) => {
+  const currentPath = normalizeMenuPath(pathname);
+  const targetPath = normalizeMenuPath(path);
+
+  if (targetPath === "/") return currentPath === "/";
+  return currentPath === targetPath || currentPath.startsWith(`${targetPath}/`);
+};
 
 const Sidebar = () => {
   const navigate = useNavigate();
@@ -59,9 +74,9 @@ const Sidebar = () => {
       {
         title: "Cá nhân",
         items: [
-          { path: "/", label: "Tổng quan", icon: Home },
-          { path: "/timesheet", label: "Lịch làm việc", icon: CalendarCheck2 },
-          { path: "/payroll", label: "Phiếu lương", icon: DollarSign },
+          { path: ROUTES.DASHBOARD, label: "Tổng quan", icon: Home },
+          { path: ROUTES.TIMESHEET, label: "Lịch làm việc", icon: CalendarCheck2 },
+          { path: ROUTES.MY_PAYSLIP, label: "Phiếu lương", icon: DollarSign },
         ],
       },
       ...(canSeeOrganization || canSeeHRWorkspace || canApproveRequests
@@ -76,13 +91,13 @@ const Sidebar = () => {
                   icon: Building2,
                   children: [
                     {
-                      path: "/department",
+                      path: ROUTES.DEPARTMENTS,
                       label: "Phòng ban",
                       icon: Network,
                       permissions: ACCESS.DEPARTMENTS,
                     },
                     {
-                      path: "/hr/teampages",
+                      path: ROUTES.TEAMS,
                       label: "Team",
                       icon: GitBranch,
                       permissions: ACCESS.TEAM_PAGES,
@@ -96,25 +111,27 @@ const Sidebar = () => {
                   icon: Users,
                   children: [
                     {
-                      path: "/hr/employees",
+                      path: ROUTES.EMPLOYEES,
                       label: "Nhân viên",
                       icon: User,
                       permissions: ACCESS.EMPLOYEES,
+                      scopeKey: "EMPLOYEES",
                     },
                     {
-                      path: "/hr/leavebalance",
+                      path: ROUTES.LEAVE_BALANCES,
                       label: "Công phép",
                       icon: CalendarCheck,
                       permissions: ACCESS.LEAVE_BALANCE,
+                      scopeKey: "LEAVE_BALANCES",
                     },
                     {
-                      path: "/holiday",
+                      path: ROUTES.HOLIDAYS,
                       label: "Lịch nghỉ",
                       icon: Timer,
                       permissions: ACCESS.HOLIDAYS,
                     },
                     {
-                      path: "/hr/announcements",
+                      path: ROUTES.ANNOUNCEMENTS,
                       label: "Thông báo",
                       icon: Bell,
                       permissions: ACCESS.ANNOUNCEMENTS,
@@ -128,23 +145,23 @@ const Sidebar = () => {
                   icon: Plane,
                   children: [
                     {
-                      path: "/leave/my",
+                      path: ROUTES.LEAVE,
                       label: "Đơn nghỉ",
                       icon: CalendarMinus,
                     },
                     {
-                      path: "/leave/approvals",
+                      path: ROUTES.LEAVE_APPROVALS,
                       label: "Duyệt đơn nghỉ",
                       icon: ClipboardCheck,
                       permissions: ACCESS.LEAVE_APPROVALS,
                     },
                     {
-                      path: "/ot/my",
+                      path: ROUTES.OVERTIME,
                       label: "Đơn OT",
                       icon: Timer,
                     },
                     {
-                      path: "/ot/approvals",
+                      path: ROUTES.OVERTIME_APPROVALS,
                       label: "Duyệt đơn OT",
                       icon: ClipboardCheck,
                       permissions: ACCESS.OT_APPROVALS,
@@ -167,19 +184,21 @@ const Sidebar = () => {
                   icon: FolderKanban,
                   children: [
                     {
-                      path: "/hr/attendance-admin",
+                      path: ROUTES.ATTENDANCE,
                       label: "Chấm công",
                       icon: ClipboardCheck,
                       permissions: ACCESS.ATTENDANCE_ADMIN,
+                      scopeKey: "ATTENDANCE",
                     },
                     {
-                      path: "/allpayroll",
+                      path: ROUTES.PAYROLLS,
                       label: "Bảng lương",
                       icon: FileSpreadsheet,
                       permissions: ACCESS.PAYROLL_LIST,
+                      scopeKey: "PAYROLLS",
                     },
                     {
-                      path: "/hr/payroll-engine",
+                      path: ROUTES.PAYROLL_ENGINE,
                       label: "Tính lương",
                       icon: Landmark,
                       permissions: ACCESS.PAYROLL_ENGINE,
@@ -196,13 +215,13 @@ const Sidebar = () => {
               title: "Hệ thống",
               items: [
                 {
-                  path: "/admin/user-management",
+                  path: ROUTES.SYSTEM_ACCOUNTS,
                   label: "Quản lý tài khoản",
                   icon: UserCog,
                   permissions: ACCESS.USER_MANAGEMENT,
                 },
                 {
-                  path: "/admin/system-admin",
+                  path: ROUTES.SYSTEM_SETTINGS,
                   label: "Cài đặt hệ thống",
                   icon: Settings,
                   permissions: ACCESS.SYSTEM_ADMIN,
@@ -215,6 +234,43 @@ const Sidebar = () => {
     [canApproveRequests, canSeeHRWorkspace, canSeeOrganization, canSeePayrollOps, canSeeSystem],
   );
 
+  const visibleMenuPaths = useMemo(() => {
+    const paths = [];
+
+    const addPathIfVisible = (item) => {
+      if (!item.path) return;
+      if (item.permissions && !hasAnyPermission(user, item.permissions)) return;
+      paths.push(normalizeMenuPath(item.path));
+    };
+
+    for (const group of menuGroups) {
+      for (const item of group.items) {
+        if (item.type === "dropdown") {
+          item.children.forEach(addPathIfVisible);
+        } else {
+          addPathIfVisible(item);
+        }
+      }
+    }
+
+    return [...new Set(paths)].sort((a, b) => b.length - a.length);
+  }, [menuGroups, user]);
+
+  const isMenuItemActive = useCallback((path) => {
+    const targetPath = normalizeMenuPath(path);
+
+    if (!isPathMatch(location.pathname, targetPath)) return false;
+
+    const moreSpecificActivePath = visibleMenuPaths.find(
+      (candidatePath) =>
+        candidatePath !== targetPath &&
+        candidatePath.startsWith(`${targetPath}/`) &&
+        isPathMatch(location.pathname, candidatePath),
+    );
+
+    return !moreSpecificActivePath;
+  }, [location.pathname, visibleMenuPaths]);
+
   useEffect(() => {
     if (shouldCollapse) {
       setExpandedDropdowns({});
@@ -225,15 +281,13 @@ const Sidebar = () => {
     for (const group of menuGroups) {
       for (const item of group.items) {
         if (item.type !== "dropdown") continue;
-        const hasActiveChild = item.children.some((child) =>
-          location.pathname.startsWith(child.path),
-        );
+        const hasActiveChild = item.children.some((child) => isMenuItemActive(child.path));
         if (hasActiveChild) nextExpanded[item.key] = true;
       }
     }
 
     setExpandedDropdowns((prev) => ({ ...prev, ...nextExpanded }));
-  }, [location.pathname, menuGroups, shouldCollapse]);
+  }, [isMenuItemActive, menuGroups, shouldCollapse]);
 
   useEffect(() => {
     closeMobileSidebar();
@@ -253,7 +307,7 @@ const Sidebar = () => {
 
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    navigate(ROUTES.LOGIN);
   };
 
   const renderNavItem = (item, isChild = false) => {
@@ -261,39 +315,38 @@ const Sidebar = () => {
     if (!hasPermissionAccess) return null;
 
     const Icon = item.icon;
+    const isActive = isMenuItemActive(item.path);
 
     return (
-      <NavLink
+      <Link
         key={`${item.path}-${item.label}`}
         to={item.path}
         onClick={closeMobileSidebar}
         title={shouldCollapse ? item.label : ""}
-        className={({ isActive }) =>
-          `${itemBaseClass} ${
-            isActive
-              ? "bg-blue-50 text-blue-700 shadow-sm"
-              : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-          } ${shouldCollapse ? "justify-center px-0" : isChild ? "pl-9 pr-2.5" : "pr-3"}`
-        }
+        className={`${itemBaseClass} ${
+          isActive
+            ? "bg-blue-50 text-blue-700 shadow-sm"
+            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+        } ${shouldCollapse ? "justify-center px-0" : isChild ? "pl-9 pr-2.5" : "pr-3"}`}
       >
-        {({ isActive }) => (
-          <>
-            {!shouldCollapse && isActive && (
-              <span className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-blue-600" />
-            )}
-            <span
-              className={`${
-                shouldCollapse ? "" : "mr-3"
-              } flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                isActive ? "bg-white text-blue-700" : "text-slate-500 group-hover:text-slate-800"
-              }`}
-            >
-              <Icon size={18} />
-            </span>
-            {!shouldCollapse && <span className="truncate">{item.label}</span>}
-          </>
+        {!shouldCollapse && isActive && (
+          <span className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-blue-600" />
         )}
-      </NavLink>
+        <span
+          className={`${
+            shouldCollapse ? "" : "mr-3"
+          } flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+            isActive ? "bg-white text-blue-700" : "text-slate-500 group-hover:text-slate-800"
+          }`}
+        >
+          <Icon size={18} />
+        </span>
+        {!shouldCollapse && (
+          <span className="flex min-w-0 flex-1 items-center gap-2">
+            <span className="truncate">{item.label}</span>
+          </span>
+        )}
+      </Link>
     );
   };
 
@@ -305,9 +358,7 @@ const Sidebar = () => {
 
     const Icon = item.icon;
     const isExpanded = !!expandedDropdowns[item.key];
-    const isActive = visibleChildren.some((child) =>
-      location.pathname.startsWith(child.path),
-    );
+    const isActive = visibleChildren.some((child) => isMenuItemActive(child.path));
 
     return (
       <div key={item.key}>

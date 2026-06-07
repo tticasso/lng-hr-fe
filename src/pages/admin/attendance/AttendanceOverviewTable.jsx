@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import DataTableShell from "../../../components/shared/DataTableShell";
+import { formatEmployeeCode } from "../../../utils/employeeDisplay";
 import {
   formatStandardWorkday,
   formatWorkdayValue,
@@ -62,7 +63,7 @@ const AttendanceOverviewTable = ({
                   <p className="truncate font-bold text-gray-800">
                     {emp.fullName || "--"}
                   </p>
-                  <p className="text-xs text-gray-500">{emp.employeeCode || "--"}</p>
+                  <p className="text-xs text-gray-500">{formatEmployeeCode(emp.employeeCode)}</p>
                   <p className="text-xs text-gray-500">{emp.department || "--"}</p>
                 </div>
               </div>
@@ -157,7 +158,7 @@ const AttendanceOverviewTable = ({
                   <div>
                     <p className="font-bold text-gray-800">{emp.fullName || "--"}</p>
                     <p className="font-mono text-xs text-gray-500">
-                      {emp.employeeCode || "--"}
+                      {formatEmployeeCode(emp.employeeCode)}
                     </p>
                   </div>
                 </div>

@@ -19,6 +19,7 @@ import { leaveAPI } from "../../apis/leaveAPI";
 import { useAuth } from "../../context/AuthContext";
 import { hasAllPermissions } from "../../utils/authPermissions";
 import { leaveTypeLabel } from "../../pages/leave/shared";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 const leaveScopeLabel = {
     FULL_DAY: "Cả ngày",
@@ -241,7 +242,7 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                                         </div>
                                         <div>
                                             <p className="text-xs text-gray-500">Mã nhân viên</p>
-                                            <p className="font-semibold text-gray-800">{leaveDetail.employeeId?.employeeCode || "--"}</p>
+                                            <p className="font-semibold text-gray-800">{formatEmployeeCode(leaveDetail.employeeId?.employeeCode)}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -438,7 +439,7 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
                                                                 {approval.approver?.fullName || "--"}
                                                             </p>
                                                             <p className="text-xs text-gray-500">
-                                                                {approval.approver?.employeeCode || "--"}
+                                                                {formatEmployeeCode(approval.approver?.employeeCode)}
                                                             </p>
                                                             
                                                             {approval.approvedAt && (

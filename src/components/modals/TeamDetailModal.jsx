@@ -6,6 +6,7 @@ import { employeeApi } from "../../apis/employeeApi";
 import { saturdayRotations } from "../../apis/saturday-rotations";
 import { useAuth } from "../../context/AuthContext";
 import { getEmployee, hasPermission } from "../../utils/authPermissions";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 const StatusBadge = ({ status }) => {
     const statusConfig = {
@@ -584,7 +585,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                                         key={`${item.employeeId || item.employeeCode}-${item.month}-${item.year}`}
                                                         className="rounded-md border border-amber-200 bg-white px-2 py-1 text-xs font-medium text-amber-900"
                                                     >
-                                                        {item.employeeCode || item.fullName || item.employeeId}
+                                                        {formatEmployeeCode(item.employeeCode, item.fullName || item.employeeId || "--")}
                                                     </span>
                                                 ))}
                                                 {rotationPayrollReviews.length > 8 && (
@@ -626,7 +627,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                             <div>
                                                 <p className="text-xs text-gray-500">Mã nhân viên</p>
                                                 <p className="font-medium text-sm text-gray-800">
-                                                    {teamDetail.leader.employeeCode}
+                                                    {formatEmployeeCode(teamDetail.leader.employeeCode)}
                                                 </p>
                                             </div>
                                         </div>
@@ -725,9 +726,9 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                                                 <span
                                                                     key={emp._id}
                                                                     className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-md border border-red-200"
-                                                                    title={`${emp.fullName} (${emp.employeeCode})`}
+                                                                    title={`${emp.fullName} (${formatEmployeeCode(emp.employeeCode)})`}
                                                                 >
-                                                                    {emp.employeeCode} - {emp.fullName}
+                                                                    {formatEmployeeCode(emp.employeeCode)} - {emp.fullName}
                                                                 </span>
                                                             ))}
                                                         </div>
@@ -814,7 +815,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                                                     {member.fullName}
                                                                 </p>
                                                                 <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                                                                    <span>{member.employeeCode}</span>
+                                                                    <span>{formatEmployeeCode(member.employeeCode)}</span>
                                                                     <span className="h-1 w-1 rounded-full bg-gray-300" />
                                                                     <span>{member.jobTitle || "Chưa có chức danh"}</span>
                                                                 </div>
@@ -936,7 +937,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                                         {employee.fullName}
                                                     </p>
                                                     <div className="flex items-center gap-2 text-xs text-gray-500">
-                                                        <span>{employee.employeeCode}</span>
+                                                        <span>{formatEmployeeCode(employee.employeeCode)}</span>
                                                         <span>•</span>
                                                         <span>{employee.jobTitle || "Chưa có chức danh"}</span>
                                                     </div>
@@ -1076,7 +1077,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                                                 {member.fullName}
                                                             </p>
                                                             <p className="truncate text-xs text-gray-500">
-                                                                {member.employeeCode} - {member.jobTitle || "Chưa có chức danh"}
+                                                                {formatEmployeeCode(member.employeeCode)} - {member.jobTitle || "Chưa có chức danh"}
                                                             </p>
                                                         </div>
                                                     </label>
@@ -1187,7 +1188,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                                         {member.fullName}
                                                     </p>
                                                     <div className="flex items-center gap-2 text-xs text-gray-500">
-                                                        <span>{member.employeeCode}</span>
+                                                        <span>{formatEmployeeCode(member.employeeCode)}</span>
                                                         <span>•</span>
                                                         <span>{member.jobTitle || "Chưa có chức danh"}</span>
                                                     </div>
@@ -1232,3 +1233,4 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
 };
 
 export default TeamDetailModal;
+

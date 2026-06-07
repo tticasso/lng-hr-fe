@@ -23,6 +23,8 @@ import { toast } from "react-toastify";
 import { getListData, getPagination, hasPaginationMetadata } from "../../shared/apiResponse";
 import { useAuth } from "../../context/AuthContext";
 import { hasPermission } from "../../utils/authPermissions";
+import { ROUTES } from "../../config/routes";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 // Import Modal vừa tạo
 import EditEmployeeModal from "../../components/modals/EditEmployeeModal";
@@ -117,9 +119,9 @@ const EmployeeList = () => {
       setEmployees(listData);
       setPagination({ ...pageMeta, mode: hasServerPagination ? "server" : "client" });
     } catch (error) {
-      console.error("L?i t?i danh s?ch:", error);
+      console.error("Lỗi tải danh sách:", error);
       if (error.response?.status !== 500) {
-        toast.error("Kh?ng th? t?i danh s?ch nh?n vi?n.");
+        toast.error("Không thể tải danh sách nhân viên.");
       }
       setEmployees([]);
     } finally {
@@ -296,7 +298,7 @@ const EmployeeList = () => {
       // Chuẩn bị dữ liệu xuất
       const exportData = exportEmployees.map((emp, index) => ({
         STT: index + 1,
-        "Mã nhân viên": emp.employeeCode || "",
+        "Mã nhân viên": formatEmployeeCode(emp.employeeCode, ""),
         "Họ và tên": emp.fullName || emp.name || "",
         "Tên đăng nhập": emp.accountId?.username || "",
         "Email": emp.email || "",
@@ -456,7 +458,7 @@ const EmployeeList = () => {
               Quản lý nhân viên
             </h1>
             <p className="text-sm text-gray-500">
-              Quản lý hồ sơ nhân sự ({pagination.total} bản ghi)
+              Quản lý hồ sơ nhân sự ({pagination.total} nhân viên)
             </p>
           </div>
           <div className="flex flex-wrap gap-3 w-full md:w-auto">
@@ -624,7 +626,7 @@ const EmployeeList = () => {
                     {/* Code */}
                     <td className="p-4">
                       <span className="font-mono text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                        {emp.employeeCode || "---"}
+                        {formatEmployeeCode(emp.employeeCode, "---")}
                       </span>
                     </td>
 
@@ -659,7 +661,7 @@ const EmployeeList = () => {
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() =>
-                            navigate(`/hr/employees/${emp._id || emp.id}`)
+                            navigate(ROUTES.employeeDetail(emp._id || emp.id))
                           }
                           className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition"
                           title="Xem chi tiết"
@@ -745,3 +747,5 @@ const EmployeeList = () => {
 };
 
 export default EmployeeList;
+
+

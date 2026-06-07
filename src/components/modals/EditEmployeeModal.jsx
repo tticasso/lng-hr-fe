@@ -17,6 +17,7 @@ import { employeeApi } from "../../apis/employeeApi";
 import { departmentApi } from "../../apis/departmentApi";
 import { toast } from "react-toastify";
 import { teamAPI } from "../../apis/teamAPI";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 // --- REGEX & CONSTANTS ---
 // VN phone: 0 / 84 / +84 + (3|5|7|8|9) + 8 digits
@@ -63,7 +64,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     // --- 1. Công việc & Tổ chức ---
     fullName: employee.fullName || "",
-    employeeCode: employee.employeeCode || "",
+    employeeCode: formatEmployeeCode(employee.employeeCode, ""),
     status: employee.status || "Probation",
     isProfileUpdated: Boolean(employee.isProfileUpdated),
     // Model dùng departmentId, UI dùng department. Map logic ở đây:
@@ -271,7 +272,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
     const personalEmail = normalizeTrim(formData.personalEmail);
     const workEmail = normalizeTrim(formData.workEmail);
     const birthDate = normalizeTrim(formData.birthDate);
-    const employeeCode = normalizeTrim(formData.employeeCode);
+    const employeeCode = formatEmployeeCode(normalizeTrim(formData.employeeCode), "");
     const jobTitle = normalizeTrim(formData.jobTitle);
 
     if (!validateForm()) return;
@@ -407,7 +408,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
             <p className="text-xs text-gray-500 mt-1">
               Mã NV:{" "}
               <span className="font-mono font-bold text-blue-700">
-                {formData.employeeCode}
+                {formatEmployeeCode(formData.employeeCode, "")}
               </span>
             </p>
           </div>
@@ -443,7 +444,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                       />
                       <input
                         name="employeeCode"
-                        value={formData.employeeCode}
+                        value={formatEmployeeCode(formData.employeeCode, "")}
                         onChange={handleChange}
                         className={`${inputClass("employeeCode")} pl-9`}
                       />
@@ -547,7 +548,7 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                         .map((item) => (
                           <option key={item._id} value={item._id}>
                             {item.fullName || item.name || "Không tên"}
-                            {item.employeeCode ? ` (${item.employeeCode})` : ""}
+                            {item.employeeCode ? ` (${formatEmployeeCode(item.employeeCode)})` : ""}
                           </option>
                         ))}
                     </select>
@@ -1005,3 +1006,4 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
 };
 
 export default EditEmployeeModal;
+

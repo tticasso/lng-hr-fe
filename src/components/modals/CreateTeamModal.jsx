@@ -4,6 +4,7 @@ import { teamAPI } from "../../apis/teamAPI";
 import { departmentApi } from "../../apis/departmentApi";
 import { employeeApi } from "../../apis/employeeApi";
 import { toast } from "react-toastify";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 const CreateTeamModal = ({ isOpen, onClose, onSuccess, teamData = null, canWrite = true }) => {
     const isEditMode = !!teamData;
@@ -284,7 +285,7 @@ const CreateTeamModal = ({ isOpen, onClose, onSuccess, teamData = null, canWrite
                                         <option value="">-- Chọn team leader --</option>
                                         {employees.map((emp) => (
                                             <option key={emp._id} value={emp._id}>
-                                                {emp.fullName} ({emp.employeeCode})
+                                                {emp.fullName} ({formatEmployeeCode(emp.employeeCode)})
                                                 {emp.departmentId?.name && ` - ${emp.departmentId.name}`}
                                             </option>
                                         ))}
@@ -378,3 +379,4 @@ const CreateTeamModal = ({ isOpen, onClose, onSuccess, teamData = null, canWrite
 };
 
 export default CreateTeamModal;
+

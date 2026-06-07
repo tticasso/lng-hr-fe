@@ -19,6 +19,7 @@ import Card from "../../components/common/Card";
 import { useAuth } from "../../context/AuthContext";
 import { hasPermission } from "../../utils/authPermissions";
 import { toast } from "react-toastify";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 const Department = () => {
   const { user } = useAuth();
@@ -248,7 +249,7 @@ const Department = () => {
                           </div>
                           <div className="min-w-0">
                             <p className="truncate font-medium text-gray-800">{dept.manager.fullName}</p>
-                            <p className="font-mono text-xs text-gray-500">{dept.manager.employeeCode}</p>
+                            <p className="font-mono text-xs text-gray-500">{formatEmployeeCode(dept.manager.employeeCode)}</p>
                           </div>
                         </div>
                       ) : (
@@ -349,7 +350,7 @@ const Department = () => {
                   <option value="">-- Chọn người quản lý --</option>
                   {employees.map((emp) => (
                     <option key={emp._id} value={emp._id}>
-                      {emp.fullName} ({emp.employeeCode})
+                      {emp.fullName} ({formatEmployeeCode(emp.employeeCode)})
                     </option>
                   ))}
                 </select>
@@ -410,7 +411,7 @@ const Department = () => {
                       </div>
                       <div>
                         <p className="font-bold text-gray-800">{selectedDepartment.manager.fullName}</p>
-                        <p className="font-mono text-sm text-gray-600">{selectedDepartment.manager.employeeCode}</p>
+                        <p className="font-mono text-sm text-gray-600">{formatEmployeeCode(selectedDepartment.manager.employeeCode)}</p>
                       </div>
                     </div>
                   </div>

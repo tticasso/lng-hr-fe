@@ -25,6 +25,7 @@ import DailyAbsentAttendances from "./Dashboard/DailyAbsentAttendances";
 import DailyMissingCheckOuts from "./Dashboard/DailyMissingCheckOuts";
 import HROperationsOverview from "./Dashboard/HROperationsOverview";
 import DailyAttendanceDrilldownModal from "./Dashboard/DailyAttendanceDrilldownModal";
+import { ROUTES } from "../config/routes";
 
 // Import custom hooks
 import {
@@ -237,7 +238,7 @@ const Dashboard = () => {
 
   // Redirect to profile if not updated
   useEffect(() => {
-    if (user.isProfileUpdated === false) navigate("/profile");
+    if (user.isProfileUpdated === false) navigate(ROUTES.PROFILE);
   }, [user, navigate]);
 
   // Show loading state
@@ -363,7 +364,7 @@ const Dashboard = () => {
       <div className={`${isHRDashboard ? "hidden" : "grid"} grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-12 lg:gap-6`}>
         {/* 1. Welcome Card (Chiếm 6/12 cột) */}
         <div className="hidden md:contents">
-          <WelcomeCard user={user} onNavigate={() => navigate("/profile")} />
+          <WelcomeCard user={user} onNavigate={() => navigate(ROUTES.PROFILE)} />
         </div>
 
         {/* 2. My Summary (Chiếm 3/12 cột) */}
@@ -397,7 +398,7 @@ const Dashboard = () => {
               title="Trạng thái request"
               emptyText="Chưa có request nào"
               buttonLabel="Xem tất cả request"
-              onNavigate={() => navigate("/requests")}
+              onNavigate={() => navigate(ROUTES.REQUESTS)}
             />
           )}
 
@@ -408,7 +409,7 @@ const Dashboard = () => {
               approvedCount={approvedCount}
               rejectedCount={rejectedCount}
               cancelledCount={cancelledCount}
-              onNavigate={() => navigate("/leave")}
+              onNavigate={() => navigate(ROUTES.LEAVE)}
             />
           )}
 
@@ -433,7 +434,7 @@ const Dashboard = () => {
             <QuickActions
               onLeaveClick={openLeaveModal}
               onOTClick={openOTModal}
-              onPayrollClick={() => navigate("/payroll")}
+              onPayrollClick={() => navigate(ROUTES.MY_PAYSLIP)}
               onSupportClick={openHRSupportModal}
               onCheckInClick={handleCheckIn}
               onCheckOutClick={handleCheckOut}

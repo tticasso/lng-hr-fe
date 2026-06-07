@@ -1,8 +1,9 @@
 import { memo } from "react";
 import { X } from "lucide-react";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 const getEmployeeName = (record) => record?.employee?.fullName || "Chưa có tên";
-const getEmployeeCode = (record) => record?.employee?.employeeCode || "--";
+const getEmployeeCode = (record) => formatEmployeeCode(record?.employee?.employeeCode);
 const getDepartmentName = (record) => record?.employee?.department?.name || "--";
 const getTeamName = (record) => record?.employee?.team?.name || "--";
 

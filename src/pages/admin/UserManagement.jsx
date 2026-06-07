@@ -32,9 +32,21 @@ import { useAuth } from "../../context/AuthContext";
 import { getListData, getPagination, hasPaginationMetadata } from "../../shared/apiResponse";
 import { hasAnyPermission, hasPermission } from "../../utils/authPermissions";
 import { ACCESS } from "../../config/accessControl";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 const USER_PAGE_SIZE = 50;
 const MAX_USER_PREFETCH = 500;
+
+const getAccountRoleName = (account) => (
+  typeof account?.role === "string" ? account.role : account?.role?.name
+);
+
+const buildAccountUpdatePayload = (account, overrides = {}) => ({
+  username: account?.username,
+  roleName: getAccountRoleName(account),
+  isActive: account?.isActive !== false,
+  ...overrides,
+});
 
 const UserManagement = () => {
   // State
@@ -197,7 +209,7 @@ const UserManagement = () => {
       });
     } catch (error) {
       console.error(error);
-      toast.error("L?i t?i d? li?u");
+      toast.error("Lỗi tải dữ liệu");
       setUsers([]);
     } finally {
       setLoading(false);
@@ -236,7 +248,7 @@ const UserManagement = () => {
   const handleConfirmAction = async () => {
     if (!actionData.user) return;
     if (!canWriteAccounts) {
-      toast.error("Bạn cần quyền CREATE_USER/UPDATE_USER/DELETE_USER để thay đổi tài khoản");
+      toast.error("Bạn cần quyền WRITE_ACCOUNTS để thay đổi tài khoản");
       setActionData({ type: null, user: null });
       return;
     }
@@ -249,9 +261,9 @@ const UserManagement = () => {
         setNewPasswordResult(res.data?.data); // Show pass modal
         // Không đóng actionData ngay, để render modal kết quả
       } else if (actionData.type === "toggle_status") {
-        await accountApi.update(userId, {
+        await accountApi.update(userId, buildAccountUpdatePayload(actionData.user, {
           isActive: !actionData.user.isActive,
-        });
+        }));
         toast.success("Cập nhật trạng thái thành công");
         fetchUsers({ page: pagination.page });
         setActionData({ type: null, user: null });
@@ -405,13 +417,13 @@ const UserManagement = () => {
             className="bg-blue-600 text-white flex gap-2 items-center w-full sm:w-auto"
             onClick={() => {
               if (!canWriteAccounts) {
-                toast.error("Bạn cần quyền CREATE_USER để tạo tài khoản");
+                toast.error("Bạn cần quyền WRITE_ACCOUNTS để tạo tài khoản");
                 return;
               }
               setIsCreateOpen(true);
             }}
             disabled={!canWriteAccounts}
-            title={canWriteAccounts ? "Tạo tài khoản" : "Cần quyền CREATE_USER/UPDATE_USER/DELETE_USER"}
+            title={canWriteAccounts ? "Tạo tài khoản" : "Cần quyền WRITE_ACCOUNTS"}
           >
             <Plus size={18} /> Tạo tài khoản
           </Button>
@@ -428,7 +440,7 @@ const UserManagement = () => {
             />
             <input
               className="pl-9 pr-4 py-2 w-full border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Tìm kiếm người dùng..."
+              placeholder="Tìm kiếm tài khoản..."
               value={filters.search}
               onChange={(e) => handleFilterChange("search", e.target.value)}
             />
@@ -467,7 +479,7 @@ const UserManagement = () => {
           <table className="w-full min-w-[980px] text-left text-sm border-collapse">
             <thead className="bg-white border-b text-xs uppercase text-gray-500 font-semibold sticky top-0 z-10">
               <tr>
-                <th className="p-4">Thông tin người dùng</th>
+                <th className="p-4">Thông tin tài khoản</th>
                 <th className="p-4">Tên đăng nhập</th>
                 <th className="p-4">Email</th>
                 <th className="p-4">Vai trò</th>
@@ -497,7 +509,7 @@ const UserManagement = () => {
                           )}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {user.employee?.employeeCode || "Chưa có mã"}
+                          {formatEmployeeCode(user.employee?.employeeCode, "Chưa có mã")}
                         </p>
                       </div>
                     </div>
@@ -597,7 +609,7 @@ const UserManagement = () => {
             <div className="text-sm text-gray-600">
               Hiển thị {(pagination.page - 1) * pagination.limit + 1} -{" "}
               {Math.min(pagination.page * pagination.limit, pagination.total)} trong tổng số{" "}
-              {pagination.total} người dùng
+              {pagination.total} tài khoản
             </div>
             <div className="flex gap-2">
               <Button
@@ -693,4 +705,5 @@ const UserManagement = () => {
 };
 
 export default UserManagement;
+
 

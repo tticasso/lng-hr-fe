@@ -145,6 +145,24 @@ const Announcements = () => {
     },
   });
 
+  const uploadAnnouncementImage = async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const res = await announcementAPI.uploadImage(formData);
+      const url = res?.data?.data?.url;
+
+      if (!url) {
+        throw new Error("Missing uploaded image URL");
+      }
+
+      return url;
+    } catch (error) {
+      toast.error(error?.normalizedMessage || "Không thể tải ảnh thông báo lên");
+      return "";
+    }
+  };
+
   // State quản lý màn hình: 'list' | 'create' | 'edit'
   const [currentView, setCurrentView] = useState("list");
   const [announcements, setAnnouncements] = useState([]);
@@ -170,7 +188,7 @@ const Announcements = () => {
   const [validationErrors, setValidationErrors] = useState({});
   const [scheduleType, setScheduleType] = useState(
     ANNOUNCEMENT_SCHEDULE_TYPE.NOW
-  ); // "now" ho?c "schedule"
+  ); // "now" hoặc "schedule"
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
   const [category, setCategory] = useState(ANNOUNCEMENT_CATEGORY.NEWS);
@@ -258,7 +276,7 @@ const Announcements = () => {
     try {
       await announcementAPI.delete(announcementId);
       await reloadAnnouncements();
-      toast.success("?? x?a th?ng b?o th?nh c?ng!");
+      toast.success("Xóa thông báo thành công!");
     } catch (error) {
       console.error("Error deleting announcement:", error);
       toast.error("Có lỗi xảy ra khi xóa thông báo. Vui lòng thử lại!");
@@ -942,13 +960,17 @@ const Announcements = () => {
                     if (!file || !editor) return;
 
                     // 1) upload ảnh lên server / cloud -> lấy URL
-                    // const url = await uploadAnnouncementImage(file);
+                    const url = await uploadAnnouncementImage(file);
+                    if (!url) {
+                      e.target.value = "";
+                      return;
+                    }
 
                     // 2) chèn ảnh vào nội dung
                     editor
                       .chain()
                       .focus()
-                      .setImage({ src: "", alt: file.name })
+                      .setImage({ src: url, alt: file.name })
                       .run();
 
                     // reset để chọn lại cùng 1 file vẫn trigger change

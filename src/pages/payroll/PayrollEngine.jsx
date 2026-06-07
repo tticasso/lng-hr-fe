@@ -27,12 +27,14 @@ import { employeeApi } from "../../apis/employeeApi";
 import { useAuth } from "../../context/AuthContext";
 import { hasPermission } from "../../utils/authPermissions";
 import { ACCESS } from "../../config/accessControl";
+import { getPagination } from "../../shared/apiResponse";
 import {
   getAdjustmentBreakdownItems,
   getAllowanceBreakdownItems,
   getLeaveBreakdownItems,
   getOtPayBreakdownItems,
 } from "./overview/payrollOverviewUtils";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
 
 const PayrollEngine = () => {
   const { user } = useAuth();
@@ -48,7 +50,7 @@ const PayrollEngine = () => {
   const [payrollData, setPayrollData] = useState([]); // State lưu dữ liệu lương từ API
   const [loadingData, setLoadingData] = useState(false); // Loading cho việc fetch data tab 2
   const [searchQuery, setSearchQuery] = useState(""); // State cho search
-  const [totalUser, setTotalUser] = useState();
+  const [totalEmployees, setTotalEmployees] = useState(0);
   const [adjustmentModalPayroll, setAdjustmentModalPayroll] = useState(null);
 
 
@@ -56,9 +58,10 @@ const PayrollEngine = () => {
     const fech = async () => {
       try {
         const res = await employeeApi.getAll({ limit: 1 });
-        setTotalUser(res.data.pagination.totalRecords)  
+        const pagination = getPagination(res);
+        setTotalEmployees(pagination.total || 0);
       } catch {
-        setTotalUser(0);
+        setTotalEmployees(0);
       }
     }
     fech()
@@ -136,7 +139,7 @@ const PayrollEngine = () => {
   // Xử lý chuyển bước
   const handleNext = async () => {
     if (!canRunPayroll) {
-      toast.error("Bạn không có quyền RUN_PAYROLL để vận hành bảng lương");
+      toast.error("Bạn không có quyền WRITE_PAYROLLS để vận hành bảng lương");
       return;
     }
 
@@ -185,32 +188,6 @@ const PayrollEngine = () => {
     }
   };
 
-  const handleCalculateBatch = async () => {
-    if (!canRunPayroll) {
-      toast.error("Bạn không có quyền RUN_PAYROLL để tính lương");
-      return;
-    }
-
-    const [year, month] = selectedMonth.split("-");
-    const payload = {
-      month: parseInt(month, 10),
-      year: parseInt(year, 10),
-    };
-
-    if (!window.confirm(`Tính lương batch cho tháng ${month}/${year}?`)) return;
-
-    try {
-      setIsProcessing(true);
-      const res = await payrollAPI.calculateBatch(payload);
-      toast.success("Tính lương batch thành công");
-      setCurrentStep(2);
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Tính lương batch thất bại");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   const handleBack = () => {
     if (currentStep > 1) setCurrentStep((prev) => prev - 1);
   };
@@ -251,7 +228,7 @@ const PayrollEngine = () => {
 
   const handleSendPayrollEmails = async () => {
     if (!canRunPayroll) {
-      toast.error("Bạn không có quyền RUN_PAYROLL để gửi email phiếu lương");
+      toast.error("Bạn không có quyền WRITE_PAYROLLS để gửi email phiếu lương");
       return;
     }
 
@@ -278,7 +255,7 @@ const PayrollEngine = () => {
   // Handle finalize payroll (nút "Chốt kỳ lương & Lưu")
   const handleFinalize = async () => {
     if (!canRunPayroll) {
-      toast.error("Bạn không có quyền RUN_PAYROLL để chốt kỳ lương");
+      toast.error("Bạn không có quyền WRITE_PAYROLLS để chốt kỳ lương");
       return;
     }
 
@@ -312,7 +289,7 @@ const PayrollEngine = () => {
           <div className="bg-white rounded-xl shadow-2xl p-8 flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-200">
             <Loader2 size={48} className="animate-spin text-blue-600" />
             <div className="text-center">
-              <p className="text-lg font-bold text-gray-800">Đang tính lương batch...</p>
+              <p className="text-lg font-bold text-gray-800">Đang tính lương...</p>
               <p className="text-sm text-gray-500 mt-1">Vui lòng đợi trong giây lát</p>
             </div>
           </div>
@@ -409,7 +386,7 @@ const PayrollEngine = () => {
                         Nhân sự hiện có
                       </p>
                       <p className="text-xl font-bold text-gray-800">
-                        {totalUser}
+                        {totalEmployees}
                       </p>
                     </div>
                   </div>
@@ -426,18 +403,6 @@ const PayrollEngine = () => {
                       </p>
                     </div>
                   </div>
-                </div>
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={handleCalculateBatch}
-                    disabled={isProcessing || !canRunPayroll}
-                    className="border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
-                  >
-                    <Calculator size={18} className="mr-2" />
-                    Tính lương batch
-                  </Button>
                 </div>
               </div>
             </div>
@@ -546,7 +511,7 @@ const PayrollEngine = () => {
                               <div className="min-w-0">
                                 <p className="truncate">{row.employeeId?.fullName || "--"}</p>
                                 <span className="text-[10px] text-gray-400 font-normal">
-                                  {row.employeeId?.employeeCode || "--"}
+                                  {formatEmployeeCode(row.employeeId?.employeeCode)}
                                 </span>
                               </div>
                             </td>
@@ -628,7 +593,7 @@ const PayrollEngine = () => {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="font-semibold text-gray-800">{row.employeeId?.fullName || "--"}</p>
-                            <p className="text-xs text-gray-500">{row.employeeId?.employeeCode || "--"}</p>
+                            <p className="text-xs text-gray-500">{formatEmployeeCode(row.employeeId?.employeeCode)}</p>
                           </div>
                           {row.status === "DRAFT" ? (
                             <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-1 text-[10px] font-bold text-yellow-700">
@@ -740,7 +705,7 @@ const PayrollEngine = () => {
                   <ul className="space-y-3">
                     <li className="flex items-center gap-3 text-sm text-gray-700">
                       <CheckCircle2 size={16} className="text-green-500" /> Đã
-                      đối chiếu chấm công đầy đủ ({totalUser-1} nhân viên).
+                      đối chiếu chấm công đầy đủ ({totalEmployees} nhân viên).
                     </li>
                     <li className="flex items-center gap-3 text-sm text-gray-700">
                       <CheckCircle2 size={16} className="text-green-500" /> Đã
@@ -810,7 +775,7 @@ const PayrollEngine = () => {
                     </div>
                   ) : (
                     <>
-                      {currentStep === 2 ? "Sang bước chốt lương" : "Tính lương batch & xem số liệu"} <ArrowRight size={18} className="ml-2" />
+                      {currentStep === 2 ? "Sang bước chốt lương" : "Tính lương & xem số liệu"} <ArrowRight size={18} className="ml-2" />
                     </>
                   )}
                 </Button>

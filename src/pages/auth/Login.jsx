@@ -7,13 +7,14 @@ import { authApi } from "../../apis/authApi";
 import { accountApi } from "../../apis/accountApi";
 import { setAuthToken } from "../../apis/apiClient"; // Import hàm set header
 import { toast } from "react-toastify";
+import { ROUTES } from "../../config/routes";
 
 const Login = () => {
   const { loginUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname || "/";
+  const from = location.state?.from?.pathname || ROUTES.DASHBOARD;
 
   const [formData, setFormData] = useState({ username: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
@@ -74,7 +75,7 @@ const Login = () => {
       if (employeeData?.isProfileUpdated == false) {
         // Nếu chưa cập nhật -> Chuyển sang trang Profile
         toast.success("ĐĂNG NHẬP THÀNH CÔNG")
-        navigate("/profile");
+        navigate(ROUTES.PROFILE);
       } else {
         toast.success("ĐĂNG NHẬP THÀNH CÔNG")
         // Nếu đã cập nhật -> Chuyển về Dashboard (hoặc trang trước đó)
