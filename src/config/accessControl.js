@@ -89,6 +89,7 @@ export const ACCESS_GROUPS = {
   ],
   SYSTEM: [
     ...ACCESS.USER_MANAGEMENT,
+    ...ACCESS.USER_REGISTER,
     ...ACCESS.SYSTEM_ADMIN,
   ],
 };

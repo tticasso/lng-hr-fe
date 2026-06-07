@@ -1,6 +1,7 @@
 export const ROUTES = {
   DASHBOARD: "/",
   LOGIN: "/login",
+  UNAUTHORIZED: "/unauthorized",
   PROFILE: "/profile",
   TIMESHEET: "/timesheet",
   REQUESTS: "/requests",

@@ -30,7 +30,7 @@ const RequireAuth = ({ children, roles: allowedRoles, permissions: allowedPermis
   const hasAllowedPermission = !allowedPermissions || hasAnyPermission(user, allowedPermissions);
 
   if (!hasAllowedRole && !hasAllowedPermission) {
-    return <Navigate to="/unauthorized" replace />;
+    return <Navigate to={ROUTES.UNAUTHORIZED} replace />;
   }
 
   return children;

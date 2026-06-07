@@ -1,6 +1,8 @@
 import { useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 import useSocket from "../pages/notification/useSocket";
 import { Bell, Eye } from "lucide-react";
+import { ROUTES } from "../config/routes";
 
 /**
  * 📊 Component nhỏ gọn để xem data socket
@@ -126,12 +128,12 @@ function SocketDataViewer() {
 
             {/* Footer */}
             <div className="p-3 bg-gray-50 border-t rounded-b-lg">
-                <a
-                    href="/notifications/viewer"
+                <Link
+                    to={ROUTES.NOTIFICATIONS}
                     className="block text-center text-sm text-blue-600 hover:text-blue-700 font-semibold"
                 >
                     Xem trang đầy đủ →
-                </a>
+                </Link>
             </div>
         </div>
     );

@@ -1,6 +1,7 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Loader2 } from "lucide-react";
+import { ROUTES } from "../config/routes";
 
 const PublicRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -14,7 +15,7 @@ const PublicRoute = ({ children }) => {
   }
 
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={ROUTES.DASHBOARD} replace />;
   }
 
   return children;

@@ -5,6 +5,7 @@ import { FileQuestion, Home, ArrowLeft } from "lucide-react";
 // Import UI Kit
 import Button from "../components/common/Button";
 import Card from "../components/common/Card";
+import { ROUTES } from "../config/routes";
 
 const NotFound = () => {
   const navigate = useNavigate();
@@ -50,7 +51,7 @@ const NotFound = () => {
             Quay lại
           </Button>
 
-          <Link to="/">
+          <Link to={ROUTES.DASHBOARD}>
             <Button className="w-full sm:w-auto flex items-center gap-2 justify-center bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-200">
               <Home size={18} />
               Về Dashboard

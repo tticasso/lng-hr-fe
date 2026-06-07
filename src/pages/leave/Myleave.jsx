@@ -16,6 +16,7 @@ import { useAuth } from "../../context/AuthContext";
 import { hasAnyPermission } from "../../utils/authPermissions";
 import { ACCESS } from "../../config/accessControl";
 import { formatEmployeeCode } from "../../utils/employeeDisplay";
+import { ROUTES } from "../../config/routes";
 
 
 const otTypeLabel = {
@@ -102,7 +103,7 @@ const menuButtonClass =
 const MyLeave = () => {
     const { user } = useAuth();
     const location = useLocation();
-    const isOTOnlyPage = location.pathname === "/leave/ot";
+    const isOTOnlyPage = location.pathname === ROUTES.OVERTIME;
     const initialTab = isOTOnlyPage ? "OT" : location.state?.activeTab || "LEAVE";
     const [activeTab, setActiveTab] = useState(initialTab); // "LEAVE" | "OT"
 

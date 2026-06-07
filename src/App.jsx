@@ -48,6 +48,7 @@ const Register = lazy(() => import("./pages/auth/Register"));
 const SystemAdmin = lazy(() => import("./pages/admin/SystemAdmin"));
 const TeamPages = lazy(() => import("./pages/teamPages/TeamPages"));
 const TrainingPerformance = lazy(() => import("./pages/admin/TrainingPerformance"));
+const Unauthorized = lazy(() => import("./pages/Unauthorized"));
 const UserManagement = lazy(() => import("./pages/admin/UserManagement"));
 
 const PageLoader = () => (
@@ -62,8 +63,8 @@ function AuthUnauthorizedRedirect() {
 
   useEffect(() => {
     const handleUnauthorized = () => {
-      if (location.pathname !== "/login") {
-        navigate("/login", {
+      if (location.pathname !== ROUTES.LOGIN) {
+        navigate(ROUTES.LOGIN, {
           replace: true,
           state: { from: location, reason: "SESSION_EXPIRED" },
         });
@@ -89,7 +90,7 @@ function App() {
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route
-                  path="/login"
+                  path={routePath(ROUTES.LOGIN)}
                   element={
                     <PublicRoute>
                       <Login />
@@ -115,7 +116,7 @@ function App() {
                     }
                   />
                   <Route path="allpayroll" element={<Navigate to={ROUTES.PAYROLLS} replace />} />
-                  <Route path="profile" element={<MyProfile />} />
+                  <Route path={routePath(ROUTES.PROFILE)} element={<MyProfile />} />
                   <Route path="timesheet" element={<MyTimesheet />} />
                   <Route path={routePath(ROUTES.MY_PAYSLIP)} element={<MyPayslip />} />
                   <Route path="payroll" element={<Navigate to={ROUTES.MY_PAYSLIP} replace />} />
@@ -132,7 +133,7 @@ function App() {
                     }
                   />
                   <Route path="leave/approvals" element={<Navigate to={ROUTES.LEAVE_APPROVALS} replace />} />
-                  <Route path="leave/ot" element={<Navigate to="/ot" replace />} />
+                  <Route path="leave/ot" element={<Navigate to={ROUTES.OVERTIME} replace />} />
                   <Route path="ot" element={<OTIndex />} />
                   <Route path={routePath(ROUTES.OVERTIME)} element={<MyOTRequests />} />
                   <Route path="ot/my" element={<Navigate to={ROUTES.OVERTIME} replace />} />
@@ -345,6 +346,7 @@ function App() {
                     element={<Navigate to={ROUTES.HOLIDAYS} replace />}
                   />
 
+                  <Route path={routePath(ROUTES.UNAUTHORIZED)} element={<Unauthorized />} />
                   <Route path="*" element={<NotFound />} />
                 </Route>
               </Routes>

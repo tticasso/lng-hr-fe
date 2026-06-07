@@ -28,6 +28,7 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "../../apis/authApi";
 import { formatEmployeeCode } from "../../utils/employeeDisplay";
+import { ROUTES } from "../../config/routes";
 
 // --- CÁC REGEX CHUẨN VIỆT NAM ---
 const VIETNAM_PHONE_REGEX = /^(\+84|0)(3|5|7|8|9)[0-9]{8}$/;
@@ -177,7 +178,7 @@ const MyProfile = () => {
       toast.success("Cập nhật hồ sơ thành công!");
       const updatedUser = await refreshProfile();
       setIsEditing(false);
-      if (updatedUser?.isProfileUpdated) navigate("/");
+      if (updatedUser?.isProfileUpdated) navigate(ROUTES.DASHBOARD);
     } catch (error) {
       if (error.response?.data?.errors) {
         const serverErrors = {};
