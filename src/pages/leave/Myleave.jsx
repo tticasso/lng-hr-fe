@@ -13,7 +13,7 @@ import OTDetailModal from "../../components/modals/OTDetailModal";
 import { toast } from "react-toastify";
 import { leaveTypeLabel, leaveTypeOptions } from "./shared";
 import { useAuth } from "../../context/AuthContext";
-import { hasAnyPermission } from "../../utils/authPermissions";
+import { getEmployeeId, hasAnyPermission } from "../../utils/authPermissions";
 import { ACCESS } from "../../config/accessControl";
 import { formatEmployeeCode } from "../../utils/employeeDisplay";
 import { ROUTES } from "../../config/routes";
@@ -266,10 +266,10 @@ const MyLeave = () => {
         return value._id || value.id || "";
     };
 
-    const currentEmployeeId = () => localStorage.getItem("employee_ID") || "";
+    const currentEmployeeId = useMemo(() => getEmployeeId(user), [user]);
 
     const isOwnRequest = (request) => {
-        return getEntityId(request?.employeeId) === currentEmployeeId();
+        return getEntityId(request?.employeeId) === currentEmployeeId;
     };
 
     const getSuperApprovalLevel = (leave) => {
@@ -301,9 +301,8 @@ const MyLeave = () => {
             };
         }
 
-        const accountID = localStorage.getItem("employee_ID");
         const approvalChain = Array.isArray(leave?.approvalChain) ? leave.approvalChain : [];
-        const userApproval = approvalChain.find((step) => getEntityId(step?.approver) === accountID);
+        const userApproval = approvalChain.find((step) => getEntityId(step?.approver) === currentEmployeeId);
         const userApprovalLevel = userApproval?.level || null;
 
         if (!userApprovalLevel || !userApproval) {

@@ -2,17 +2,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { leaveAPI } from "../../apis/leaveAPI";
 import { useAuth } from "../../context/AuthContext";
-import { hasAnyPermission } from "../../utils/authPermissions";
+import { getEmployeeId, hasAnyPermission } from "../../utils/authPermissions";
 import { ACCESS } from "../../config/accessControl";
 import {
   getEntityId,
   normalizeStatus,
 } from "./shared";
 
-const currentEmployeeId = () => localStorage.getItem("employee_ID") || "";
-
 export const useLeaveRequests = ({ mode }) => {
   const { user } = useAuth();
+  const currentEmployeeId = useMemo(() => getEmployeeId(user), [user]);
   const canApprove = useMemo(() => hasAnyPermission(user, ACCESS.LEAVE_APPROVALS), [user]);
   const isSuperApprover = useMemo(
     () => hasAnyPermission(user, ["MANAGE_SYSTEM", "APPROVE_ALL_LEAVES", "APPROVE_LEAVE_OVERRIDE"]),
@@ -49,7 +48,7 @@ export const useLeaveRequests = ({ mode }) => {
 
   const searchQuery = useMemo(() => filters.search.trim().toLowerCase(), [filters.search]);
 
-  const isOwnRequest = (request) => getEntityId(request?.employeeId) === currentEmployeeId();
+  const isOwnRequest = (request) => getEntityId(request?.employeeId) === currentEmployeeId;
 
   const getSuperApprovalLevel = (leave) => {
     const chain = Array.isArray(leave?.approvalChain) ? leave.approvalChain : [];
@@ -78,9 +77,8 @@ export const useLeaveRequests = ({ mode }) => {
       };
     }
 
-    const accountID = localStorage.getItem("employee_ID");
     const approvalChain = Array.isArray(leave?.approvalChain) ? leave.approvalChain : [];
-    const userApproval = approvalChain.find((step) => getEntityId(step?.approver) === accountID);
+    const userApproval = approvalChain.find((step) => getEntityId(step?.approver) === currentEmployeeId);
     const userApprovalLevel = userApproval?.level || null;
 
     if (!userApprovalLevel || !userApproval) {

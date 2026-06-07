@@ -3,6 +3,7 @@ import { AUTH_UNAUTHORIZED_EVENT, setAuthToken } from "../apis/apiClient";
 import { accountApi } from "../apis/accountApi";
 import { employeeApi } from "../apis/employeeApi";
 import { disconnectSocket, reconnectSocket } from "../pages/notification/useSocket";
+import { getAccount, getEmployeeId } from "../utils/authPermissions";
 
 const AuthContext = createContext(null);
 const STORAGE_KEY = "auth";
@@ -35,6 +36,17 @@ const normalizeUser = (userData) => {
     permissions: permissionNames,
     isProfileUpdated: String(profileUpdatedValue).toLowerCase() === "true",
   };
+};
+
+const syncCompatibilityAuthIds = (user) => {
+  const accountId = getAccount(user)?._id || getAccount(user)?.id || "";
+  const employeeId = getEmployeeId(user);
+
+  if (accountId) localStorage.setItem("accountID", accountId);
+  else localStorage.removeItem("accountID");
+
+  if (employeeId) localStorage.setItem("employee_ID", employeeId);
+  else localStorage.removeItem("employee_ID");
 };
 
 export function AuthProvider({ children }) {
@@ -75,6 +87,7 @@ export function AuthProvider({ children }) {
             if (rawData) {
               const cleanUser = normalizeUser(rawData);
               setUser(cleanUser);
+              syncCompatibilityAuthIds(cleanUser);
               localStorage.setItem(
                 STORAGE_KEY,
                 JSON.stringify({ ...parsed, token: savedToken, user: cleanUser }),
@@ -108,6 +121,7 @@ export function AuthProvider({ children }) {
     setUser(cleanUser);
     setToken(authData.accessToken);
     setAuthToken(authData.accessToken);
+    syncCompatibilityAuthIds(cleanUser);
 
     localStorage.setItem(
       STORAGE_KEY,
@@ -132,6 +146,7 @@ export function AuthProvider({ children }) {
         employee: rawData,
       });
       setUser(cleanUser);
+      syncCompatibilityAuthIds(cleanUser);
 
       const currentAuth = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
       localStorage.setItem(

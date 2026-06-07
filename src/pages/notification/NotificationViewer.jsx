@@ -1,244 +1,277 @@
-import { useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Bell, CheckCheck, Loader2, RefreshCw } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { notificationApi } from "../../apis/notificationAPI";
+import { useAuth } from "../../context/AuthContext";
+import { ACCESS } from "../../config/accessControl";
+import { ROUTES } from "../../config/routes";
+import { hasAnyPermission } from "../../utils/authPermissions";
+import logoImage from "../../assets/logo-sm.webp";
 import useSocket from "./useSocket";
-import { Bell, Trash2, Download } from "lucide-react";
 
-/**
- * 📺 Màn hình xem data từ WebSocket
- * 
- * Route: /notifications/viewer
- * 
- * Hiển thị:
- * - Data mới nhất
- * - Lịch sử tất cả notifications
- * - JSON format để dễ đọc
- */
-function NotificationViewer() {
-    const [notifications, setNotifications] = useState([]);
-    const [latestData, setLatestData] = useState(null);
+const normalizeNotificationPayload = (response) => {
+  const payload = response?.data?.data ?? response?.data ?? [];
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.notifications)) return payload.notifications;
+  if (Array.isArray(payload?.items)) return payload.items;
+  return [];
+};
 
-    // Xử lý data từ socket
-    const handleNotification = useCallback((data) => {
+const toNotificationItem = (item) => ({
+  id: item._id || item.id,
+  title: item.title || "Thông báo mới",
+  content: item.message || item.content || "",
+  createdAt: item.createdAt || item.receivedAt || new Date().toISOString(),
+  unread: item.isRead === undefined ? item.unread !== false : !item.isRead,
+  type: item.type,
+  relatedId: item.relatedId,
+  relatedModel: item.relatedModel,
+});
 
-        // Lưu data mới nhất
-        setLatestData(data);
+const formatNotifyTime = (dateInput) => {
+  if (!dateInput) return "--";
 
-        // Thêm vào lịch sử với timestamp
-        const notificationWithTime = {
-            ...data,
-            receivedAt: new Date().toISOString(),
-            id: data.id || `notif_${Date.now()}`,
-        };
+  const date = new Date(dateInput);
+  if (Number.isNaN(date.getTime())) return "--";
 
-        setNotifications(prev => [notificationWithTime, ...prev]);
-    }, []);
+  const diffMinutes = Math.floor((Date.now() - date.getTime()) / 60000);
+  if (diffMinutes < 1) return "Vừa xong";
+  if (diffMinutes < 60) return `${diffMinutes} phút trước`;
 
-    // Kết nối socket
-    useSocket(handleNotification);
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} giờ trước`;
 
-    // Clear tất cả
-    const clearAll = () => {
-        setNotifications([]);
-        setLatestData(null);
-    };
+  return `${date.toLocaleDateString("vi-VN")} ${date.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+};
 
-    // Download JSON
-    const downloadJSON = () => {
-        const dataStr = JSON.stringify(notifications, null, 2);
-        const dataBlob = new Blob([dataStr], { type: "application/json" });
-        const url = URL.createObjectURL(dataBlob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `notifications_${Date.now()}.json`;
-        link.click();
-    };
+const NotificationViewer = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("all");
 
-    return (
-        <div className="min-h-screen bg-gray-50 p-6">
-            <div className="max-w-7xl mx-auto">
-                {/* Header */}
-                <div className="mb-6">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
-                        <Bell className="text-blue-600" size={32} />
-                        WebSocket Notification Viewer
-                    </h1>
-                    <p className="text-gray-600">
-                        Xem data real-time từ WebSocket
-                    </p>
-                </div>
+  const canApproveLeave = useMemo(
+    () => hasAnyPermission(user, ACCESS.LEAVE_APPROVALS),
+    [user],
+  );
+  const canApproveOT = useMemo(
+    () => hasAnyPermission(user, ACCESS.OT_APPROVALS),
+    [user],
+  );
 
-                {/* Actions */}
-                <div className="mb-6 flex gap-3">
-                    <button
-                        onClick={clearAll}
-                        className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
-                    >
-                        <Trash2 size={18} />
-                        Clear All
-                    </button>
-                    <button
-                        onClick={downloadJSON}
-                        disabled={notifications.length === 0}
-                        className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        <Download size={18} />
-                        Download JSON
-                    </button>
-                    <div className="ml-auto flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg">
-                        <span className="text-sm text-gray-600">Total:</span>
-                        <span className="text-lg font-bold text-blue-600">
-                            {notifications.length}
-                        </span>
-                    </div>
-                </div>
+  const loadNotifications = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await notificationApi.getAll();
+      setNotifications(normalizeNotificationPayload(response).map(toNotificationItem));
+    } catch (error) {
+      console.error("loadNotifications error:", error);
+      toast.error(error.normalizedMessage || "Không thể tải danh sách thông báo");
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Left: Latest Data */}
-                    <div className="bg-white rounded-lg shadow-sm border p-6">
-                        <h2 className="text-xl font-semibold mb-4 text-gray-800">
-                            📩 Data mới nhất
-                        </h2>
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
 
-                        {latestData ? (
-                            <div className="space-y-4">
-                                {/* Preview Card */}
-                                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                    <div className="mb-3">
-                                        <span className="text-xs text-blue-600 font-semibold">
-                                            {new Date().toLocaleString("vi-VN")}
-                                        </span>
-                                    </div>
-                                    <h3 className="font-bold text-lg text-gray-900 mb-2">
-                                        {latestData.title || "No title"}
-                                    </h3>
-                                    <p className="text-gray-700 mb-3">
-                                        {latestData.message || "No message"}
-                                    </p>
-                                    {latestData.type && (
-                                        <span className="inline-block px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded-full">
-                                            {latestData.type}
-                                        </span>
-                                    )}
-                                </div>
+  const handleSocketNotification = useCallback((data) => {
+    const nextNotification = toNotificationItem({
+      ...data,
+      id: data.id || data._id || `socket-${Date.now()}`,
+      isRead: false,
+      receivedAt: new Date().toISOString(),
+    });
 
-                                {/* JSON View */}
-                                <div>
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                                        JSON Format:
-                                    </h4>
-                                    <pre className="p-4 bg-gray-900 text-green-400 rounded-lg overflow-auto text-xs font-mono max-h-96">
-                                        {JSON.stringify(latestData, null, 2)}
-                                    </pre>
-                                </div>
+    setNotifications((prev) => {
+      if (prev.some((item) => item.id === nextNotification.id)) return prev;
+      return [nextNotification, ...prev];
+    });
+  }, []);
 
-                                {/* Fields */}
-                                <div>
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                                        Fields:
-                                    </h4>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {Object.entries(latestData).map(([key, value]) => (
-                                            <div key={key} className="p-2 bg-gray-50 rounded border">
-                                                <span className="text-xs text-gray-500 block mb-1">
-                                                    {key}:
-                                                </span>
-                                                <span className="text-sm font-semibold text-gray-800 break-all">
-                                                    {typeof value === "object" 
-                                                        ? JSON.stringify(value) 
-                                                        : String(value)}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="text-center py-12">
-                                <Bell size={64} className="mx-auto text-gray-300 mb-4" />
-                                <p className="text-gray-500 text-lg">
-                                    Chưa nhận được data nào
-                                </p>
-                                <p className="text-gray-400 text-sm mt-2">
-                                    Đợi backend gửi notification...
-                                </p>
-                            </div>
-                        )}
-                    </div>
+  useSocket(handleSocketNotification);
 
-                    {/* Right: History */}
-                    <div className="bg-white rounded-lg shadow-sm border p-6">
-                        <h2 className="text-xl font-semibold mb-4 text-gray-800">
-                            📜 Lịch sử ({notifications.length})
-                        </h2>
+  const unreadCount = useMemo(
+    () => notifications.filter((notification) => notification.unread).length,
+    [notifications],
+  );
 
-                        <div className="space-y-3 max-h-[800px] overflow-y-auto">
-                            {notifications.length > 0 ? (
-                                notifications.map((notif, index) => (
-                                    <div
-                                        key={notif.id}
-                                        className="p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition"
-                                    >
-                                        {/* Header */}
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-xs font-bold text-gray-500">
-                                                #{notifications.length - index}
-                                            </span>
-                                            <span className="text-xs text-gray-500">
-                                                {new Date(notif.receivedAt).toLocaleTimeString("vi-VN")}
-                                            </span>
-                                        </div>
+  const visibleNotifications = useMemo(() => {
+    if (filter === "unread") {
+      return notifications.filter((notification) => notification.unread);
+    }
+    return notifications;
+  }, [filter, notifications]);
 
-                                        {/* Content */}
-                                        <h4 className="font-semibold text-gray-900 mb-1">
-                                            {notif.title || "No title"}
-                                        </h4>
-                                        <p className="text-sm text-gray-600 mb-2">
-                                            {notif.message || "No message"}
-                                        </p>
+  const getTargetPath = (notification) => {
+    if (notification.relatedModel === "Leave") {
+      return canApproveLeave ? ROUTES.LEAVE_APPROVALS : ROUTES.LEAVE;
+    }
+    if (notification.relatedModel === "Overtime") {
+      return canApproveOT ? ROUTES.OVERTIME_APPROVALS : ROUTES.OVERTIME;
+    }
+    if (notification.relatedModel === "Payroll") return ROUTES.MY_PAYSLIP;
+    if (notification.relatedModel === "Announcement") return ROUTES.ANNOUNCEMENTS;
+    return "";
+  };
 
-                                        {/* Type badge */}
-                                        {notif.type && (
-                                            <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
-                                                {notif.type}
-                                            </span>
-                                        )}
-
-                                        {/* Expandable JSON */}
-                                        <details className="mt-3">
-                                            <summary className="text-xs text-blue-600 cursor-pointer hover:text-blue-700">
-                                                Xem JSON
-                                            </summary>
-                                            <pre className="mt-2 p-2 bg-gray-900 text-green-400 rounded text-xs overflow-auto max-h-40">
-                                                {JSON.stringify(notif, null, 2)}
-                                            </pre>
-                                        </details>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-12">
-                                    <p className="text-gray-400">Chưa có lịch sử</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Instructions */}
-                <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <h3 className="font-semibold text-yellow-800 mb-2">
-                        💡 Hướng dẫn:
-                    </h3>
-                    <ul className="text-sm text-yellow-700 space-y-1 list-disc list-inside">
-                        <li>Màn hình này tự động lắng nghe WebSocket event "notification"</li>
-                        <li>Khi backend emit notification, data sẽ hiển thị ngay lập tức</li>
-                        <li>Data mới nhất hiển thị bên trái, lịch sử bên phải</li>
-                        <li>Click "Xem JSON" để xem chi tiết từng notification</li>
-                        <li>Click "Download JSON" để tải về file JSON</li>
-                        <li>Mở Console (F12) để xem log chi tiết</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
+  const markAsRead = async (notificationId) => {
+    setNotifications((prev) =>
+      prev.map((item) => (item.id === notificationId ? { ...item, unread: false } : item)),
     );
-}
+
+    try {
+      await notificationApi.markAsRead(notificationId);
+    } catch (error) {
+      console.error("markAsRead error:", error);
+    }
+  };
+
+  const handleClickNotification = async (notification) => {
+    if (notification.unread && notification.id) {
+      await markAsRead(notification.id);
+    }
+
+    const targetPath = getTargetPath(notification);
+    if (targetPath) navigate(targetPath);
+  };
+
+  const handleMarkAllRead = async () => {
+    if (unreadCount === 0) return;
+
+    setNotifications((prev) => prev.map((item) => ({ ...item, unread: false })));
+
+    try {
+      await notificationApi.markAllAsRead();
+    } catch (error) {
+      console.error("markAllRead error:", error);
+      toast.error(error.normalizedMessage || "Không thể đánh dấu tất cả đã đọc");
+      loadNotifications();
+    }
+  };
+
+  return (
+    <div className="mx-auto w-full max-w-5xl px-1 pb-8">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="flex items-center gap-3 text-2xl font-semibold text-slate-900">
+            <Bell className="text-blue-600" size={26} />
+            Thông báo
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            {unreadCount} thông báo chưa đọc
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-lg bg-slate-100 p-1">
+            <button
+              type="button"
+              onClick={() => setFilter("all")}
+              className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+                filter === "all" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+              }`}
+            >
+              Tất cả
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilter("unread")}
+              className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+                filter === "unread" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+              }`}
+            >
+              Chưa đọc
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={loadNotifications}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50"
+            aria-label="Tải lại thông báo"
+            title="Tải lại"
+          >
+            <RefreshCw size={17} />
+          </button>
+          <button
+            type="button"
+            onClick={handleMarkAllRead}
+            disabled={unreadCount === 0}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-blue-200 text-blue-600 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
+            aria-label="Đánh dấu tất cả đã đọc"
+            title="Đánh dấu tất cả đã đọc"
+          >
+            <CheckCheck size={18} />
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        {loading ? (
+          <div className="flex min-h-64 items-center justify-center gap-3 text-sm font-medium text-slate-500">
+            <Loader2 className="animate-spin text-blue-600" size={20} />
+            Đang tải thông báo...
+          </div>
+        ) : visibleNotifications.length > 0 ? (
+          <div className="divide-y divide-slate-100">
+            {visibleNotifications.map((notification) => (
+              <button
+                key={notification.id}
+                type="button"
+                onClick={() => handleClickNotification(notification)}
+                className={`flex w-full items-start gap-3 px-4 py-4 text-left transition hover:bg-slate-50 ${
+                  notification.unread ? "bg-blue-50/40" : "bg-white"
+                }`}
+              >
+                <span className="relative mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white">
+                  <img
+                    src={logoImage}
+                    alt="notification"
+                    className="h-8 w-8 object-contain"
+                  />
+                  {notification.unread && (
+                    <span className="absolute right-0 top-0 h-3 w-3 rounded-full bg-red-500 ring-2 ring-white" />
+                  )}
+                </span>
+
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-start justify-between gap-3">
+                    <span className="line-clamp-1 text-sm font-semibold text-slate-900">
+                      {notification.title}
+                    </span>
+                    <span className="shrink-0 text-xs text-slate-400">
+                      {formatNotifyTime(notification.createdAt)}
+                    </span>
+                  </span>
+                  <span className="mt-1 block line-clamp-2 text-sm leading-6 text-slate-600">
+                    {notification.content}
+                  </span>
+                  {notification.type && (
+                    <span className="mt-2 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                      {notification.type}
+                    </span>
+                  )}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="flex min-h-64 flex-col items-center justify-center px-4 text-center text-sm text-slate-500">
+            <Bell className="mb-3 text-slate-300" size={42} />
+            {filter === "unread" ? "Không có thông báo chưa đọc." : "Chưa có thông báo nào."}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export default NotificationViewer;

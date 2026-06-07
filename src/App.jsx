@@ -26,6 +26,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Department = lazy(() => import("./pages/department/Department"));
 const EmployeeDetail = lazy(() => import("./pages/admin/EmployeeDetail"));
 const EmployeeList = lazy(() => import("./pages/admin/EmployeeList"));
+const FeatureUnavailable = lazy(() => import("./pages/FeatureUnavailable"));
 const Holiday = lazy(() => import("./pages/holiday/Holiday"));
 const LeaveApprovals = lazy(() => import("./pages/leave/LeaveApprovals"));
 const LeaveBalance = lazy(() => import("./pages/leavebalance/LeaveBalance"));
@@ -35,19 +36,15 @@ const MyLeaveRequests = lazy(() => import("./pages/leave/MyLeaveRequests"));
 const MyOTRequests = lazy(() => import("./pages/overtime/MyOTRequests"));
 const MyPayslip = lazy(() => import("./pages/payroll/MyPayslip"));
 const MyProfile = lazy(() => import("./pages/profile/MyProfile"));
-const MyRequests = lazy(() => import("./pages/requests/MyRequests"));
 const MyTimesheet = lazy(() => import("./pages/timeSheet/MyTimeSheet"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const NotificationViewer = lazy(() => import("./pages/notification/NotificationViewer"));
-const OnboardingOffboarding = lazy(() => import("./pages/admin/OnboardingOffboarding"));
 const OTApprovals = lazy(() => import("./pages/overtime/OTApprovals"));
 const OTIndex = lazy(() => import("./pages/overtime/OTIndex"));
 const PayrollEngine = lazy(() => import("./pages/payroll/PayrollEngine"));
-const Recruitment = lazy(() => import("./pages/recruitment/Recruitment"));
 const Register = lazy(() => import("./pages/auth/Register"));
 const SystemAdmin = lazy(() => import("./pages/admin/SystemAdmin"));
 const TeamPages = lazy(() => import("./pages/teamPages/TeamPages"));
-const TrainingPerformance = lazy(() => import("./pages/admin/TrainingPerformance"));
 const Unauthorized = lazy(() => import("./pages/Unauthorized"));
 const UserManagement = lazy(() => import("./pages/admin/UserManagement"));
 
@@ -116,11 +113,11 @@ function App() {
                     }
                   />
                   <Route path="allpayroll" element={<Navigate to={ROUTES.PAYROLLS} replace />} />
-                  <Route path={routePath(ROUTES.PROFILE)} element={<MyProfile />} />
+                  <Route path={ROUTES.PROFILE} element={<MyProfile />} />
                   <Route path="timesheet" element={<MyTimesheet />} />
                   <Route path={routePath(ROUTES.MY_PAYSLIP)} element={<MyPayslip />} />
                   <Route path="payroll" element={<Navigate to={ROUTES.MY_PAYSLIP} replace />} />
-                  <Route path="requests" element={<MyRequests />} />
+                  <Route path="requests" element={<Navigate to={ROUTES.LEAVE} replace />} />
                   <Route path="leave" element={<LeaveIndex />} />
                   <Route path={routePath(ROUTES.LEAVE)} element={<MyLeaveRequests />} />
                   <Route path="leave/my" element={<Navigate to={ROUTES.LEAVE} replace />} />
@@ -305,7 +302,12 @@ function App() {
                       path="recruitment"
                       element={
                         <RequireAuth permissions={ACCESS.EMPLOYEES}>
-                          <Recruitment />
+                          <FeatureUnavailable
+                            title="Tuyển dụng chưa kích hoạt"
+                            description="Module tuyển dụng chưa được kết nối API dữ liệu thật. Dữ liệu mẫu đã được tắt để người dùng không nhầm với dữ liệu hệ thống."
+                            returnTo={ROUTES.EMPLOYEES}
+                            returnLabel="Về danh sách nhân viên"
+                          />
                         </RequireAuth>
                       }
                     />
@@ -313,7 +315,12 @@ function App() {
                       path="boarding"
                       element={
                         <RequireAuth permissions={ACCESS.EMPLOYEES}>
-                          <OnboardingOffboarding />
+                          <FeatureUnavailable
+                            title="Onboarding & Offboarding chưa kích hoạt"
+                            description="Module onboarding/offboarding chưa được kết nối API dữ liệu thật. Dữ liệu mẫu đã được tắt để người dùng không nhầm với dữ liệu hệ thống."
+                            returnTo={ROUTES.EMPLOYEES}
+                            returnLabel="Về danh sách nhân viên"
+                          />
                         </RequireAuth>
                       }
                     />
@@ -321,7 +328,12 @@ function App() {
                       path="training"
                       element={
                         <RequireAuth permissions={ACCESS.EMPLOYEES}>
-                          <TrainingPerformance />
+                          <FeatureUnavailable
+                            title="Đào tạo & hiệu suất chưa kích hoạt"
+                            description="Module đào tạo và đánh giá hiệu suất chưa được kết nối API dữ liệu thật. Dữ liệu mẫu đã được tắt để người dùng không nhầm với dữ liệu hệ thống."
+                            returnTo={ROUTES.EMPLOYEES}
+                            returnLabel="Về danh sách nhân viên"
+                          />
                         </RequireAuth>
                       }
                     />

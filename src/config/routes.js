@@ -4,7 +4,7 @@ export const ROUTES = {
   UNAUTHORIZED: "/unauthorized",
   PROFILE: "/profile",
   TIMESHEET: "/timesheet",
-  REQUESTS: "/requests",
+  REQUESTS: "/requests/leave",
 
   MY_PAYSLIP: "/payrolls/my",
   PAYROLLS: "/payrolls",

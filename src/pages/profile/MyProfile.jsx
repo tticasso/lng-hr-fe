@@ -33,6 +33,40 @@ import { ROUTES } from "../../config/routes";
 // --- CÁC REGEX CHUẨN VIỆT NAM ---
 const VIETNAM_PHONE_REGEX = /^(\+84|0)(3|5|7|8|9)[0-9]{8}$/;
 
+const extractProfilePayload = (response) => {
+  const payload = response?.data?.data ?? response?.data;
+  return payload?.employee || payload;
+};
+
+const toDateInputValue = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString().split("T")[0];
+};
+
+const buildProfile = (source = {}) => ({
+  ...source,
+  baseSalary: source.baseSalary || 0,
+  contractStartDate: source.contractStartDate || source.startDate,
+  contractEndDate: source.contractEndDate || null,
+  annualLeaveBalance: source.annualLeaveBalance ?? 0,
+  department: source.departmentId?.name || source.department?.name || source.department || "--",
+});
+
+const buildEditFormData = (source = {}) => ({
+  fullName: source.fullName || "",
+  gender: source.gender || "Male",
+  birthDate: toDateInputValue(source.birthDate),
+  phoneNumber: source.phoneNumber || "",
+  address: source.address || "",
+  personalEmail: source.personalEmail || "",
+  emergencyName: source.emergencyContact?.name || "",
+  emergencyPhone: source.emergencyContact?.phone || "",
+  emergencyRelation: source.emergencyContact?.relation || "",
+  bankName: source.bankAccount?.bankName || "",
+  bankAccountNumber: source.bankAccount?.accountNumber || "",
+});
+
 const MyProfile = () => {
   const { user, refreshProfile } = useAuth();
   const navigate = useNavigate();
@@ -41,6 +75,7 @@ const MyProfile = () => {
   const [showSalary, setShowSalary] = useState(false);
 
   const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -67,43 +102,48 @@ const MyProfile = () => {
     "w-full px-4 py-2.5 bg-red-50 border border-red-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-sm text-gray-900 placeholder-red-400";
 
   useEffect(() => {
-    if (user) {
-      // Bổ sung các field thiếu với giá trị mặc định
-      const enrichedUser = {
-        ...user,
-        baseSalary: user.baseSalary || 0,
-        contractStartDate: user.contractStartDate || user.startDate,
-        contractEndDate: user.contractEndDate || null,
-        annualLeaveBalance: user.annualLeaveBalance ?? 0,
-        department: user.departmentId?.name || user.department || "--",
-      };
-      
-      setProfile(enrichedUser);
-      
-      if (user.isProfileUpdated === false) {
+    let cancelled = false;
+
+    const applyProfile = (data) => {
+      const nextProfile = buildProfile(data);
+      setProfile(nextProfile);
+
+      if (nextProfile.isProfileUpdated === false) {
         setIsEditing(true);
-        setFormData({
-          fullName: user.fullName || "",
-          gender: user.gender || "Male",
-          birthDate: user.birthDate
-            ? new Date(user.birthDate).toISOString().split("T")[0]
-            : "",
-          phoneNumber: user.phoneNumber || "",
-          address: user.address || "",
-          personalEmail: user.personalEmail || "",
-          emergencyName: user.emergencyContact?.name || "",
-          emergencyPhone: user.emergencyContact?.phone || "",
-          emergencyRelation: user.emergencyContact?.relation || "",
-          bankName: user.bankAccount?.bankName || "",
-          bankAccountNumber: user.bankAccount?.accountNumber || "",
-        });
+        setFormData(buildEditFormData(nextProfile));
       }
+    };
+
+    const fallbackProfile = user ? buildProfile(user.employee || user) : null;
+    if (fallbackProfile) {
+      applyProfile(fallbackProfile);
     }
+
+    const loadProfile = async () => {
+      setProfileLoading(true);
+      try {
+        const res = await employeeApi.getMe();
+        const apiProfile = extractProfilePayload(res);
+
+        if (!cancelled && apiProfile) {
+          applyProfile(apiProfile);
+        }
+      } catch (error) {
+        console.error("Error loading my profile:", error);
+        if (!cancelled && !fallbackProfile) {
+          toast.error(error.normalizedMessage || "Không thể tải hồ sơ cá nhân");
+        }
+      } finally {
+        if (!cancelled) setProfileLoading(false);
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
-
-
-  useEffect(() => {
-  }, [user])
 
 
   const handleInputChange = (e) => {
@@ -507,7 +547,7 @@ const MyProfile = () => {
   }
 
   // --- VIEW MODE ---
-  if (!profile)
+  if (!profile || profileLoading)
     return <div className="text-center p-10">Đang tải dữ liệu...</div>;
 
   return (

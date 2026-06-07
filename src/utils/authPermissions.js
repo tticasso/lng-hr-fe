@@ -37,6 +37,21 @@ export const getEmployee = (user) => {
   return user;
 };
 
+export const getEmployeeId = (user) => {
+  const employee = getEmployee(user);
+  const employeeId = user?.employeeId;
+
+  if (typeof employeeId === "string") return employeeId;
+
+  return (
+    employee?._id ||
+    employee?.id ||
+    employeeId?._id ||
+    employeeId?.id ||
+    ""
+  );
+};
+
 export const getRoleName = (user) => {
   const account = getAccount(user);
   return (

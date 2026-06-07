@@ -4,12 +4,19 @@ import { Outlet, useLocation } from "react-router-dom";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import { useSidebar } from "../context/SidebarContext";
+import { ROUTES } from "../config/routes";
 
 const MainLayout = () => {
   const { isCollapsed } = useSidebar();
   const location = useLocation();
+  const isLeavePage =
+    location.pathname === ROUTES.LEAVE ||
+    location.pathname.startsWith(`${ROUTES.LEAVE}/`);
+  const isOvertimePage =
+    location.pathname === ROUTES.OVERTIME ||
+    location.pathname.startsWith(`${ROUTES.OVERTIME}/`);
   const lockMainScroll =
-    location.pathname.startsWith("/leave/") || location.pathname.startsWith("/ot/");
+    isLeavePage || isOvertimePage;
 
   return (
     <div className="min-h-dvh bg-background">
