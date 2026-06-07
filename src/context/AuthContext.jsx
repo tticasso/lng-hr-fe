@@ -1,19 +1,39 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { AUTH_UNAUTHORIZED_EVENT, setAuthToken } from "../apis/apiClient";
+import { accountApi } from "../apis/accountApi";
 import { employeeApi } from "../apis/employeeApi";
 import { disconnectSocket, reconnectSocket } from "../pages/notification/useSocket";
 
 const AuthContext = createContext(null);
 const STORAGE_KEY = "auth";
 
-// --- HÀM CHUẨN HÓA DỮ LIỆU (QUAN TRỌNG) ---
-// Chuyển mọi dạng "true", "True", true về Boolean true. Còn lại là false.
+const extractAccountMePayload = (response) => response?.data?.data || response?.data || null;
+
 const normalizeUser = (userData) => {
   if (!userData) return null;
+
+  const account =
+    userData.account ||
+    (userData.accountId && typeof userData.accountId === "object" ? userData.accountId : null);
+  const employee = userData.employee || (userData.account ? null : userData);
+  const role = account?.role || userData.role || null;
+  const permissionNames =
+    userData.permissionNames ||
+    account?.permissionNames ||
+    role?.permissions?.map((permission) => permission?.name || permission).filter(Boolean) ||
+    userData.permissions ||
+    [];
+  const profileUpdatedValue = employee?.isProfileUpdated ?? userData.isProfileUpdated ?? true;
+
   return {
-    ...userData,
-    isProfileUpdated:
-      String(userData.isProfileUpdated).toLowerCase() === "true",
+    ...(employee || {}),
+    account,
+    accountId: account || employee?.accountId || userData.accountId || null,
+    employee,
+    permissionNames,
+    role,
+    permissions: permissionNames,
+    isProfileUpdated: String(profileUpdatedValue).toLowerCase() === "true",
   };
 };
 
@@ -33,7 +53,6 @@ export function AuthProvider({ children }) {
     disconnectSocket();
   }, []);
 
-  // 1. Load từ LocalStorage khi F5
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -50,11 +69,9 @@ export function AuthProvider({ children }) {
           setAuthToken(savedToken);
           setToken(savedToken);
 
-          // Xác thực token bằng profile mới nhất trước khi cho vào app
           try {
-            const res = await employeeApi.getMe();
-            // Lấy đúng data từ cấu trúc JSON của bạn
-            const rawData = res.data?.data?.employee || res.data?.employee;
+            const res = await accountApi.getMe();
+            const rawData = extractAccountMePayload(res);
             if (rawData) {
               const cleanUser = normalizeUser(rawData);
               setUser(cleanUser);
@@ -86,9 +103,8 @@ export function AuthProvider({ children }) {
     };
   }, [clearAuth]);
 
-  // 2. Login
   const loginUser = (authData) => {
-    const cleanUser = normalizeUser(authData.user); // Chuẩn hóa đầu vào
+    const cleanUser = normalizeUser(authData.user);
     setUser(cleanUser);
     setToken(authData.accessToken);
     setAuthToken(authData.accessToken);
@@ -101,19 +117,20 @@ export function AuthProvider({ children }) {
       }),
     );
 
-    // Reconnect socket với token mới
     setTimeout(() => {
       reconnectSocket();
     }, 100);
   };
 
-  // 3. Refresh Profile (Gọi sau khi update form thành công)
   const refreshProfile = async () => {
     const res = await employeeApi.getMe();
     const rawData = res.data?.data?.employee || res.data?.employee;
 
     if (rawData) {
-      const cleanUser = normalizeUser(rawData);
+      const cleanUser = normalizeUser({
+        account: user?.account || user?.accountId,
+        employee: rawData,
+      });
       setUser(cleanUser);
 
       const currentAuth = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");

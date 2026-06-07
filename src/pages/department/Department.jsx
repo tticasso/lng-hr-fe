@@ -17,7 +17,7 @@ import { employeeApi } from "../../apis/employeeApi";
 import Button from "../../components/common/Button";
 import Card from "../../components/common/Card";
 import { useAuth } from "../../context/AuthContext";
-import { getPermissionNames } from "../../utils/authPermissions";
+import { hasPermission } from "../../utils/authPermissions";
 import { toast } from "react-toastify";
 
 const Department = () => {
@@ -38,7 +38,7 @@ const Department = () => {
   });
 
   const canManage = useMemo(
-    () => getPermissionNames(user).includes("WRITE_DEPARTMENTS"),
+    () => hasPermission(user, "WRITE_DEPARTMENTS"),
     [user],
   );
 

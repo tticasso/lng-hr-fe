@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Loader2 } from "lucide-react";
-import { getPermissionNames, getRoleName } from "../utils/authPermissions";
+import { getRoleName, hasAnyPermission, isSuperAdmin } from "../utils/authPermissions";
 
 const RequireAuth = ({ children, roles: allowedRoles, permissions: allowedPermissions }) => {
   const { user, loading } = useAuth();
@@ -24,12 +24,9 @@ const RequireAuth = ({ children, roles: allowedRoles, permissions: allowedPermis
   }
 
   const userRoleName = getRoleName(user);
-  const userPermissionNames = getPermissionNames(user);
-
-  const hasAllowedRole = !allowedRoles || allowedRoles.includes(userRoleName);
-  const hasAllowedPermission =
-    !allowedPermissions ||
-    allowedPermissions.some((permission) => userPermissionNames.includes(permission));
+  const superAdmin = isSuperAdmin(user);
+  const hasAllowedRole = superAdmin || !allowedRoles || allowedRoles.includes(userRoleName);
+  const hasAllowedPermission = !allowedPermissions || hasAnyPermission(user, allowedPermissions);
 
   if (!hasAllowedRole && !hasAllowedPermission) {
     return <Navigate to="/unauthorized" replace />;

@@ -21,7 +21,7 @@ import CreateTeamModal from "../../components/modals/CreateTeamModal";
 import DeleteConfirmModal from "../../components/modals/DeleteConfirmModal";
 import { departmentApi } from "../../apis/departmentApi";
 import { useAuth } from "../../context/AuthContext";
-import { getPermissionNames } from "../../utils/authPermissions";
+import { hasPermission } from "../../utils/authPermissions";
 import { toast } from "react-toastify";
 
 const TeamPages = () => {
@@ -32,7 +32,7 @@ const TeamPages = () => {
   const [departmentFilter, setDepartmentFilter] = useState("");
 
   const canManage = useMemo(
-    () => getPermissionNames(user).includes("WRITE_TEAMS"),
+    () => hasPermission(user, "WRITE_TEAMS"),
     [user],
   );
 

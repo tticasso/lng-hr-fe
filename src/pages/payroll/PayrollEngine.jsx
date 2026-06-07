@@ -26,6 +26,7 @@ import { toast } from "react-toastify";
 import { employeeApi } from "../../apis/employeeApi";
 import { useAuth } from "../../context/AuthContext";
 import { hasPermission } from "../../utils/authPermissions";
+import { ACCESS } from "../../config/accessControl";
 import {
   getAdjustmentBreakdownItems,
   getAllowanceBreakdownItems,
@@ -35,7 +36,7 @@ import {
 
 const PayrollEngine = () => {
   const { user } = useAuth();
-  const canRunPayroll = hasPermission(user, "RUN_PAYROLL");
+  const canRunPayroll = hasPermission(user, ACCESS.PAYROLL_ENGINE[0]);
   const [currentStep, setCurrentStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -154,9 +155,9 @@ const PayrollEngine = () => {
         };
 
 
-        const res = await payrollAPI.calcalculate(payload);
+        await payrollAPI.calculateBatch(payload);
 
-        toast.success("Tính lương thành công!");
+        toast.success("Tính lương batch thành công!");
 
         // Chỉ chuyển tab khi API thành công
         setCurrentStep((prev) => prev + 1);
@@ -311,7 +312,7 @@ const PayrollEngine = () => {
           <div className="bg-white rounded-xl shadow-2xl p-8 flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-200">
             <Loader2 size={48} className="animate-spin text-blue-600" />
             <div className="text-center">
-              <p className="text-lg font-bold text-gray-800">Đang tính toán lương...</p>
+              <p className="text-lg font-bold text-gray-800">Đang tính lương batch...</p>
               <p className="text-sm text-gray-500 mt-1">Vui lòng đợi trong giây lát</p>
             </div>
           </div>
@@ -809,7 +810,7 @@ const PayrollEngine = () => {
                     </div>
                   ) : (
                     <>
-                      {currentStep === 2 ? "Sang bước chốt lương" : "Tính lương & xem số liệu"} <ArrowRight size={18} className="ml-2" />
+                      {currentStep === 2 ? "Sang bước chốt lương" : "Tính lương batch & xem số liệu"} <ArrowRight size={18} className="ml-2" />
                     </>
                   )}
                 </Button>

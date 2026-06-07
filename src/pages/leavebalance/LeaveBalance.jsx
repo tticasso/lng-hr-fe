@@ -6,6 +6,7 @@ import { leavebalanceAPI } from "../../apis/leavebalaneAPI";
 import { toast } from "react-toastify";
 import { useAuth } from "../../context/AuthContext";
 import { hasPermission } from "../../utils/authPermissions";
+import { ACCESS } from "../../config/accessControl";
 
 const buildPageList = (current, total) => {
     if (total <= 1) return [1];
@@ -26,7 +27,7 @@ const buildPageList = (current, total) => {
 
 const LeaveBalance = () => {
     const { user } = useAuth();
-    const canUpdateLeave = hasPermission(user, "UPDATE_LEAVE");
+    const canUpdateLeave = hasPermission(user, ACCESS.LEAVE_BALANCE.at(-1));
     const [leaveBalances, setLeaveBalances] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");

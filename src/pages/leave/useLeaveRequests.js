@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { leaveAPI } from "../../apis/leaveAPI";
 import { useAuth } from "../../context/AuthContext";
-import { hasAllPermissions, hasPermission } from "../../utils/authPermissions";
+import { hasAnyPermission } from "../../utils/authPermissions";
+import { ACCESS } from "../../config/accessControl";
 import {
   getEntityId,
   normalizeStatus,
@@ -12,9 +13,9 @@ const currentEmployeeId = () => localStorage.getItem("employee_ID") || "";
 
 export const useLeaveRequests = ({ mode }) => {
   const { user } = useAuth();
-  const canApprove = useMemo(() => hasPermission(user, "APPROVE_LEAVE"), [user]);
+  const canApprove = useMemo(() => hasAnyPermission(user, ACCESS.LEAVE_APPROVALS), [user]);
   const isSuperApprover = useMemo(
-    () => hasAllPermissions(user, ["APPROVE_LEAVE", "DELETE_LEAVE"]),
+    () => hasAnyPermission(user, ["MANAGE_SYSTEM", "APPROVE_ALL_LEAVES", "APPROVE_LEAVE_OVERRIDE"]),
     [user],
   );
 

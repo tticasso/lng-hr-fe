@@ -1,11 +1,12 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { hasPermission } from "../../utils/authPermissions";
+import { hasAnyPermission } from "../../utils/authPermissions";
+import { ACCESS } from "../../config/accessControl";
 
 const OTIndex = () => {
   const { user } = useAuth();
 
-  if (hasPermission(user, "APPROVE_OT")) {
+  if (hasAnyPermission(user, ACCESS.OT_APPROVALS)) {
     return <Navigate to="/ot/approvals" replace />;
   }
 

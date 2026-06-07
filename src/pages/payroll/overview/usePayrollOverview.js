@@ -6,6 +6,7 @@ import { employeeApi } from "../../../apis/employeeApi";
 import { payrollAPI } from "../../../apis/payrollAPI";
 import { useAuth } from "../../../context/AuthContext";
 import { hasPermission } from "../../../utils/authPermissions";
+import { ACCESS } from "../../../config/accessControl";
 import {
   ALLOWANCE_TYPE_LABELS,
   formatMoney,
@@ -22,7 +23,7 @@ const getEmployeeId = (employee) => employee?._id || employee?.id || employee;
 
 export const usePayrollOverview = () => {
   const { user } = useAuth();
-  const canRunPayroll = hasPermission(user, "RUN_PAYROLL");
+  const canRunPayroll = hasPermission(user, ACCESS.PAYROLL_ENGINE[0]);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentPayrollPeriod());
   const [payrollData, setPayrollData] = useState([]);
   const [loading, setLoading] = useState(false);

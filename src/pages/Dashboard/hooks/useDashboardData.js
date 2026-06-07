@@ -6,6 +6,7 @@ import { announcementAPI } from "../../../apis/announcements";
 import { dashboardAPI } from "../../../apis/dashboardAPI";
 import { getAnnouncementDashboardMeta } from "../../../shared/announcementSchedule";
 import { hasAnyPermission } from "../../../utils/authPermissions";
+import { ACCESS, ACCESS_GROUPS } from "../../../config/accessControl";
 
 const DASHBOARD_REQUEST_LIMIT = 5;
 const DASHBOARD_ANNOUNCEMENT_LIMIT = 3;
@@ -23,14 +24,18 @@ const formatLocalDate = (date) => {
 const getRoleName = (user) => user?.accountId?.role?.name || user?.role?.name || user?.role || "";
 
 export const isHRDashboardUser = (user) =>
-  hasAnyPermission(user, ["READ_ATTENDANCE", "READ_EMPLOYEES", "READ_PAYROLLS", "RUN_PAYROLL", "READ_LEAVE"]);
+  hasAnyPermission(user, [
+    ...ACCESS_GROUPS.PAYROLL_OPS,
+    ...ACCESS.EMPLOYEES,
+    ...ACCESS.LEAVE_BALANCE,
+    ...ACCESS.HR_DASHBOARD,
+  ]);
 
 const canReadAttendance = (user) => {
   const roleName = getRoleName(user);
   if (["ADMIN", "HR", "MANAGER", "LEADER", "DIRECTOR"].includes(roleName)) return true;
 
-  const permissions = user?.accountId?.role?.permissions || user?.role?.permissions || [];
-  return permissions.some((permission) => permission?.name === "READ_ATTENDANCE" || permission === "READ_ATTENDANCE");
+  return hasAnyPermission(user, ACCESS.ATTENDANCE_ADMIN);
 };
 
 export const useDashboardData = (user, selectedDate = formatLocalDate(new Date())) => {

@@ -16,7 +16,7 @@ export const payrollAPI = {
   },
 
   calcalculate: (payload) => {
-    return apiClient.post("/payrolls/calculate", payload);
+    return apiClient.post("/payrolls/calculate-batch", payload);
   },
 
   calculateBatch: (payload) => {

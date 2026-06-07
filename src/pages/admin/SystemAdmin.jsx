@@ -24,7 +24,7 @@ import { auditLogApi } from "../../apis/auditLogApi";
 import { systemSettingApi } from "../../apis/systemSettingApi";
 import { officeNetworkApi } from "../../apis/officeNetworkApi";
 import { useAuth } from "../../context/AuthContext";
-import { getPermissionNames } from "../../utils/authPermissions";
+import { hasAnyPermission, hasPermission as userHasPermission } from "../../utils/authPermissions";
 import { toast } from "react-toastify";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button"; // Đảm bảo component này tồn tại
@@ -140,15 +140,13 @@ const OT_MULTIPLIER_LABELS = [
 const SystemAdmin = () => {
   const { user } = useAuth();
   const [activeAdminTab, setActiveAdminTab] = useState("roles");
-  const currentPermissionNames = useMemo(() => getPermissionNames(user), [user]);
-  const canWriteRoles = currentPermissionNames.includes("WRITE_ROLES");
-  const canWritePermissions = currentPermissionNames.includes("WRITE_PERMISSIONS");
+  const canWriteRoles = useMemo(() => userHasPermission(user, "WRITE_ROLES"), [user]);
+  const canWritePermissions = useMemo(() => userHasPermission(user, "WRITE_PERMISSIONS"), [user]);
   const canReadRolesOrPermissions =
-    currentPermissionNames.includes("READ_ROLES") ||
-    currentPermissionNames.includes("READ_PERMISSIONS") ||
+    hasAnyPermission(user, ["READ_ROLES", "READ_PERMISSIONS"]) ||
     canWriteRoles ||
     canWritePermissions;
-  const canManageSystem = currentPermissionNames.includes("MANAGE_SYSTEM");
+  const canManageSystem = userHasPermission(user, "MANAGE_SYSTEM");
   // --- MAPPING TIẾNG VIỆT ---
   const moduleNameMap = {
     "ADMIN": "Quản trị",

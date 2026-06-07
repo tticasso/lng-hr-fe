@@ -16,6 +16,7 @@ import RequireAuth from "./components/RequireAuth";
 import PublicRoute from "./components/PublicRoute";
 import { NotificationProvider } from "./context/NotificationContext";
 import { SidebarProvider } from "./context/SidebarContext";
+import { ACCESS, ACCESS_GROUPS } from "./config/accessControl";
 
 const AllPayRoll = lazy(() => import("./pages/payroll/AllPayRoll"));
 const Announcements = lazy(() => import("./pages/announce/Announcements"));
@@ -107,7 +108,7 @@ function App() {
                   <Route
                     path="allpayroll"
                     element={
-                      <RequireAuth permissions={["READ_PAYROLLS"]}>
+                      <RequireAuth permissions={ACCESS.PAYROLL_LIST}>
                         <AllPayRoll />
                       </RequireAuth>
                     }
@@ -118,7 +119,7 @@ function App() {
                   <Route
                     path="department"
                     element={
-                      <RequireAuth permissions={["READ_DEPARTMENTS", "WRITE_DEPARTMENTS"]}>
+                      <RequireAuth permissions={ACCESS.DEPARTMENTS}>
                         <Department />
                       </RequireAuth>
                     }
@@ -129,7 +130,7 @@ function App() {
                   <Route
                     path="leave/approvals"
                     element={
-                      <RequireAuth permissions={["APPROVE_LEAVE"]}>
+                      <RequireAuth permissions={ACCESS.LEAVE_APPROVALS}>
                         <LeaveApprovals />
                       </RequireAuth>
                     }
@@ -140,7 +141,7 @@ function App() {
                   <Route
                     path="ot/approvals"
                     element={
-                      <RequireAuth permissions={["APPROVE_OT"]}>
+                      <RequireAuth permissions={ACCESS.OT_APPROVALS}>
                         <OTApprovals />
                       </RequireAuth>
                     }
@@ -148,7 +149,7 @@ function App() {
                   <Route
                     path="holiday"
                     element={
-                      <RequireAuth permissions={["READ_HOLIDAYS", "WRITE_HOLIDAYS"]}>
+                      <RequireAuth permissions={ACCESS.HOLIDAYS}>
                         <Holiday />
                       </RequireAuth>
                     }
@@ -159,7 +160,7 @@ function App() {
                     path="admin"
                     element={
                       <RequireAuth
-                        permissions={["READ_USER", "MANAGE_SYSTEM", "READ_ROLES", "READ_PERMISSIONS"]}
+                        permissions={ACCESS_GROUPS.SYSTEM}
                       >
                         <Outlet />
                       </RequireAuth>
@@ -168,7 +169,7 @@ function App() {
                     <Route
                       path="register"
                       element={
-                        <RequireAuth permissions={["CREATE_USER"]}>
+                        <RequireAuth permissions={ACCESS.USER_REGISTER}>
                           <Register />
                         </RequireAuth>
                       }
@@ -176,7 +177,7 @@ function App() {
                     <Route
                       path="system-admin"
                       element={
-                        <RequireAuth permissions={["MANAGE_SYSTEM", "READ_ROLES", "READ_PERMISSIONS"]}>
+                        <RequireAuth permissions={ACCESS.SYSTEM_ADMIN}>
                           <SystemAdmin />
                         </RequireAuth>
                       }
@@ -184,7 +185,7 @@ function App() {
                     <Route
                       path="user-management"
                       element={
-                        <RequireAuth permissions={["READ_USER"]}>
+                        <RequireAuth permissions={ACCESS.USER_MANAGEMENT}>
                           <UserManagement />
                         </RequireAuth>
                       }
@@ -196,12 +197,8 @@ function App() {
                     element={
                       <RequireAuth
                         permissions={[
-                          "READ_EMPLOYEES",
-                          "READ_ATTENDANCE",
-                          "READ_PAYROLLS",
-                          "RUN_PAYROLL",
-                          "READ_ANNOUNCEMENTS",
-                          "READ_LEAVE",
+                          ...ACCESS_GROUPS.HR_WORKSPACE,
+                          ...ACCESS_GROUPS.PAYROLL_OPS,
                         ]}
                       >
                         <Outlet />
@@ -211,7 +208,7 @@ function App() {
                     <Route
                       path="payroll-engine"
                       element={
-                        <RequireAuth permissions={["RUN_PAYROLL"]}>
+                        <RequireAuth permissions={ACCESS.PAYROLL_ENGINE}>
                           <PayrollEngine />
                         </RequireAuth>
                       }
@@ -219,7 +216,7 @@ function App() {
                     <Route
                       path="recruitment"
                       element={
-                        <RequireAuth permissions={["READ_EMPLOYEES"]}>
+                        <RequireAuth permissions={ACCESS.EMPLOYEES}>
                           <Recruitment />
                         </RequireAuth>
                       }
@@ -227,7 +224,7 @@ function App() {
                     <Route
                       path="boarding"
                       element={
-                        <RequireAuth permissions={["READ_EMPLOYEES"]}>
+                        <RequireAuth permissions={ACCESS.EMPLOYEES}>
                           <OnboardingOffboarding />
                         </RequireAuth>
                       }
@@ -235,7 +232,7 @@ function App() {
                     <Route
                       path="training"
                       element={
-                        <RequireAuth permissions={["READ_EMPLOYEES"]}>
+                        <RequireAuth permissions={ACCESS.EMPLOYEES}>
                           <TrainingPerformance />
                         </RequireAuth>
                       }
@@ -243,7 +240,7 @@ function App() {
                     <Route
                       path="attendance-admin"
                       element={
-                        <RequireAuth permissions={["READ_ATTENDANCE"]}>
+                        <RequireAuth permissions={ACCESS.ATTENDANCE_ADMIN}>
                           <AttendanceAdmin />
                         </RequireAuth>
                       }
@@ -251,7 +248,7 @@ function App() {
                     <Route
                       path="employees"
                       element={
-                        <RequireAuth permissions={["READ_EMPLOYEES"]}>
+                        <RequireAuth permissions={ACCESS.EMPLOYEES}>
                           <EmployeeList />
                         </RequireAuth>
                       }
@@ -259,7 +256,7 @@ function App() {
                     <Route
                       path="employees/:id"
                       element={
-                        <RequireAuth permissions={["READ_EMPLOYEES"]}>
+                        <RequireAuth permissions={ACCESS.EMPLOYEES}>
                           <EmployeeDetail />
                         </RequireAuth>
                       }
@@ -267,7 +264,7 @@ function App() {
                     <Route
                       path="announcements"
                       element={
-                        <RequireAuth permissions={["READ_ANNOUNCEMENTS", "WRITE_ANNOUNCEMENTS"]}>
+                        <RequireAuth permissions={ACCESS.ANNOUNCEMENTS}>
                           <Announcements />
                         </RequireAuth>
                       }
@@ -275,7 +272,7 @@ function App() {
                     <Route
                       path="leavebalance"
                       element={
-                        <RequireAuth permissions={["READ_LEAVE", "UPDATE_LEAVE"]}>
+                        <RequireAuth permissions={ACCESS.LEAVE_BALANCE}>
                           <LeaveBalance />
                         </RequireAuth>
                       }
@@ -285,7 +282,7 @@ function App() {
                   <Route
                     path="hr/teampages"
                     element={
-                      <RequireAuth permissions={["READ_DEPARTMENTS", "WRITE_TEAMS", "WRITE_OWN_TEAM_MEMBERS"]}>
+                      <RequireAuth permissions={ACCESS.TEAM_PAGES}>
                         <TeamPages />
                       </RequireAuth>
                     }

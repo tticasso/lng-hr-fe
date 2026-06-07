@@ -9,7 +9,8 @@ import { useNotification } from "../context/NotificationContext";
 import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "../context/AuthContext";
 import AnnouncementDetailModal from "../components/modals/AnnouncementDetailModal";
-import { getPermissionNames } from "../utils/authPermissions";
+import { hasAnyPermission } from "../utils/authPermissions";
+import { ACCESS } from "../config/accessControl";
 
 // âœ… Format thá»i gian thĂ´ng bĂ¡o: rĂµ rĂ ng + chuyĂªn nghiá»‡p
 const formatNotifyTime = (dateInput) => {
@@ -82,10 +83,9 @@ const Header = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
   const navigate = useNavigate();
-  const permissionNames = useMemo(() => getPermissionNames(user), [user]);
   const hasPagePermission = useCallback(
-    (permissions = []) => permissions.some((permission) => permissionNames.includes(permission)),
-    [permissionNames],
+    (permissions = []) => hasAnyPermission(user, permissions),
+    [user],
   );
 
   const initials = useMemo(() => {
@@ -268,7 +268,7 @@ const Header = () => {
     // âœ… Xá»­ lĂ½ Ä‘iá»u hÆ°á»›ng theo relatedModel
     if (relatedModel === "Overtime") {
       setOpenNotify(false);
-      const otPath = hasPagePermission(["APPROVE_OT"]) ? "/ot/approvals" : "/ot/my";
+      const otPath = hasPagePermission(ACCESS.OT_APPROVALS) ? "/ot/approvals" : "/ot/my";
       navigate(otPath);
     }
     else if (relatedModel === "Payroll") {
@@ -277,7 +277,7 @@ const Header = () => {
       navigate("/payroll");
     } else if (relatedModel === "Leave") {
       setOpenNotify(false);
-      const leavePath = hasPagePermission(["APPROVE_LEAVE"]) ? "/leave/approvals" : "/leave/my";
+      const leavePath = hasPagePermission(ACCESS.LEAVE_APPROVALS) ? "/leave/approvals" : "/leave/my";
       navigate(leavePath);
     } else if (relatedModel === "Announcement") {
       // // Hiá»ƒn thá»‹ modal chi tiáº¿t thĂ´ng bĂ¡o
@@ -308,35 +308,35 @@ const Header = () => {
       { path: "/ot/my", label: "Đơn OT của tôi", keywords: ["ot", "overtime", "tang ca"] },
     );
 
-    if (hasPagePermission(["APPROVE_LEAVE"])) {
+    if (hasPagePermission(ACCESS.LEAVE_APPROVALS)) {
       pages.push({ path: "/leave/approvals", label: "Phê duyệt đơn nghỉ", keywords: ["quan ly yeu cau", "duyet don", "leave management"] });
     }
 
-    if (hasPagePermission(["APPROVE_OT"])) {
+    if (hasPagePermission(ACCESS.OT_APPROVALS)) {
       pages.push({ path: "/ot/approvals", label: "Phê duyệt đơn OT", keywords: ["duyet ot", "overtime approvals", "duyet tang ca"] });
     }
 
-    if (hasPagePermission(["READ_EMPLOYEES"])) {
+    if (hasPagePermission(ACCESS.EMPLOYEES)) {
       pages.push({ path: "/hr/employees", label: "Nhân viên", keywords: ["nhan vien", "employee", "staff"] });
     }
 
-    if (hasPagePermission(["READ_ATTENDANCE"])) {
+    if (hasPagePermission(ACCESS.ATTENDANCE_ADMIN)) {
       pages.push({ path: "/hr/attendance-admin", label: "Quản lý chấm công", keywords: ["quan ly cham cong", "attendance", "checkin"] });
     }
 
-    if (hasPagePermission(["READ_ANNOUNCEMENTS", "WRITE_ANNOUNCEMENTS"])) {
+    if (hasPagePermission(ACCESS.ANNOUNCEMENTS)) {
       pages.push({ path: "/hr/announcements", label: "Thông báo", keywords: ["thong bao", "announcement", "notice"] });
     }
 
-    if (hasPagePermission(["RUN_PAYROLL"])) {
+    if (hasPagePermission(ACCESS.PAYROLL_ENGINE)) {
       pages.push({ path: "/hr/payroll-engine", label: "Công cụ tính lương", keywords: ["cong cu tinh luong", "payroll engine", "tinh luong"] });
     }
 
-    if (hasPagePermission(["READ_USER"])) {
+    if (hasPagePermission(ACCESS.USER_MANAGEMENT)) {
       pages.push({ path: "/admin/user-management", label: "Quản lý người dùng", keywords: ["quan ly nguoi dung", "user management", "account"] });
     }
 
-    if (hasPagePermission(["MANAGE_SYSTEM", "READ_ROLES", "READ_PERMISSIONS"])) {
+    if (hasPagePermission(ACCESS.SYSTEM_ADMIN)) {
       pages.push({ path: "/admin/system-admin", label: "Cài đặt hệ thống", keywords: ["cai dat he thong", "system admin", "settings"] });
     }
 

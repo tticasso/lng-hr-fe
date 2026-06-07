@@ -1,48 +1,84 @@
 const LEGACY_PERMISSION_ALIASES = {
   READ_ACCOUNTS: ["READ_USER"],
-  WRITE_ACCOUNTS: ["CREATE_USER", "UPDATE_USER", "DELETE_USER"],
-};
-
-const REVERSE_LEGACY_PERMISSION_ALIASES = {
   READ_USER: ["READ_ACCOUNTS"],
+  WRITE_ACCOUNTS: ["CREATE_USER", "UPDATE_USER", "DELETE_USER"],
   CREATE_USER: ["WRITE_ACCOUNTS"],
   UPDATE_USER: ["WRITE_ACCOUNTS"],
   DELETE_USER: ["WRITE_ACCOUNTS"],
+  WRITE_PAYROLLS: ["RUN_PAYROLL"],
+  RUN_PAYROLL: ["WRITE_PAYROLLS"],
+  READ_LEAVES: ["READ_LEAVE"],
+  READ_LEAVE: ["READ_LEAVES"],
+  WRITE_LEAVE_BALANCES: ["UPDATE_LEAVE"],
+  UPDATE_LEAVE: ["WRITE_LEAVE_BALANCES"],
+  APPROVE_ALL_LEAVES: ["APPROVE_LEAVE"],
+  APPROVE_LEAVE: ["APPROVE_ALL_LEAVES"],
+  READ_ALL_OTS: ["APPROVE_OT"],
+  APPROVE_OT: ["READ_ALL_OTS"],
 };
 
-export const getRoleName = (user) =>
-  user?.accountId?.role?.name ||
-  user?.role?.name ||
-  (typeof user?.role === "string" ? user.role : "") ||
-  "";
+const normalizePermission = (permission) => permission?.name || permission;
+
+export const getAccount = (user) => {
+  if (!user) return null;
+  if (user.account) return user.account;
+  if (user.accountId && typeof user.accountId === "object") return user.accountId;
+  return null;
+};
+
+export const getEmployee = (user) => {
+  if (!user) return null;
+  if (user.employee) return user.employee;
+  if (user.account || user.accountId?.role) {
+    return user._id ? user : null;
+  }
+  return user;
+};
+
+export const getRoleName = (user) => {
+  const account = getAccount(user);
+  return (
+    account?.role?.name ||
+    user?.role?.name ||
+    (typeof user?.role === "string" ? user.role : "") ||
+    ""
+  );
+};
 
 export const getPermissionNames = (user) => {
-  const permissions =
-    user?.accountId?.role?.permissions ||
-    user?.role?.permissions ||
-    user?.permissions ||
-    [];
+  const account = getAccount(user);
+  const permissionSources = [
+    user?.permissionNames,
+    account?.permissionNames,
+    account?.role?.permissions,
+    user?.accountId?.role?.permissions,
+    user?.role?.permissions,
+    user?.permissions,
+  ];
 
-  const names = permissions
-    .map((permission) => permission?.name || permission)
+  const names = permissionSources
+    .flatMap((permissions) => (Array.isArray(permissions) ? permissions : []))
+    .map(normalizePermission)
     .filter(Boolean);
   const expanded = new Set(names);
 
   names.forEach((name) => {
     (LEGACY_PERMISSION_ALIASES[name] || []).forEach((alias) => expanded.add(alias));
-    (REVERSE_LEGACY_PERMISSION_ALIASES[name] || []).forEach((alias) => expanded.add(alias));
   });
 
   return Array.from(expanded);
 };
 
+export const isSuperAdmin = (user) =>
+  getRoleName(user) === "ADMIN" || getPermissionNames(user).includes("MANAGE_SYSTEM");
+
 export const hasPermission = (user, permissionName) =>
-  getPermissionNames(user).includes(permissionName);
+  isSuperAdmin(user) || getPermissionNames(user).includes(permissionName);
 
 export const hasAnyPermission = (user, permissionNames = []) =>
-  permissionNames.some((permissionName) => hasPermission(user, permissionName));
+  isSuperAdmin(user) || permissionNames.some((permissionName) => hasPermission(user, permissionName));
 
 export const hasAllPermissions = (user, permissionNames = []) =>
-  permissionNames.every((permissionName) => hasPermission(user, permissionName));
+  isSuperAdmin(user) || permissionNames.every((permissionName) => hasPermission(user, permissionName));
 
-export const hasRole = (user, roleName) => getRoleName(user) === roleName;
+export const hasRole = (user, roleName) => isSuperAdmin(user) || getRoleName(user) === roleName;

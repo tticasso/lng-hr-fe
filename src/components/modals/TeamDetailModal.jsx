@@ -5,6 +5,7 @@ import { teamAPI } from "../../apis/teamAPI";
 import { employeeApi } from "../../apis/employeeApi";
 import { saturdayRotations } from "../../apis/saturday-rotations";
 import { useAuth } from "../../context/AuthContext";
+import { getEmployee, hasPermission } from "../../utils/authPermissions";
 
 const StatusBadge = ({ status }) => {
     const statusConfig = {
@@ -31,8 +32,18 @@ const getCurrentMonthYear = () => {
     };
 };
 
-const getRotationSyncSummary = (response) =>
-    response?.data?.data?.syncSummary || response?.data?.syncSummary || null;
+const getRotationPayload = (response) => response?.data?.data || {};
+
+const getRotationList = (response) => {
+    const payload = getRotationPayload(response);
+    if (Array.isArray(payload)) return payload;
+    return payload.rotations || [];
+};
+
+const getRotationSyncSummary = (response) => {
+    const payload = getRotationPayload(response);
+    return payload.sync || payload.syncSummary || response?.data?.syncSummary || null;
+};
 
 const formatPayrollReviewList = (items) =>
     items
@@ -58,15 +69,14 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
     const [selectedRotationEmployees, setSelectedRotationEmployees] = useState([]);
     const [manualRotationSelections, setManualRotationSelections] = useState({});
     const [rotationPayrollReviews, setRotationPayrollReviews] = useState([]);
-    const permissions = user?.accountId?.role?.permissions?.map((permission) => permission.name) || [];
-    const hasPermission = (permissionName) => permissions.includes(permissionName);
-    const userEmployeeId = user?._id?.toString();
+    const currentEmployee = getEmployee(user);
+    const userEmployeeId = currentEmployee?._id?.toString();
     const teamLeaderId = teamDetail?.leader?._id?.toString() || teamDetail?.leader?.toString();
-    const canManageAllTeamMembers = hasPermission("WRITE_TEAMS");
+    const canManageAllTeamMembers = hasPermission(user, "WRITE_TEAMS");
     const canManageOwnTeamMembers =
-        hasPermission("WRITE_OWN_TEAM_MEMBERS") && teamLeaderId && teamLeaderId === userEmployeeId;
+        hasPermission(user, "WRITE_OWN_TEAM_MEMBERS") && teamLeaderId && teamLeaderId === userEmployeeId;
     const canManageTeamMembers = canManageAllTeamMembers || canManageOwnTeamMembers;
-    const canManageRotations = hasPermission("WRITE_TEAM_ROTATIONS");
+    const canManageRotations = hasPermission(user, "WRITE_TEAM_ROTATIONS");
     
     // State cho việc chọn tháng/năm xem lịch luân phiên
     const [selectedMonth, setSelectedMonth] = useState(() => getCurrentMonthYear().month);
@@ -95,10 +105,13 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
         try {
             const res = await saturdayRotations.get(teamId, selectedMonth, selectedYear);
 
-            const rotationList = res?.data?.data || [];
+            const rotationList = getRotationList(res);
             setRotationData(rotationList);
         } catch (error) {
             setRotationData([]);
+            if (error?.response?.status === 403) {
+                toast.error(error.normalizedMessage || "Ban khong co quyen xem lich nghi cua team nay");
+            }
         }
     };
 

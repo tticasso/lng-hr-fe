@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { OTApi } from "../../apis/OTAPI";
 import { useAuth } from "../../context/AuthContext";
-import { hasAllPermissions, hasPermission } from "../../utils/authPermissions";
+import { hasAnyPermission } from "../../utils/authPermissions";
+import { ACCESS } from "../../config/accessControl";
 import {
   getEntityId,
   normalizeStatus,
@@ -12,9 +13,9 @@ const currentEmployeeId = () => localStorage.getItem("employee_ID") || "";
 
 export const useOvertimeRequests = ({ mode }) => {
   const { user } = useAuth();
-  const canApprove = useMemo(() => hasPermission(user, "APPROVE_OT"), [user]);
+  const canApprove = useMemo(() => hasAnyPermission(user, ACCESS.OT_APPROVALS), [user]);
   const isSuperApprover = useMemo(
-    () => hasAllPermissions(user, ["APPROVE_OT", "DELETE_OT"]),
+    () => hasAnyPermission(user, ["MANAGE_SYSTEM", "READ_ALL_OTS"]),
     [user],
   );
 

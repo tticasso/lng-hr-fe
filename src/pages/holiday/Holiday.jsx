@@ -6,14 +6,13 @@ import MonthYearPicker from "../../components/common/MonthYearPicker";
 import { holidayAPI } from "../../apis/holidayAPI";
 import { shitfAPI } from "../../apis/shiftsAPI";
 import { useAuth } from "../../context/AuthContext";
-import { getPermissionNames } from "../../utils/authPermissions";
+import { hasPermission } from "../../utils/authPermissions";
 import { toast } from "react-toastify";
 
 const Holiday = () => {
   const { user } = useAuth();
-  const permissionNames = useMemo(() => getPermissionNames(user), [user]);
-  const canWriteHolidays = permissionNames.includes("WRITE_HOLIDAYS");
-  const canWriteShifts = permissionNames.includes("WRITE_SHIFTS");
+  const canWriteHolidays = useMemo(() => hasPermission(user, "WRITE_HOLIDAYS"), [user]);
+  const canWriteShifts = useMemo(() => hasPermission(user, "WRITE_SHIFTS"), [user]);
   const [activeTab, setActiveTab] = useState("holidays");
 
   // States cho Holidays

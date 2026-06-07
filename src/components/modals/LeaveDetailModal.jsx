@@ -195,7 +195,7 @@ const LeaveDetailModal = ({ isOpen, onClose, leaveId }) => {
     const displayStatus = normalizeStatus(leaveDetail?.status);
     const approvalSteps = approvalStatusData?.approximateStatus || leaveDetail?.approvalChain || [];
     const canRefund =
-        hasAllPermissions(user, ["APPROVE_LEAVE", "DELETE_LEAVE"]) &&
+        hasAllPermissions(user, ["APPROVE_ALL_LEAVES", "DELETE_LEAVE"]) &&
         displayStatus === "APPROVED" &&
         !leaveDetail?.isRefunded;
 

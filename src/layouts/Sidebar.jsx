@@ -28,7 +28,8 @@ import {
 import logoLNG from "../assets/LNG-sm.webp";
 import { useAuth } from "../context/AuthContext";
 import { useSidebar } from "../context/SidebarContext";
-import { getPermissionNames } from "../utils/authPermissions";
+import { hasAnyPermission } from "../utils/authPermissions";
+import { ACCESS, ACCESS_GROUPS } from "../config/accessControl";
 
 const groupTitleClass =
   "mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400";
@@ -42,27 +43,14 @@ const Sidebar = () => {
   const { logout, user } = useAuth();
   const { isCollapsed, isMobileSidebarOpen, toggleSidebar, closeMobileSidebar } = useSidebar();
 
-  const permissionNames = useMemo(() => getPermissionNames(user), [user]);
-  const hasPermission = (permissions = []) =>
-    permissions.some((permission) => permissionNames.includes(permission));
+  const canAccess = (permissions = []) => hasAnyPermission(user, permissions);
   const shouldCollapse = isCollapsed && !isMobileSidebarOpen;
 
-  const canSeeOrganization = hasPermission([
-    "READ_DEPARTMENTS",
-    "WRITE_DEPARTMENTS",
-    "WRITE_TEAMS",
-    "WRITE_OWN_TEAM_MEMBERS",
-  ]);
-  const canSeeHRWorkspace = hasPermission([
-    "READ_EMPLOYEES",
-    "READ_LEAVE",
-    "READ_HOLIDAYS",
-    "READ_ANNOUNCEMENTS",
-    "WRITE_ANNOUNCEMENTS",
-  ]);
-  const canApproveRequests = hasPermission(["APPROVE_LEAVE", "APPROVE_OT"]);
-  const canSeePayrollOps = hasPermission(["READ_ATTENDANCE", "READ_PAYROLLS", "RUN_PAYROLL"]);
-  const canSeeSystem = hasPermission(["READ_USER", "MANAGE_SYSTEM", "READ_ROLES", "READ_PERMISSIONS"]);
+  const canSeeOrganization = canAccess(ACCESS_GROUPS.ORGANIZATION);
+  const canSeeHRWorkspace = canAccess(ACCESS_GROUPS.HR_WORKSPACE);
+  const canApproveRequests = canAccess(ACCESS_GROUPS.REQUEST_APPROVALS);
+  const canSeePayrollOps = canAccess(ACCESS_GROUPS.PAYROLL_OPS);
+  const canSeeSystem = canAccess(ACCESS_GROUPS.SYSTEM);
 
   const [expandedDropdowns, setExpandedDropdowns] = useState({});
 
@@ -91,13 +79,13 @@ const Sidebar = () => {
                       path: "/department",
                       label: "Phòng ban",
                       icon: Network,
-                      permissions: ["READ_DEPARTMENTS", "WRITE_DEPARTMENTS"],
+                      permissions: ACCESS.DEPARTMENTS,
                     },
                     {
                       path: "/hr/teampages",
                       label: "Team",
                       icon: GitBranch,
-                      permissions: ["READ_DEPARTMENTS", "WRITE_TEAMS", "WRITE_OWN_TEAM_MEMBERS"],
+                      permissions: ACCESS.TEAM_PAGES,
                     },
                   ],
                 },
@@ -111,25 +99,25 @@ const Sidebar = () => {
                       path: "/hr/employees",
                       label: "Nhân viên",
                       icon: User,
-                      permissions: ["READ_EMPLOYEES"],
+                      permissions: ACCESS.EMPLOYEES,
                     },
                     {
                       path: "/hr/leavebalance",
                       label: "Công phép",
                       icon: CalendarCheck,
-                      permissions: ["READ_LEAVE", "UPDATE_LEAVE"],
+                      permissions: ACCESS.LEAVE_BALANCE,
                     },
                     {
                       path: "/holiday",
                       label: "Lịch nghỉ",
                       icon: Timer,
-                      permissions: ["READ_HOLIDAYS", "WRITE_HOLIDAYS"],
+                      permissions: ACCESS.HOLIDAYS,
                     },
                     {
                       path: "/hr/announcements",
                       label: "Thông báo",
                       icon: Bell,
-                      permissions: ["READ_ANNOUNCEMENTS", "WRITE_ANNOUNCEMENTS"],
+                      permissions: ACCESS.ANNOUNCEMENTS,
                     },
                   ],
                 },
@@ -148,7 +136,7 @@ const Sidebar = () => {
                       path: "/leave/approvals",
                       label: "Duyệt đơn nghỉ",
                       icon: ClipboardCheck,
-                      permissions: ["APPROVE_LEAVE"],
+                      permissions: ACCESS.LEAVE_APPROVALS,
                     },
                     {
                       path: "/ot/my",
@@ -159,7 +147,7 @@ const Sidebar = () => {
                       path: "/ot/approvals",
                       label: "Duyệt đơn OT",
                       icon: ClipboardCheck,
-                      permissions: ["APPROVE_OT"],
+                      permissions: ACCESS.OT_APPROVALS,
                     },
                   ],
                 },
@@ -182,19 +170,19 @@ const Sidebar = () => {
                       path: "/hr/attendance-admin",
                       label: "Chấm công",
                       icon: ClipboardCheck,
-                      permissions: ["READ_ATTENDANCE"],
+                      permissions: ACCESS.ATTENDANCE_ADMIN,
                     },
                     {
                       path: "/allpayroll",
                       label: "Bảng lương",
                       icon: FileSpreadsheet,
-                      permissions: ["READ_PAYROLLS"],
+                      permissions: ACCESS.PAYROLL_LIST,
                     },
                     {
                       path: "/hr/payroll-engine",
                       label: "Tính lương",
                       icon: Landmark,
-                      permissions: ["RUN_PAYROLL"],
+                      permissions: ACCESS.PAYROLL_ENGINE,
                     },
                   ],
                 },
@@ -211,13 +199,13 @@ const Sidebar = () => {
                   path: "/admin/user-management",
                   label: "Quản lý tài khoản",
                   icon: UserCog,
-                  permissions: ["READ_USER"],
+                  permissions: ACCESS.USER_MANAGEMENT,
                 },
                 {
                   path: "/admin/system-admin",
                   label: "Cài đặt hệ thống",
                   icon: Settings,
-                  permissions: ["MANAGE_SYSTEM", "READ_ROLES", "READ_PERMISSIONS"],
+                  permissions: ACCESS.SYSTEM_ADMIN,
                 },
               ],
             },
@@ -269,7 +257,7 @@ const Sidebar = () => {
   };
 
   const renderNavItem = (item, isChild = false) => {
-    const hasPermissionAccess = !item.permissions || hasPermission(item.permissions);
+    const hasPermissionAccess = !item.permissions || canAccess(item.permissions);
     if (!hasPermissionAccess) return null;
 
     const Icon = item.icon;
@@ -311,7 +299,7 @@ const Sidebar = () => {
 
   const renderDropdown = (item) => {
     const visibleChildren = item.children.filter(
-      (child) => !child.permissions || hasPermission(child.permissions),
+      (child) => !child.permissions || canAccess(child.permissions),
     );
     if (!visibleChildren.length) return null;
 

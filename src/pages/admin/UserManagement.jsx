@@ -30,7 +30,8 @@ import UserDetailModal from "../../components/modals/UserDetailModal";
 import ActionModal from "../../components/modals/ActionModal";
 import { useAuth } from "../../context/AuthContext";
 import { getListData, getPagination, hasPaginationMetadata } from "../../shared/apiResponse";
-import { getPermissionNames, hasAnyPermission } from "../../utils/authPermissions";
+import { hasAnyPermission, hasPermission } from "../../utils/authPermissions";
+import { ACCESS } from "../../config/accessControl";
 
 const USER_PAGE_SIZE = 50;
 const MAX_USER_PREFETCH = 500;
@@ -39,9 +40,8 @@ const UserManagement = () => {
   // State
   const { user } = useAuth();
   const userInfo = user;
-  const permissionNames = getPermissionNames(user);
-  const canWriteAccounts = hasAnyPermission(user, ["CREATE_USER", "UPDATE_USER", "DELETE_USER"]);
-  const canImportProfiles = permissionNames.includes("WRITE_EMPLOYEES");
+  const canWriteAccounts = hasAnyPermission(user, ACCESS.USER_REGISTER);
+  const canImportProfiles = hasPermission(user, "WRITE_EMPLOYEES");
   const [users, setUsers] = useState([]);
   const [rolesList, setRolesList] = useState([]);
   const [loading, setLoading] = useState(true);

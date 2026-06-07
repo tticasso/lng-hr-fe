@@ -47,7 +47,7 @@ import {
   parseScheduledAt,
 } from "../../shared/announcementSchedule";
 import { useAuth } from "../../context/AuthContext";
-import { getPermissionNames } from "../../utils/authPermissions";
+import { hasPermission } from "../../utils/authPermissions";
 
 const buildPageList = (current, total) => {
   if (total <= 1) return [1];
@@ -115,7 +115,7 @@ const formatDateTime = (dateString) => {
 const Announcements = () => {
   const { user } = useAuth();
   const canWriteAnnouncements = useMemo(
-    () => getPermissionNames(user).includes("WRITE_ANNOUNCEMENTS"),
+    () => hasPermission(user, "WRITE_ANNOUNCEMENTS"),
     [user],
   );
   const [title, setTitle] = useState("");

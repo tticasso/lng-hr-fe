@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
 import logoLNG from "../../assets/LNG-sm.webp";
 import { authApi } from "../../apis/authApi";
-import { employeeApi } from "../../apis/employeeApi"; // Import employeeApi
+import { accountApi } from "../../apis/accountApi";
 import { setAuthToken } from "../../apis/apiClient"; // Import hàm set header
 import { toast } from "react-toastify";
 
@@ -49,25 +49,29 @@ const Login = () => {
       setAuthToken(accessToken);
 
       // 3. Gọi API getMe để lấy thông tin chi tiết (bao gồm isProfileUpdated)
-      const resMe = await employeeApi.getMe();
+      const resMe = await accountApi.getMe();
       // Lấy object employee từ response getMe
       // Cấu trúc response getMe thường là { status: "success", data: { employee: {...} } }
-      const responseBody = resMe.data;
-      const employeeData = responseBody?.data?.employee;
-      localStorage.setItem("accountID", employeeData.accountId._id);
-       localStorage.setItem("employee_ID", employeeData._id);
-      if (!employeeData) {
+      const authContext = resMe.data?.data || resMe.data;
+      const employeeData = authContext?.employee;
+      if (authContext?.account?._id) {
+        localStorage.setItem("accountID", authContext.account._id);
+      }
+      if (employeeData?._id) {
+        localStorage.setItem("employee_ID", employeeData._id);
+      }
+      if (!authContext?.account) {
         throw new Error("Không thể lấy thông tin nhân viên.");
       }
 
       // 4. Lưu thông tin đầy đủ vào Context
       loginUser({
         accessToken: accessToken,
-        user: employeeData,
+        user: authContext,
       });
 
       // 5. Kiểm tra và Điều hướng [Quan trọng]
-      if (employeeData.isProfileUpdated == false) {
+      if (employeeData?.isProfileUpdated == false) {
         // Nếu chưa cập nhật -> Chuyển sang trang Profile
         toast.success("ĐĂNG NHẬP THÀNH CÔNG")
         navigate("/profile");
