@@ -417,18 +417,22 @@ const Dashboard = () => {
 
         {/* CỘT PHẢI (4/12) - Quick Actions */}
         <div className={isHRDashboard ? "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 lg:col-span-12 lg:gap-6" : "space-y-4 lg:col-span-4 lg:space-y-6"}>
-          <DailyLateAttendances
-            data={lateAttendanceDashboard}
-            onViewAll={() => openDailyAlertModal("late")}
-          />
-          <DailyAbsentAttendances
-            data={absentAttendanceDashboard}
-            onViewAll={() => openDailyAlertModal("absent")}
-          />
-          <DailyMissingCheckOuts
-            data={missingCheckOutDashboard}
-            onViewAll={() => openDailyAlertModal("missingCheckOut")}
-          />
+          {isHRDashboard && (
+            <>
+              <DailyLateAttendances
+                data={lateAttendanceDashboard}
+                onViewAll={() => openDailyAlertModal("late")}
+              />
+              <DailyAbsentAttendances
+                data={absentAttendanceDashboard}
+                onViewAll={() => openDailyAlertModal("absent")}
+              />
+              <DailyMissingCheckOuts
+                data={missingCheckOutDashboard}
+                onViewAll={() => openDailyAlertModal("missingCheckOut")}
+              />
+            </>
+          )}
 
           {!isHRDashboard && (
             <QuickActions

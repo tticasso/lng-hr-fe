@@ -6,7 +6,7 @@ import { announcementAPI } from "../../../apis/announcements";
 import { dashboardAPI } from "../../../apis/dashboardAPI";
 import { getAnnouncementDashboardMeta } from "../../../shared/announcementSchedule";
 import { hasAnyPermission } from "../../../utils/authPermissions";
-import { ACCESS, ACCESS_GROUPS } from "../../../config/accessControl";
+import { ACCESS } from "../../../config/accessControl";
 
 const DASHBOARD_REQUEST_LIMIT = 5;
 const DASHBOARD_ANNOUNCEMENT_LIMIT = 3;
@@ -21,21 +21,11 @@ const formatLocalDate = (date) => {
   return `${year}-${month}-${day}`;
 };
 
-const getRoleName = (user) => user?.accountId?.role?.name || user?.role?.name || user?.role || "";
-
 export const isHRDashboardUser = (user) =>
-  hasAnyPermission(user, [
-    ...ACCESS_GROUPS.PAYROLL_OPS,
-    ...ACCESS.EMPLOYEES,
-    ...ACCESS.LEAVE_BALANCE,
-    ...ACCESS.HR_DASHBOARD,
-  ]);
+  hasAnyPermission(user, ACCESS.HR_DASHBOARD);
 
 const canReadAttendance = (user) => {
-  const roleName = getRoleName(user);
-  if (["ADMIN", "HR", "MANAGER", "LEADER", "DIRECTOR"].includes(roleName)) return true;
-
-  return hasAnyPermission(user, ACCESS.ATTENDANCE_ADMIN);
+  return isHRDashboardUser(user);
 };
 
 export const useDashboardData = (user, selectedDate = formatLocalDate(new Date())) => {
