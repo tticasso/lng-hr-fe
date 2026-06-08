@@ -14,7 +14,7 @@ export const useOvertimeRequests = ({ mode }) => {
   const currentEmployeeId = useMemo(() => getEmployeeId(user), [user]);
   const canApprove = useMemo(() => hasAnyPermission(user, ACCESS.OT_APPROVALS), [user]);
   const isSuperApprover = useMemo(
-    () => hasAnyPermission(user, ["MANAGE_SYSTEM", "READ_ALL_OTS"]),
+    () => hasAnyPermission(user, ["MANAGE_SYSTEM", "APPROVE_ALL_OTS"]),
     [user],
   );
 
@@ -75,7 +75,7 @@ export const useOvertimeRequests = ({ mode }) => {
       return {
         canAction: true,
         approvalLevel: getSuperApprovalLevel(ot),
-        title: "Duyệt nhanh bằng READ_ALL_OTS",
+        title: "Duyệt nhanh bằng APPROVE_ALL_OTS",
       };
     }
 
@@ -127,6 +127,7 @@ export const useOvertimeRequests = ({ mode }) => {
         ...(filters.statusGroup && { status: filters.statusGroup }),
         ...(filters.otType && { otType: filters.otType }),
         ...(filters.searchName.trim() && { search: filters.searchName.trim() }),
+        ...(mode === "approvals" && { approvalQueue: true }),
       };
       const res =
         mode === "approvals"

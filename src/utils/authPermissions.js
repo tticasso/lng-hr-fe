@@ -15,8 +15,8 @@ const LEGACY_PERMISSION_ALIASES = {
   UPDATE_LEAVE: ["WRITE_LEAVE_BALANCES"],
   APPROVE_ALL_LEAVES: ["APPROVE_LEAVE"],
   APPROVE_LEAVE: ["APPROVE_ALL_LEAVES"],
-  READ_ALL_OTS: ["APPROVE_OT"],
-  APPROVE_OT: ["READ_ALL_OTS"],
+  APPROVE_ALL_OTS: ["APPROVE_OT"],
+  APPROVE_OT: ["APPROVE_ALL_OTS"],
 };
 
 const normalizePermission = (permission) => permission?.name || permission;
