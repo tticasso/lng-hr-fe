@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Users, Calendar, TrendingUp, TrendingDown, Search, Filter, RefreshCw, Loader2, Edit, X, Save, AlertCircle, Plus, Minus } from "lucide-react";
+import { Users, Calendar, TrendingUp, TrendingDown, Search, Filter, RefreshCw, Loader2, Edit, X, Save, AlertCircle, Plus, Minus, History } from "lucide-react";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import { leavebalanceAPI } from "../../apis/leavebalaneAPI";
@@ -24,6 +24,87 @@ const buildPageList = (current, total) => {
     if (current < total - 2) pages.push("...");
     if (total > 1) pages.push(total);
     return pages;
+};
+
+const HISTORY_ACTION_LABELS = {
+    INITIAL_SETUP: "Khởi tạo",
+    MONTHLY_ACCRUAL: "Cộng phép tháng",
+    LEAVE_DEDUCTION: "Trừ phép",
+    MANUAL_ADJUSTMENT: "Điều chỉnh thủ công",
+    ANNUAL_RESET: "Reset năm",
+    CARRY_OVER: "Chuyển phép",
+    CARRY_OVER_RESET: "Reset phép chuyển",
+    LEAVE_CANCEL_REFUND: "Hoàn phép do huỷ đơn",
+};
+
+const getHistoryActionLabel = (action) => HISTORY_ACTION_LABELS[action] || action || "Cập nhật";
+
+const getHistoryTone = (amount) => {
+    if (Number(amount) > 0) return "text-green-700 bg-green-50 border-green-200";
+    if (Number(amount) < 0) return "text-red-700 bg-red-50 border-red-200";
+    return "text-gray-700 bg-gray-50 border-gray-200";
+};
+
+const getSortedHistory = (leaveBalance) =>
+    [...(leaveBalance?.history || [])].sort(
+        (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
+    );
+
+const formatHistoryDateTime = (dateString) => {
+    if (!dateString) return "--";
+    return new Date(dateString).toLocaleString("vi-VN");
+};
+
+const LeaveBalanceHistoryList = ({ leaveBalance, limit }) => {
+    const historyItems = getSortedHistory(leaveBalance);
+    const visibleItems = limit ? historyItems.slice(0, limit) : historyItems;
+
+    if (historyItems.length === 0) {
+        return (
+            <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-center text-sm text-gray-500">
+                Chưa có lịch sử công phép.
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-3">
+            {visibleItems.map((item, index) => {
+                const amount = Number(item.amount || 0);
+                const userLabel = item.user?.username || "Hệ thống";
+
+                return (
+                    <div
+                        key={item._id || `${item.action}-${item.date}-${index}`}
+                        className="rounded-lg border border-gray-200 bg-white p-3"
+                    >
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                                <p className="text-sm font-semibold text-gray-800">
+                                    {getHistoryActionLabel(item.action)}
+                                </p>
+                                <p className="mt-1 text-xs text-gray-500">{item.reason || "--"}</p>
+                            </div>
+                            <span
+                                className={`shrink-0 rounded-full border px-2 py-1 text-xs font-bold ${getHistoryTone(amount)}`}
+                            >
+                                {amount > 0 ? "+" : ""}
+                                {amount} ngày
+                            </span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400">
+                            <span>{formatHistoryDateTime(item.date)}</span>
+                            <span>Người thực hiện: {userLabel}</span>
+                        </div>
+                    </div>
+                );
+            })}
+
+            {limit && historyItems.length > limit ? (
+                <p className="text-xs text-gray-500">Còn {historyItems.length - limit} dòng lịch sử khác.</p>
+            ) : null}
+        </div>
+    );
 };
 
 const LeaveBalance = () => {
@@ -54,6 +135,8 @@ const LeaveBalance = () => {
         action: "MANUAL_ADJUSTMENT" // "ADD" | "LEAVE_DEDUCTION"
     });
     const [adjustErrors, setAdjustErrors] = useState({});
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [historyLoading, setHistoryLoading] = useState(false);
 
     useEffect(() => {
         callAPI();
@@ -231,6 +314,31 @@ const LeaveBalance = () => {
         setAdjustErrors({});
     };
 
+    const openHistoryModal = async (leaveBalance) => {
+        setShowEditModal(false);
+        setShowAdjustModal(false);
+        setSelectedLeaveBalance(leaveBalance);
+        setShowHistoryModal(true);
+
+        if (!leaveBalance?._id) return;
+
+        setHistoryLoading(true);
+        try {
+            const res = await leavebalanceAPI.getById(leaveBalance._id);
+            setSelectedLeaveBalance(res?.data?.data || leaveBalance);
+        } catch (error) {
+            toast.error(error.normalizedMessage || "Không thể tải lịch sử công phép");
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
+
+    const closeHistoryModal = () => {
+        setShowHistoryModal(false);
+        setSelectedLeaveBalance(null);
+        setHistoryLoading(false);
+    };
+
     const handleAdjustFormChange = (e) => {
         const { name, value } = e.target;
         setAdjustForm(prev => ({
@@ -300,10 +408,21 @@ const LeaveBalance = () => {
             };
 
 
-            await leavebalanceAPI.patch(selectedLeaveBalance._id, payload);
+            const adjustedLeaveBalanceId = selectedLeaveBalance._id;
+            await leavebalanceAPI.patch(adjustedLeaveBalanceId, payload);
             toast.success("Điều chỉnh số dư phép thành công!");
-            closeAdjustModal();
+            setShowAdjustModal(false);
+            setAdjustForm({ amount: 0, reason: "", action: "MANUAL_ADJUSTMENT" });
+            setAdjustErrors({});
             await callAPI(); // Refresh data
+
+            try {
+                const latestRes = await leavebalanceAPI.getById(adjustedLeaveBalanceId);
+                setSelectedLeaveBalance(latestRes?.data?.data || null);
+                setShowHistoryModal(true);
+            } catch {
+                toast.warning("Đã cập nhật công phép nhưng chưa tải được lịch sử mới nhất.");
+            }
         } catch (error) {
             console.error("Adjust error:", error);
             toast.error(error.response?.data?.message || "Điều chỉnh thất bại");
@@ -556,8 +675,16 @@ const LeaveBalance = () => {
 
                                         {/* Actions */}
                                         <td className="p-4 text-center">
-                                            {canUpdateLeave && (
                                             <div className="flex items-center justify-center gap-2">
+                                                <button
+                                                    onClick={() => openHistoryModal(item)}
+                                                    className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                                                    title="Xem lịch sử công phép"
+                                                >
+                                                    <History size={16} />
+                                                </button>
+                                                {canUpdateLeave && (
+                                                <>
                                                 <button
                                                     onClick={() => openEditModal(item)}
                                                     className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
@@ -579,8 +706,9 @@ const LeaveBalance = () => {
                                                 >
                                                     <X size={16} />
                                                 </button>
+                                                </>
+                                                )}
                                             </div>
-                                            )}
                                         </td>
                                     </tr>
                                 ))}
@@ -886,6 +1014,23 @@ const LeaveBalance = () => {
                                 </div>
                             </div>
 
+                            <div className="rounded-lg border border-gray-200 bg-white p-4">
+                                <div className="mb-3 flex items-center justify-between gap-3">
+                                    <h4 className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                                        <History size={16} />
+                                        Lịch sử gần đây
+                                    </h4>
+                                    <button
+                                        type="button"
+                                        onClick={() => openHistoryModal(selectedLeaveBalance)}
+                                        className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                                    >
+                                        Xem tất cả
+                                    </button>
+                                </div>
+                                <LeaveBalanceHistoryList leaveBalance={selectedLeaveBalance} limit={3} />
+                            </div>
+
                             {/* Adjust Form */}
                             <div className="space-y-4">
                                 <div>
@@ -1054,6 +1199,58 @@ const LeaveBalance = () => {
                                 )}
                                 {adjustForm.action === "MANUAL_ADJUSTMENT" ? "Cộng thêm" : "Trừ bớt"}
                             </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showHistoryModal && selectedLeaveBalance && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-white shadow-xl">
+                        <div className="flex items-center justify-between border-b bg-slate-50 p-4">
+                            <div className="flex items-center gap-3">
+                                <div className="rounded-lg bg-slate-100 p-2">
+                                    <History className="text-slate-600" size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-800">Lịch sử công phép</h3>
+                                    <p className="text-xs text-gray-500">
+                                        {selectedLeaveBalance.employeeId?.fullName} ({formatEmployeeCode(selectedLeaveBalance.employeeId?.employeeCode)})
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={closeHistoryModal}
+                                className="rounded-full p-2 transition-colors hover:bg-white"
+                            >
+                                <X size={20} className="text-gray-500" />
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-3 border-b bg-white p-4 text-sm">
+                            <div>
+                                <p className="text-xs uppercase text-gray-400">Tích luỹ</p>
+                                <p className="font-semibold text-green-700">{selectedLeaveBalance.totalAccrued} ngày</p>
+                            </div>
+                            <div>
+                                <p className="text-xs uppercase text-gray-400">Đã dùng</p>
+                                <p className="font-semibold text-red-700">{selectedLeaveBalance.totalUsed} ngày</p>
+                            </div>
+                            <div>
+                                <p className="text-xs uppercase text-gray-400">Còn lại</p>
+                                <p className="font-semibold text-blue-700">{selectedLeaveBalance.currentBalance} ngày</p>
+                            </div>
+                        </div>
+
+                        <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50 p-4">
+                            {historyLoading ? (
+                                <div className="flex h-40 items-center justify-center text-gray-500">
+                                    <Loader2 size={24} className="mr-2 animate-spin" />
+                                    Đang tải lịch sử...
+                                </div>
+                            ) : (
+                                <LeaveBalanceHistoryList leaveBalance={selectedLeaveBalance} />
+                            )}
                         </div>
                     </div>
                 </div>

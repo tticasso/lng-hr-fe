@@ -29,6 +29,8 @@ export const usePayrollOverview = () => {
   const [payrollData, setPayrollData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [sendingBulkEmails, setSendingBulkEmails] = useState(false);
+  const [finalizingAndSending, setFinalizingAndSending] = useState(false);
+  const [deletingPayrollPeriod, setDeletingPayrollPeriod] = useState(false);
   const [adjustmentModalPayroll, setAdjustmentModalPayroll] = useState(null);
   const [detailModalPayroll, setDetailModalPayroll] = useState(null);
   const [selectedRows, setSelectedRows] = useState([]);
@@ -38,7 +40,7 @@ export const usePayrollOverview = () => {
     status: "",
   });
 
-  const fetchPayrollData = async () => {
+  const fetchPayrollData = useMemo(() => async () => {
     try {
       setLoading(true);
       const [year, month] = selectedMonth.split("-");
@@ -53,11 +55,11 @@ export const usePayrollOverview = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedMonth]);
 
   useEffect(() => {
     fetchPayrollData();
-  }, [selectedMonth]);
+  }, [fetchPayrollData]);
 
   const filteredData = useMemo(() => {
     let result = [...payrollData];
@@ -108,6 +110,9 @@ export const usePayrollOverview = () => {
       emailReadyCount: payrollData.filter((item) =>
         ["FINALIZED", "PAID"].includes(item.status),
       ).length,
+      draftCount: payrollData.filter((item) => item.status === "DRAFT").length,
+      finalizedCount: payrollData.filter((item) => item.status === "FINALIZED").length,
+      paidCount: payrollData.filter((item) => item.status === "PAID").length,
     }),
     [filteredData, payrollData],
   );
@@ -324,6 +329,127 @@ const handleReopenPayroll = async (payroll) => {
     }
   };
 
+  const handleFinalizeAndSendPayrollEmails = async () => {
+    if (!canRunPayroll) {
+      toast.error("Bạn không có quyền WRITE_PAYROLLS để chốt và gửi email phiếu lương.");
+      return;
+    }
+
+    const [year, month] = selectedMonth.split("-");
+    const draftCount = payrollData.filter((item) => item.status === "DRAFT").length;
+
+    if (draftCount === 0) {
+      toast.warning("Kỳ lương này không còn phiếu DRAFT để chốt. Bạn có thể dùng nút Gửi phiếu đã chốt.");
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Chốt ${draftCount} phiếu lương tháng ${month}/${year} và gửi email cho nhân viên?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setFinalizingAndSending(true);
+      const payload = {
+        month: parseInt(month, 10),
+        year: parseInt(year, 10),
+      };
+
+      await payrollAPI.finalize(payload);
+      toast.success("Đã chốt kỳ lương thành công");
+
+      const res = await payrollAPI.sendEmailsBulk(payload);
+      const result = res.data?.data || {};
+      const alreadySentCount = Number(result.skippedAlreadySent || 0);
+      const skippedCount =
+        Number(result.skippedNoEmployee || 0) +
+        Number(result.skippedNoEmail || 0) +
+        Number(result.skippedInvalidEmail || 0) +
+        alreadySentCount;
+
+      if (res.data?.status === "partial_success") {
+        toast.warning(
+          `Đã gửi mới ${result.sent || 0}/${result.total || 0} email. Đã gửi trước đó: ${alreadySentCount}. Lỗi: ${result.failed || 0}, bỏ qua: ${skippedCount}.`,
+        );
+      } else {
+        toast.success(
+          `Đã gửi mới ${result.sent || 0}/${result.total || 0} email. Đã gửi trước đó: ${alreadySentCount}.`,
+        );
+      }
+
+      await fetchPayrollData();
+      setSelectedRows([]);
+    } catch (error) {
+      toast.error(error.normalizedMessage || error.response?.data?.message || "Chốt lương và gửi email thất bại");
+    } finally {
+      setFinalizingAndSending(false);
+    }
+  };
+
+  const handleDeletePayrollPeriod = async () => {
+    if (!canRunPayroll) {
+      toast.error("Bạn không có quyền WRITE_PAYROLLS để xoá dữ liệu bảng lương.");
+      return;
+    }
+
+    const [year, month] = selectedMonth.split("-");
+    const periodLabel = `${month}/${year}`;
+    const draftCount = payrollData.filter((item) => item.status === "DRAFT").length;
+    const finalizedCount = payrollData.filter((item) => item.status === "FINALIZED").length;
+    const paidCount = payrollData.filter((item) => item.status === "PAID").length;
+    const totalCount = draftCount + finalizedCount + paidCount;
+
+    if (totalCount === 0) {
+      toast.warning("Kỳ lương này không có dữ liệu để xoá.");
+      return;
+    }
+
+    const payload = {
+      month: parseInt(month, 10),
+      year: parseInt(year, 10),
+    };
+
+    if (draftCount > 0) {
+      payload.status = "DRAFT";
+
+      if (
+        !window.confirm(
+          `Xoá ${draftCount} phiếu lương DRAFT tháng ${periodLabel}? Các phiếu đã chốt/đã thanh toán sẽ không bị xoá.`,
+        )
+      ) {
+        return;
+      }
+    } else {
+      const confirmText = window.prompt(
+        `Kỳ ${periodLabel} không còn DRAFT. Thao tác này sẽ xoá ${finalizedCount} phiếu đã chốt và ${paidCount} phiếu đã thanh toán. Nhập XOA để xác nhận.`,
+      );
+
+      if (confirmText !== "XOA") {
+        toast.info("Đã huỷ xoá dữ liệu bảng lương.");
+        return;
+      }
+
+      payload.force = true;
+    }
+
+    try {
+      setDeletingPayrollPeriod(true);
+      const res = await payrollAPI.deletePeriod(payload);
+      const result = res.data?.data || {};
+
+      toast.success(`Đã xoá ${result.deleted || 0} phiếu lương tháng ${periodLabel}.`);
+      await fetchPayrollData();
+      setSelectedRows([]);
+    } catch (error) {
+      toast.error(error.normalizedMessage || error.response?.data?.message || "Xoá dữ liệu bảng lương thất bại");
+    } finally {
+      setDeletingPayrollPeriod(false);
+    }
+  };
+
   const handleExportExcel = async () => {
     try {
       const XLSX = await import("xlsx");
@@ -459,6 +585,8 @@ const handleReopenPayroll = async (payroll) => {
     handleSelectAll,
     handleSelectRow,
     handleSendPayrollEmailsBulk,
+    handleFinalizeAndSendPayrollEmails,
+    handleDeletePayrollPeriod,
     handleSendPayrollEmail,
     handleReopenPayroll,
     handleOpenAdjustments,
@@ -470,6 +598,8 @@ const handleReopenPayroll = async (payroll) => {
     isSomeSelected,
     loading,
     sendingBulkEmails,
+    finalizingAndSending,
+    deletingPayrollPeriod,
     adjustmentModalPayroll,
     detailModalPayroll,
     selectedPayrollItems,

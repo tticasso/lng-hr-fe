@@ -1,5 +1,7 @@
 import apiClient from "./apiClient";
 
+const PAYROLL_EMAIL_TIMEOUT_MS = Number(import.meta.env.VITE_PAYROLL_EMAIL_TIMEOUT_MS || 120000);
+
 export const payrollAPI = {
   getall: (month, year, params = {}) => {
     return apiClient.get("/payrolls", {
@@ -36,10 +38,18 @@ export const payrollAPI = {
   },
 
   sendEmail: (id) => {
-    return apiClient.post(`/payrolls/${id}/send-email`);
+    return apiClient.post(`/payrolls/${id}/send-email`, null, {
+      timeout: PAYROLL_EMAIL_TIMEOUT_MS,
+    });
   },
 
   sendEmailsBulk: (payload) => {
-    return apiClient.post("/payrolls/send-emails", payload);
+    return apiClient.post("/payrolls/send-emails", payload, {
+      timeout: PAYROLL_EMAIL_TIMEOUT_MS,
+    });
+  },
+
+  deletePeriod: (payload) => {
+    return apiClient.delete("/payrolls/period", { data: payload });
   },
 };

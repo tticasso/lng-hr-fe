@@ -19,6 +19,8 @@ const AllPayRoll = () => {
     handlePayment,
     handleSelectAll,
     handleSelectRow,
+    handleFinalizeAndSendPayrollEmails,
+    handleDeletePayrollPeriod,
     handleSendPayrollEmailsBulk,
     handleSendPayrollEmail,
     handleReopenPayroll,
@@ -31,6 +33,8 @@ const AllPayRoll = () => {
     isSomeSelected,
     loading,
     sendingBulkEmails,
+    finalizingAndSending,
+    deletingPayrollPeriod,
     adjustmentModalPayroll,
     detailModalPayroll,
     selectedPayrollItems,
@@ -58,13 +62,19 @@ const AllPayRoll = () => {
         onRefresh={fetchPayrollData}
         onPayment={handlePayment}
         onBulkAdjustments={handleOpenBulkAdjustments}
+        onFinalizeAndSend={handleFinalizeAndSendPayrollEmails}
+        onDeletePeriod={handleDeletePayrollPeriod}
         onSendEmailsBulk={handleSendPayrollEmailsBulk}
         onExport={handleExportExcel}
         loading={loading}
         sendingBulkEmails={sendingBulkEmails}
+        finalizingAndSending={finalizingAndSending}
+        deletingPayrollPeriod={deletingPayrollPeriod}
         selectedCount={selectedRows.length}
         exportDisabled={filteredData.length === 0}
+        deleteDisabled={summary.totalPayrolls === 0}
         emailDisabled={summary.emailReadyCount === 0}
+        finalizeAndSendDisabled={summary.draftCount === 0}
         canRunPayroll={canRunPayroll}
       />
 

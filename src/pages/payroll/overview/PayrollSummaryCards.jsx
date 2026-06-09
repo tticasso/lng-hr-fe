@@ -32,50 +32,48 @@ const PayrollSummaryCards = ({ summary, formatMoney }) => {
 
   const toneMap = {
     blue: {
-      card: "from-blue-50 to-blue-100 border-blue-200",
+      accent: "bg-blue-500",
       text: "text-blue-700",
-      subtext: "text-blue-600",
-      icon: "bg-blue-200 text-blue-700",
+      icon: "bg-blue-50 text-blue-600 ring-blue-100",
     },
     green: {
-      card: "from-green-50 to-green-100 border-green-200",
-      text: "text-green-700",
-      subtext: "text-green-600",
-      icon: "bg-green-200 text-green-700",
+      accent: "bg-emerald-500",
+      text: "text-emerald-700",
+      icon: "bg-emerald-50 text-emerald-600 ring-emerald-100",
     },
     purple: {
-      card: "from-purple-50 to-purple-100 border-purple-200",
-      text: "text-purple-700",
-      subtext: "text-purple-600",
-      icon: "bg-purple-200 text-purple-700",
+      accent: "bg-violet-500",
+      text: "text-violet-700",
+      icon: "bg-violet-50 text-violet-600 ring-violet-100",
     },
     orange: {
-      card: "from-orange-50 to-orange-100 border-orange-200",
+      accent: "bg-orange-500",
       text: "text-orange-700",
-      subtext: "text-orange-600",
-      icon: "bg-orange-200 text-orange-700",
+      icon: "bg-orange-50 text-orange-600 ring-orange-100",
     },
   };
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {cards.map((card) => {
         const Icon = card.icon;
         const tone = toneMap[card.tone];
+
         return (
           <Card
             key={card.label}
-            className={`border p-4 bg-gradient-to-br ${tone.card}`}
+            className="relative overflow-hidden rounded-lg border-gray-200 bg-white p-4 shadow-sm"
           >
-            <div className="flex items-center justify-between gap-3">
+            <div className={`absolute inset-y-0 left-0 w-1 ${tone.accent}`} />
+            <div className="flex items-center justify-between gap-3 pl-2">
               <div className="min-w-0">
-                <p className={`mt-1 text-xs font-medium uppercase ${tone.subtext}`}>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                   {card.label}
                 </p>
                 <p className={`mt-1 truncate text-xl font-bold ${tone.text}`}>{card.value}</p>
               </div>
-              <div className={`shrink-0 rounded-lg p-3 ${tone.icon}`}>
-                <Icon size={24} />
+              <div className={`shrink-0 rounded-lg p-2.5 ring-1 ${tone.icon}`}>
+                <Icon size={22} />
               </div>
             </div>
           </Card>
