@@ -27,8 +27,10 @@ import {
 } from "lucide-react";
 import logoLNG from "../assets/LNG-sm.webp";
 import { useAuth } from "../context/AuthContext";
+import { useNotification } from "../context/NotificationContext";
 import { useSidebar } from "../context/SidebarContext";
 import { hasAnyPermission } from "../utils/authPermissions";
+import { getApprovalBadgeCount } from "../utils/approvalBadge";
 import { ACCESS, ACCESS_GROUPS } from "../config/accessControl";
 import { ROUTES } from "../config/routes";
 
@@ -56,6 +58,7 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, user } = useAuth();
+  const { approvalCounts } = useNotification();
   const { isCollapsed, isMobileSidebarOpen, toggleSidebar, closeMobileSidebar } = useSidebar();
 
   const canAccess = (permissions = []) => hasAnyPermission(user, permissions);
@@ -143,6 +146,7 @@ const Sidebar = () => {
                   key: "requests",
                   label: "Đơn từ",
                   icon: Plane,
+                  badgeKeys: ["leave", "ot"],
                   children: [
                     {
                       path: ROUTES.LEAVE,
@@ -154,6 +158,7 @@ const Sidebar = () => {
                       label: "Duyệt đơn nghỉ",
                       icon: ClipboardCheck,
                       permissions: ACCESS.LEAVE_APPROVALS,
+                      badgeKey: "leave",
                     },
                     {
                       path: ROUTES.OVERTIME,
@@ -165,6 +170,7 @@ const Sidebar = () => {
                       label: "Duyệt đơn OT",
                       icon: ClipboardCheck,
                       permissions: ACCESS.OT_APPROVALS,
+                      badgeKey: "ot",
                     },
                   ],
                 },
@@ -310,12 +316,34 @@ const Sidebar = () => {
     navigate(ROUTES.LOGIN);
   };
 
+  const getBadgeCount = (item) => {
+    return getApprovalBadgeCount(item, approvalCounts);
+  };
+
+  const renderBadge = (count, compact = false) => {
+    if (!count) return null;
+    const label = count > 99 ? "99+" : String(count);
+
+    return (
+      <span
+        className={`${
+          compact
+            ? "absolute right-1 top-1 h-4 min-w-4 px-1 text-[10px]"
+            : "ml-auto h-5 min-w-[20px] px-1.5 text-[11px]"
+        } inline-flex items-center justify-center rounded-full bg-red-500 font-semibold text-white ring-2 ring-white`}
+      >
+        {label}
+      </span>
+    );
+  };
+
   const renderNavItem = (item, isChild = false) => {
     const hasPermissionAccess = !item.permissions || canAccess(item.permissions);
     if (!hasPermissionAccess) return null;
 
     const Icon = item.icon;
     const isActive = isMenuItemActive(item.path);
+    const badgeCount = getBadgeCount(item);
 
     return (
       <Link
@@ -335,15 +363,17 @@ const Sidebar = () => {
         <span
           className={`${
             shouldCollapse ? "" : "mr-3"
-          } flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+          } relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
             isActive ? "bg-white text-blue-700" : "text-slate-500 group-hover:text-slate-800"
           }`}
         >
           <Icon size={18} />
+          {shouldCollapse && renderBadge(badgeCount, true)}
         </span>
         {!shouldCollapse && (
           <span className="flex min-w-0 flex-1 items-center gap-2">
             <span className="truncate">{item.label}</span>
+            {renderBadge(badgeCount)}
           </span>
         )}
       </Link>
@@ -359,6 +389,7 @@ const Sidebar = () => {
     const Icon = item.icon;
     const isExpanded = !!expandedDropdowns[item.key];
     const isActive = visibleChildren.some((child) => isMenuItemActive(child.path));
+    const badgeCount = getBadgeCount(item);
 
     return (
       <div key={item.key}>
@@ -376,13 +407,19 @@ const Sidebar = () => {
             <span
               className={`${
                 shouldCollapse ? "" : "mr-3"
-              } flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+              } relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
                 isActive ? "bg-white text-blue-700" : "text-slate-500"
               }`}
             >
               <Icon size={18} />
+              {shouldCollapse && renderBadge(badgeCount, true)}
             </span>
-            {!shouldCollapse && <span className="truncate text-left">{item.label}</span>}
+            {!shouldCollapse && (
+              <span className="flex min-w-0 flex-1 items-center gap-2">
+                <span className="truncate text-left">{item.label}</span>
+                {renderBadge(badgeCount)}
+              </span>
+            )}
           </div>
           {!shouldCollapse &&
             (isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}

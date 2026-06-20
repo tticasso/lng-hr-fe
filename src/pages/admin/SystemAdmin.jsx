@@ -28,6 +28,7 @@ import { hasAnyPermission, hasPermission as userHasPermission } from "../../util
 import { COMPATIBILITY_PERMISSION_ALIASES } from "../../config/accessControl";
 import { toast } from "react-toastify";
 import Card from "../../components/common/Card";
+import { matchesSearchText } from "../../utils/searchText";
 import Button from "../../components/common/Button"; // Đảm bảo component này tồn tại
 import AuditLogsPanel from "./audit/AuditLogsPanel";
 
@@ -406,10 +407,7 @@ const SystemAdmin = () => {
       }
 
       if (
-        searchTerm === "" ||
-        perm.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        perm.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        perm.description?.toLowerCase().includes(searchTerm.toLowerCase())
+        matchesSearchText([perm.name, perm.displayName, perm.description], searchTerm)
       ) {
         groups[moduleName].push(perm);
       }

@@ -11,6 +11,7 @@ import {
 
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
+import { matchesSearchText } from "../../../utils/searchText";
 
 const MODULE_LABELS = {
   ADMIN: "Quản trị",
@@ -503,9 +504,11 @@ const AuditLogsPanel = ({ auditLogId, auditLoading, auditLogs, onRefresh, onSele
   const normalizedLogs = useMemo(() => asArray(auditLogs).map(normalizeLog), [auditLogs]);
 
   const visibleLogs = useMemo(() => {
-    const search = filters.search.trim().toLowerCase();
     return normalizedLogs.filter((log) => {
-      const matchesSearch = !search || [log.actionLabel, log.actorName, log.moduleLabel, log.targetName, log.sourceLayer, log.ipAddress, log.requestPath, formatDateTime(log.createdAt)].join(" ").toLowerCase().includes(search);
+      const matchesSearch = matchesSearchText(
+        [log.actionLabel, log.actorName, log.moduleLabel, log.targetName, log.sourceLayer, log.ipAddress, log.requestPath, formatDateTime(log.createdAt)],
+        filters.search,
+      );
       const matchesStatus = !filters.status || log.status === filters.status;
       const matchesModule = !filters.module || String(log.module || "").toUpperCase() === filters.module;
       return matchesSearch && matchesStatus && matchesModule;

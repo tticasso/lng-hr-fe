@@ -7,6 +7,7 @@ import { saturdayRotations } from "../../apis/saturday-rotations";
 import { useAuth } from "../../context/AuthContext";
 import { getEmployee, hasPermission } from "../../utils/authPermissions";
 import { formatEmployeeCode } from "../../utils/employeeDisplay";
+import { matchesSearchText } from "../../utils/searchText";
 
 const StatusBadge = ({ status }) => {
     const statusConfig = {
@@ -343,10 +344,10 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
     // Lọc nhân viên chưa có team hoặc không thuộc team hiện tại
     const availableEmployees = employees.filter(emp => {
         // Lọc theo search term
-        const matchesSearch = !searchTerm ||
-            emp.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            emp.employeeCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            emp.jobTitle?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = matchesSearchText(
+            [emp.fullName, emp.employeeCode, emp.jobTitle],
+            searchTerm,
+        );
 
         // Lọc nhân viên chưa có team hoặc không thuộc team hiện tại
         const notInCurrentTeam = !emp.teamId || emp.teamId._id !== teamId;
@@ -498,9 +499,10 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
 
         // Lọc theo search term
         return allTeamMembers.filter(person => {
-            const matchesSearch = !searchTerm ||
-                person.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                person.employeeCode?.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesSearch = matchesSearchText(
+                [person.fullName, person.employeeCode],
+                searchTerm,
+            );
 
             return matchesSearch;
         });

@@ -8,6 +8,7 @@ import { useAuth } from "../../context/AuthContext";
 import { hasPermission } from "../../utils/authPermissions";
 import { ACCESS } from "../../config/accessControl";
 import { formatEmployeeCode } from "../../utils/employeeDisplay";
+import { matchesSearchText } from "../../utils/searchText";
 
 const buildPageList = (current, total) => {
     if (total <= 1) return [1];
@@ -158,9 +159,10 @@ const LeaveBalance = () => {
     // Lọc dữ liệu theo search và year
     const filteredData = useMemo(() => {
         return leaveBalances.filter(item => {
-            const matchesSearch = !searchTerm || 
-                item.employeeId?.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                item.employeeId?.employeeCode?.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesSearch = matchesSearchText(
+                [item.employeeId?.fullName, item.employeeId?.employeeCode],
+                searchTerm,
+            );
             
             const matchesYear = !yearFilter || item.year.toString() === yearFilter;
             

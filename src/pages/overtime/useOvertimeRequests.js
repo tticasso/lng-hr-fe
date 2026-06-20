@@ -2,15 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { OTApi } from "../../apis/OTAPI";
 import { useAuth } from "../../context/AuthContext";
+import { useNotification } from "../../context/NotificationContext";
 import { getEmployeeId, hasAnyPermission } from "../../utils/authPermissions";
 import { ACCESS } from "../../config/accessControl";
 import {
   getEntityId,
   normalizeStatus,
 } from "./shared";
+import { matchesSearchText } from "../../utils/searchText";
 
 export const useOvertimeRequests = ({ mode }) => {
   const { user } = useAuth();
+  const { refreshApprovalCounts } = useNotification();
   const currentEmployeeId = useMemo(() => getEmployeeId(user), [user]);
   const canApprove = useMemo(() => hasAnyPermission(user, ACCESS.OT_APPROVALS), [user]);
   const isSuperApprover = useMemo(
@@ -46,7 +49,7 @@ export const useOvertimeRequests = ({ mode }) => {
   });
 
   const searchQuery = useMemo(
-    () => filters.searchName.trim().toLowerCase(),
+    () => filters.searchName.trim(),
     [filters.searchName]
   );
 
@@ -169,10 +172,12 @@ export const useOvertimeRequests = ({ mode }) => {
 
   const filteredOTs = useMemo(() => {
     const filtered = ots.filter((ot) => {
-      const name = (ot?.employeeId?.fullName || "").toLowerCase();
       const status = normalizeStatus(ot?.status);
 
-      const matchName = !searchQuery || name.includes(searchQuery);
+      const matchName = matchesSearchText(
+        [ot?.employeeId?.fullName, ot?.employeeId?.employeeCode, ot?.reason],
+        searchQuery,
+      );
       const matchStatus = !filters.statusGroup || status === filters.statusGroup;
       const matchType = !filters.otType || ot?.otType === filters.otType;
 
@@ -217,6 +222,7 @@ export const useOvertimeRequests = ({ mode }) => {
       toast.success("Duyệt đơn OT thành công");
       setApproveOTModal({ isOpen: false, otData: null });
       await refresh();
+      refreshApprovalCounts("ot");
     } catch (error) {
       setApproveOTModal({ isOpen: false, otData: null });
       toast.error(error.normalizedMessage || error.response?.data?.message || "Duyệt đơn OT thất bại");
@@ -243,6 +249,7 @@ export const useOvertimeRequests = ({ mode }) => {
       });
       toast.success("Đã từ chối đơn OT");
       await refresh();
+      refreshApprovalCounts("ot");
     } catch (error) {
       toast.error(error.normalizedMessage || error.response?.data?.message || "Từ chối đơn OT thất bại");
     }
@@ -254,6 +261,7 @@ export const useOvertimeRequests = ({ mode }) => {
       await OTApi.delete(otId);
       toast.success("Đã xóa đơn OT");
       await refresh();
+      refreshApprovalCounts("ot");
     } catch (error) {
       toast.error(error.normalizedMessage || error.response?.data?.message || "Xóa đơn OT thất bại");
     }

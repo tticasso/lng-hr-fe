@@ -20,6 +20,7 @@ import { useAuth } from "../../context/AuthContext";
 import { hasPermission } from "../../utils/authPermissions";
 import { toast } from "react-toastify";
 import { formatEmployeeCode } from "../../utils/employeeDisplay";
+import { matchesSearchText } from "../../utils/searchText";
 
 const Department = () => {
   const { user } = useAuth();
@@ -71,12 +72,10 @@ const Department = () => {
   }, []);
 
   const filteredDepartments = useMemo(() => {
-    const search = searchTerm.toLowerCase().trim();
-    if (!search) return departments;
+    if (!searchTerm.trim()) return departments;
     return departments.filter(
       (dept) =>
-        dept.name?.toLowerCase().includes(search) ||
-        dept.deptCode?.toLowerCase().includes(search),
+        matchesSearchText([dept.name, dept.deptCode], searchTerm),
     );
   }, [departments, searchTerm]);
 

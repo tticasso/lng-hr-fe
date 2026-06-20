@@ -24,6 +24,7 @@ import { useAuth } from "../../context/AuthContext";
 import { hasPermission } from "../../utils/authPermissions";
 import { toast } from "react-toastify";
 import { formatEmployeeCode } from "../../utils/employeeDisplay";
+import { matchesSearchText } from "../../utils/searchText";
 
 const TeamPages = () => {
   const { user } = useAuth();
@@ -75,12 +76,9 @@ const TeamPages = () => {
     let filtered = teams;
 
     if (searchTerm) {
-      const search = searchTerm.toLowerCase();
       filtered = filtered.filter(
         (team) =>
-          team.name?.toLowerCase().includes(search) ||
-          team.teamCode?.toLowerCase().includes(search) ||
-          team.leader?.fullName?.toLowerCase().includes(search),
+          matchesSearchText([team.name, team.teamCode, team.leader?.fullName], searchTerm),
       );
     }
 

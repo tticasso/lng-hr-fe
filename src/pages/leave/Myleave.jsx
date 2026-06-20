@@ -17,6 +17,7 @@ import { getEmployeeId, hasAnyPermission } from "../../utils/authPermissions";
 import { ACCESS } from "../../config/accessControl";
 import { formatEmployeeCode } from "../../utils/employeeDisplay";
 import { ROUTES } from "../../config/routes";
+import { matchesSearchText } from "../../utils/searchText";
 
 
 const otTypeLabel = {
@@ -346,9 +347,9 @@ const MyLeave = () => {
         };
     };
 
-    const searchQuery = useMemo(() => filters.search.trim().toLowerCase(), [filters.search]);
+    const searchQuery = useMemo(() => filters.search.trim(), [filters.search]);
     const otSearchQuery = useMemo(
-        () => otFilters.searchName.trim().toLowerCase(),
+        () => otFilters.searchName.trim(),
         [otFilters.searchName]
     );
 
@@ -422,10 +423,10 @@ const MyLeave = () => {
         const q = searchQuery;
 
         const filtered = leaves.filter((lv) => {
-            const name = (lv.employeeId?.fullName || "").toLowerCase();
-            const reason = (lv.reason || "").toLowerCase();
-
-            const matchSearch = !q || name.includes(q) || reason.includes(q);
+            const matchSearch = matchesSearchText(
+                [lv.employeeId?.fullName, lv.employeeId?.employeeCode, lv.reason],
+                q,
+            );
             const matchType = !type || lv?.leaveType === type;
             const matchStatus = !st || normalizeStatus(lv?.status) === st;
 
@@ -458,10 +459,12 @@ const MyLeave = () => {
         const type = otFilters.otType;
 
         const filtered = ots.filter((ot) => {
-            const name = (ot?.employeeId?.fullName || "").toLowerCase();
             const st = normalizeStatus(ot?.status);
 
-            const matchName = !q || name.includes(q);
+            const matchName = matchesSearchText(
+                [ot?.employeeId?.fullName, ot?.employeeId?.employeeCode, ot?.reason],
+                q,
+            );
             const matchStatus = !stGroup || st === stGroup;
             const matchType = !type || ot?.otType === type;
 

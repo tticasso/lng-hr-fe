@@ -2,15 +2,18 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { leaveAPI } from "../../apis/leaveAPI";
 import { useAuth } from "../../context/AuthContext";
+import { useNotification } from "../../context/NotificationContext";
 import { getEmployeeId, hasAnyPermission } from "../../utils/authPermissions";
 import { ACCESS } from "../../config/accessControl";
 import {
   getEntityId,
   normalizeStatus,
 } from "./shared";
+import { matchesSearchText } from "../../utils/searchText";
 
 export const useLeaveRequests = ({ mode }) => {
   const { user } = useAuth();
+  const { refreshApprovalCounts } = useNotification();
   const currentEmployeeId = useMemo(() => getEmployeeId(user), [user]);
   const canApprove = useMemo(() => hasAnyPermission(user, ACCESS.LEAVE_APPROVALS), [user]);
   const isSuperApprover = useMemo(
@@ -46,7 +49,7 @@ export const useLeaveRequests = ({ mode }) => {
   const hasFetched = useRef(false);
   const actionMenuRef = useRef(null);
 
-  const searchQuery = useMemo(() => filters.search.trim().toLowerCase(), [filters.search]);
+  const searchQuery = useMemo(() => filters.search.trim(), [filters.search]);
 
   const isOwnRequest = (request) => getEntityId(request?.employeeId) === currentEmployeeId;
 
@@ -212,10 +215,10 @@ export const useLeaveRequests = ({ mode }) => {
 
   const filteredLeaves = useMemo(() => {
     const filtered = leaves.filter((leave) => {
-      const name = (leave.employeeId?.fullName || "").toLowerCase();
-      const reason = (leave.reason || "").toLowerCase();
-
-      const matchSearch = !searchQuery || name.includes(searchQuery) || reason.includes(searchQuery);
+      const matchSearch = matchesSearchText(
+        [leave.employeeId?.fullName, leave.employeeId?.employeeCode, leave.reason],
+        searchQuery,
+      );
       const matchType = !filters.leaveType || leave?.leaveType === filters.leaveType;
       const matchStatus = !filters.status || normalizeStatus(leave?.status) === filters.status;
 
@@ -289,6 +292,7 @@ export const useLeaveRequests = ({ mode }) => {
       });
       toast.success(`Đã duyệt đơn nghỉ (Level ${approvalContext.approvalLevel})`);
       await refresh();
+      refreshApprovalCounts("leave");
     } catch (error) {
       toast.error(error.response?.data?.message || "Duyệt đơn thất bại");
     }
@@ -312,6 +316,7 @@ export const useLeaveRequests = ({ mode }) => {
       });
       toast.success("Đã từ chối đơn nghỉ");
       await refresh();
+      refreshApprovalCounts("leave");
     } catch (error) {
       toast.error(error.normalizedMessage || error.response?.data?.message || "Từ chối đơn nghỉ thất bại");
     }
@@ -323,6 +328,7 @@ export const useLeaveRequests = ({ mode }) => {
       await leaveAPI.CANCELLED(leaveId);
       toast.success("Đã hủy đơn nghỉ");
       await refresh();
+      refreshApprovalCounts("leave");
     } catch (error) {
       toast.error(error.normalizedMessage || error.response?.data?.message || "Hủy đơn nghỉ thất bại");
     }
@@ -334,6 +340,7 @@ export const useLeaveRequests = ({ mode }) => {
       await leaveAPI.delete(leaveId);
       toast.success("Đã xóa đơn nghỉ");
       await refresh();
+      refreshApprovalCounts("leave");
     } catch (error) {
       toast.error(error.normalizedMessage || error.response?.data?.message || "Xóa đơn nghỉ thất bại");
     }

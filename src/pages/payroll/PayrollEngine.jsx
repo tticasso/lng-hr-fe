@@ -35,6 +35,7 @@ import {
   getOtPayBreakdownItems,
 } from "./overview/payrollOverviewUtils";
 import { formatEmployeeCode } from "../../utils/employeeDisplay";
+import { matchesSearchText } from "../../utils/searchText";
 
 const PayrollEngine = () => {
   const { user } = useAuth();
@@ -93,17 +94,9 @@ const PayrollEngine = () => {
 
   // Filter data dựa trên search query
   const filteredPayrollData = payrollData.filter((row) => {
-    if (!searchQuery.trim()) return true;
-
-    const searchLower = searchQuery.toLowerCase();
-    const fullName = row.employeeId?.fullName?.toLowerCase() || "";
-    const employeeCode = row.employeeId?.employeeCode?.toLowerCase() || "";
-    const department = row.departmentId?.name?.toLowerCase() || "";
-
-    return (
-      fullName.includes(searchLower) ||
-      employeeCode.includes(searchLower) ||
-      department.includes(searchLower)
+    return matchesSearchText(
+      [row.employeeId?.fullName, row.employeeId?.employeeCode, row.departmentId?.name],
+      searchQuery,
     );
   });
 

@@ -4,6 +4,7 @@ import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import { teamAPI } from "../../apis/teamAPI";
 import { formatEmployeeCode } from "../../utils/employeeDisplay";
+import { matchesSearchText } from "../../utils/searchText";
 
 const TeamList = () => {
     const [loading, setLoading] = useState(true);
@@ -41,9 +42,7 @@ const TeamList = () => {
         // Filter by search term
         if (searchTerm) {
             filtered = filtered.filter(team =>
-                team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                team.teamCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                team.leader?.fullName?.toLowerCase().includes(searchTerm.toLowerCase())
+                matchesSearchText([team.name, team.teamCode, team.leader?.fullName], searchTerm)
             );
         }
 

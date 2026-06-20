@@ -13,6 +13,7 @@ import { hasAnyPermission } from "../utils/authPermissions";
 import { ACCESS } from "../config/accessControl";
 import { ROUTES } from "../config/routes";
 import logoImage from "../assets/logo-sm.webp";
+import { matchesSearchText } from "../utils/searchText";
 
 // âœ… Format thá»i gian thĂ´ng bĂ¡o: rĂµ rĂ ng + chuyĂªn nghiá»‡p
 const formatNotifyTime = (dateInput) => {
@@ -64,7 +65,7 @@ const getUnreadCountFromResponse = (res) => {
 
 const Header = () => {
   const { user } = useAuth(); // Láº¥y user tá»« AuthContext thay vĂ¬ gá»i API
-  const { openNotify, setOpenNotify } = useNotification();
+  const { openNotify, setOpenNotify, refreshApprovalCounts } = useNotification();
   const { isCollapsed, openMobileSidebar } = useSidebar();
 
   // Láº¥y thĂ´ng tin tá»« user context thay vĂ¬ gá»i API
@@ -177,9 +178,9 @@ const Header = () => {
         // XĂ¡c Ä‘á»‹nh route vĂ  tab dá»±a trĂªn type
         const handleToastClick = () => {
           if (data.type === "LEAVE_CREATED") {
-            navigate(ROUTES.LEAVE);
+            navigate(hasPagePermission(ACCESS.LEAVE_APPROVALS) ? ROUTES.LEAVE_APPROVALS : ROUTES.LEAVE);
           } else if (data.type === "OT_CREATED") {
-            navigate(ROUTES.OVERTIME);
+            navigate(hasPagePermission(ACCESS.OT_APPROVALS) ? ROUTES.OVERTIME_APPROVALS : ROUTES.OVERTIME);
           }
         };
 
@@ -219,7 +220,13 @@ const Header = () => {
       // ThĂªm vĂ o Ä‘áº§u danh sĂ¡ch
       return [newNotification, ...prev];
     });
-  }, [navigate]);
+
+    if (data.type === "LEAVE_CREATED") {
+      refreshApprovalCounts("leave");
+    } else if (data.type === "OT_CREATED") {
+      refreshApprovalCounts("ot");
+    }
+  }, [hasPagePermission, navigate, refreshApprovalCounts]);
 
   // Káº¿t ná»‘i socket
   useSocket(handleSocketNotification);
@@ -398,13 +405,9 @@ const Header = () => {
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
 
-    const query = searchQuery.toLowerCase().trim();
-
-    return allPages.filter((page) => {
-      const labelMatch = page.label.toLowerCase().includes(query);
-      const keywordMatch = page.keywords.some((keyword) => keyword.includes(query));
-      return labelMatch || keywordMatch;
-    }).slice(0, 5); // Giá»›i háº¡n 5 káº¿t quáº£
+    return allPages.filter((page) =>
+      matchesSearchText([page.label, ...(page.keywords || [])], searchQuery)
+    ).slice(0, 5); // Giá»›i háº¡n 5 káº¿t quáº£
   }, [searchQuery, allPages]);
 
   const handleSearchChange = (e) => {

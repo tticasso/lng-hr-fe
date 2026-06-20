@@ -8,6 +8,7 @@ import { departmentApi } from "../../../apis/departmentApi";
 import { useAuth } from "../../../context/AuthContext";
 import { hasPermission } from "../../../utils/authPermissions";
 import { formatEmployeeCode } from "../../../utils/employeeDisplay";
+import { matchesSearchText } from "../../../utils/searchText";
 import { getListData, getPagination, hasPaginationMetadata } from "../../../shared/apiResponse";
 import {
   extractDateRangeFromGrid,
@@ -242,11 +243,9 @@ export const useAttendanceAdmin = () => {
     let result = [...allAttendanceData];
 
     if (filters.search.trim()) {
-      const searchLower = filters.search.toLowerCase();
       result = result.filter(
         (emp) =>
-          emp.fullName?.toLowerCase().includes(searchLower) ||
-          emp.employeeCode?.toLowerCase().includes(searchLower),
+          matchesSearchText([emp.fullName, emp.employeeCode], filters.search),
       );
     }
 

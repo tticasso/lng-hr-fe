@@ -9,6 +9,10 @@ export const OTApi = {
     return apiClient.get("/overtimes", { params: { page, limit, ...params } });
   },
 
+  pendingApprovalCount: () => {
+    return apiClient.get("/overtimes/pending-approval-count");
+  },
+
   getMy: (params) => {
     return apiClient.get("/overtimes/my-ots", { params });
   },

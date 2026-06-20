@@ -9,6 +9,10 @@ export const leaveAPI = {
     return apiClient.get("/leaves", { params: { page, limit, ...params } });
   },
 
+  pendingApprovalCount: () => {
+    return apiClient.get("/leaves/pending-approval-count");
+  },
+
   getMy: (params) => {
     return apiClient.get("/leaves/my-leaves", { params });
   },

@@ -7,6 +7,7 @@ import { payrollAPI } from "../../../apis/payrollAPI";
 import { useAuth } from "../../../context/AuthContext";
 import { hasPermission } from "../../../utils/authPermissions";
 import { formatEmployeeCode } from "../../../utils/employeeDisplay";
+import { matchesSearchText } from "../../../utils/searchText";
 import { ACCESS } from "../../../config/accessControl";
 import {
   ALLOWANCE_TYPE_LABELS,
@@ -65,12 +66,12 @@ export const usePayrollOverview = () => {
     let result = [...payrollData];
 
     if (filters.search.trim()) {
-      const searchLower = filters.search.toLowerCase();
       result = result.filter(
         (item) =>
-          item.employeeId?.fullName?.toLowerCase().includes(searchLower) ||
-          item.employeeId?.employeeCode?.toLowerCase().includes(searchLower) ||
-          item.departmentId?.name?.toLowerCase().includes(searchLower),
+          matchesSearchText(
+            [item.employeeId?.fullName, item.employeeId?.employeeCode, item.departmentId?.name],
+            filters.search,
+          ),
       );
     }
 
