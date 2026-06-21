@@ -20,10 +20,7 @@ import AnnouncementList from "./Dashboard/AnnouncementList";
 import RequestsTable from "./Dashboard/RequestsTable";
 import QuickActions from "./Dashboard/QuickActions";
 import UpcomingEvents from "./Dashboard/UpcomingEvents";
-import DailyLateAttendances from "./Dashboard/DailyLateAttendances";
-import DailyAbsentAttendances from "./Dashboard/DailyAbsentAttendances";
-import DailyMissingCheckOuts from "./Dashboard/DailyMissingCheckOuts";
-import HROperationsOverview from "./Dashboard/HROperationsOverview";
+import HRAnalyticsDashboard from "./Dashboard/HRAnalyticsDashboard";
 import DailyAttendanceDrilldownModal from "./Dashboard/DailyAttendanceDrilldownModal";
 import { ROUTES } from "../config/routes";
 
@@ -340,28 +337,42 @@ const Dashboard = () => {
         </div>
       )}
       {/* --- HÀNG TRÊN: WELCOME & STATS --- */}
-      <div className={`${isHRDashboard ? "hidden" : "px-1 md:hidden"}`}>
-        <h1 className="text-2xl font-bold text-gray-900">
-          Xin chao, {user?.fullName || "Unknown"}!
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">
-          {user?.jobLevel || "--"} | {user?.jobTitle || "--"}
-        </p>
-      </div>
+      {!isHRDashboard && (
+        <div className="px-1 md:hidden">
+          <h1 className="text-2xl font-bold text-gray-900">
+            Xin chao, {user?.fullName || "Unknown"}!
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            {user?.jobLevel || "--"} | {user?.jobTitle || "--"}
+          </p>
+        </div>
+      )}
 
       {isHRDashboard && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
-          <HROperationsOverview
-            data={hrOverview}
+        <div className="space-y-4 lg:space-y-6">
+          <HRAnalyticsDashboard
+            hrOverview={hrOverview}
+            hrRequestsSummary={hrRequestsSummary}
+            requests={requests}
+            pendingCount={pendingCount}
+            approvedCount={approvedCount}
+            rejectedCount={rejectedCount}
+            cancelledCount={cancelledCount}
+            lateAttendanceDashboard={lateAttendanceDashboard}
+            absentAttendanceDashboard={absentAttendanceDashboard}
+            missingCheckOutDashboard={missingCheckOutDashboard}
             selectedDate={dashboardDate}
             maxDate={todayDate}
             onDateChange={setDashboardDate}
             onResetDate={() => setDashboardDate(todayDate)}
+            onDailyAlertOpen={openDailyAlertModal}
+            onNavigate={navigate}
           />
         </div>
       )}
 
-      <div className={`${isHRDashboard ? "hidden" : "grid"} grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-12 lg:gap-6`}>
+      {!isHRDashboard && (
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-12 lg:gap-6">
         {/* 1. Welcome Card (Chiếm 6/12 cột) */}
         <div className="hidden md:contents">
           <WelcomeCard user={user} onNavigate={() => navigate(ROUTES.PROFILE)} />
@@ -375,34 +386,17 @@ const Dashboard = () => {
           <UpcomingEvents events={upcomingEvents} />
         </div>
       </div>
+      )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
-        {/* CỘT TRÁI (8/12) - Announcements & Requests */}
-        <div className={`${isHRDashboard ? "lg:col-span-12" : "hidden space-y-4 md:block lg:col-span-8 lg:space-y-6"}`}>
-          {/* Block Announcements */}
-          {!isHRDashboard && (
+      {!isHRDashboard && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
+          <div className="hidden space-y-4 md:block lg:col-span-8 lg:space-y-6">
             <AnnouncementList
               announcements={announcements}
               onAnnouncementClick={openAnnouncementModal}
               onViewAll={openNotificationPanel}
             />
-          )}
 
-          {isHRDashboard && (
-            <RequestsTable
-              requests={requests}
-              pendingCount={pendingCount}
-              approvedCount={approvedCount}
-              rejectedCount={rejectedCount}
-              cancelledCount={cancelledCount}
-              title="Trạng thái request"
-              emptyText="Chưa có request nào"
-              buttonLabel="Xem tất cả request"
-              onNavigate={() => navigate(ROUTES.REQUESTS)}
-            />
-          )}
-
-          {!isHRDashboard && (
             <RequestsTable
               requests={requests}
               pendingCount={pendingCount}
@@ -411,30 +405,9 @@ const Dashboard = () => {
               cancelledCount={cancelledCount}
               onNavigate={() => navigate(ROUTES.LEAVE)}
             />
-          )}
+          </div>
 
-        </div>
-
-        {/* CỘT PHẢI (4/12) - Quick Actions */}
-        <div className={isHRDashboard ? "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 lg:col-span-12 lg:gap-6" : "space-y-4 lg:col-span-4 lg:space-y-6"}>
-          {isHRDashboard && (
-            <>
-              <DailyLateAttendances
-                data={lateAttendanceDashboard}
-                onViewAll={() => openDailyAlertModal("late")}
-              />
-              <DailyAbsentAttendances
-                data={absentAttendanceDashboard}
-                onViewAll={() => openDailyAlertModal("absent")}
-              />
-              <DailyMissingCheckOuts
-                data={missingCheckOutDashboard}
-                onViewAll={() => openDailyAlertModal("missingCheckOut")}
-              />
-            </>
-          )}
-
-          {!isHRDashboard && (
+          <div className="space-y-4 lg:col-span-4 lg:space-y-6">
             <QuickActions
               onLeaveClick={openLeaveModal}
               onOTClick={openOTModal}
@@ -445,9 +418,9 @@ const Dashboard = () => {
               isOffline={!isOnline}
               checkingAttendance={checkingAttendance}
             />
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
