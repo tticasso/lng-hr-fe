@@ -42,7 +42,6 @@ const NotificationViewer = lazy(() => import("./pages/notification/NotificationV
 const OTApprovals = lazy(() => import("./pages/overtime/OTApprovals"));
 const OTIndex = lazy(() => import("./pages/overtime/OTIndex"));
 const PayrollEngine = lazy(() => import("./pages/payroll/PayrollEngine"));
-const Register = lazy(() => import("./pages/auth/Register"));
 const SystemAdmin = lazy(() => import("./pages/admin/SystemAdmin"));
 const TeamPages = lazy(() => import("./pages/teamPages/TeamPages"));
 const Unauthorized = lazy(() => import("./pages/Unauthorized"));
@@ -113,13 +112,41 @@ function App() {
                     }
                   />
                   <Route path="allpayroll" element={<Navigate to={ROUTES.PAYROLLS} replace />} />
-                  <Route path={ROUTES.PROFILE} element={<MyProfile />} />
-                  <Route path="timesheet" element={<MyTimesheet />} />
-                  <Route path={routePath(ROUTES.MY_PAYSLIP)} element={<MyPayslip />} />
+                  <Route
+                    path={ROUTES.PROFILE}
+                    element={
+                      <RequireAuth permissions={ACCESS.PROFILE}>
+                        <MyProfile />
+                      </RequireAuth>
+                    }
+                  />
+                  <Route
+                    path="timesheet"
+                    element={
+                      <RequireAuth permissions={ACCESS.TIMESHEET}>
+                        <MyTimesheet />
+                      </RequireAuth>
+                    }
+                  />
+                  <Route
+                    path={routePath(ROUTES.MY_PAYSLIP)}
+                    element={
+                      <RequireAuth permissions={ACCESS.MY_PAYSLIP}>
+                        <MyPayslip />
+                      </RequireAuth>
+                    }
+                  />
                   <Route path="payroll" element={<Navigate to={ROUTES.MY_PAYSLIP} replace />} />
                   <Route path="requests" element={<Navigate to={ROUTES.LEAVE} replace />} />
                   <Route path="leave" element={<LeaveIndex />} />
-                  <Route path={routePath(ROUTES.LEAVE)} element={<MyLeaveRequests />} />
+                  <Route
+                    path={routePath(ROUTES.LEAVE)}
+                    element={
+                      <RequireAuth permissions={ACCESS.MY_LEAVE}>
+                        <MyLeaveRequests />
+                      </RequireAuth>
+                    }
+                  />
                   <Route path="leave/my" element={<Navigate to={ROUTES.LEAVE} replace />} />
                   <Route
                     path={routePath(ROUTES.LEAVE_APPROVALS)}
@@ -132,7 +159,14 @@ function App() {
                   <Route path="leave/approvals" element={<Navigate to={ROUTES.LEAVE_APPROVALS} replace />} />
                   <Route path="leave/ot" element={<Navigate to={ROUTES.OVERTIME} replace />} />
                   <Route path="ot" element={<OTIndex />} />
-                  <Route path={routePath(ROUTES.OVERTIME)} element={<MyOTRequests />} />
+                  <Route
+                    path={routePath(ROUTES.OVERTIME)}
+                    element={
+                      <RequireAuth permissions={ACCESS.MY_OT}>
+                        <MyOTRequests />
+                      </RequireAuth>
+                    }
+                  />
                   <Route path="ot/my" element={<Navigate to={ROUTES.OVERTIME} replace />} />
                   <Route
                     path={routePath(ROUTES.OVERTIME_APPROVALS)}
@@ -210,11 +244,7 @@ function App() {
                   >
                     <Route
                       path="accounts/register"
-                      element={
-                        <RequireAuth permissions={ACCESS.USER_REGISTER}>
-                          <Register />
-                        </RequireAuth>
-                      }
+                      element={<Navigate to={ROUTES.SYSTEM_ACCOUNTS} replace />}
                     />
                     <Route
                       path="settings"

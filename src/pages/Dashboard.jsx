@@ -7,6 +7,8 @@ import { attendancesAPI, isNetworkRestrictedError } from "../apis/attendancesAPI
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
 import HRSupportModal from "../components/modals/HRSupportModal";
+import { ACCESS } from "../config/accessControl";
+import { hasAnyPermission } from "../utils/authPermissions";
 
 // Lazy load modals
 const ModalOT = lazy(() => import("../components/modals/OTModal"));
@@ -96,6 +98,9 @@ const Dashboard = () => {
     loading,
   } = useDashboardData(user, dashboardDate);
   const isHRDashboard = isHRDashboardUser(user);
+  const canUseLeaveShortcut = hasAnyPermission(user, ACCESS.MY_LEAVE);
+  const canUseOTShortcut = hasAnyPermission(user, ACCESS.MY_OT);
+  const canUsePayrollShortcut = hasAnyPermission(user, ACCESS.MY_PAYSLIP);
   const todayDate = formatDashboardDate();
   
   const {
@@ -415,6 +420,9 @@ const Dashboard = () => {
               onSupportClick={openHRSupportModal}
               onCheckInClick={handleCheckIn}
               onCheckOutClick={handleCheckOut}
+              canUseLeave={canUseLeaveShortcut}
+              canUseOT={canUseOTShortcut}
+              canUsePayroll={canUsePayrollShortcut}
               isOffline={!isOnline}
               checkingAttendance={checkingAttendance}
             />

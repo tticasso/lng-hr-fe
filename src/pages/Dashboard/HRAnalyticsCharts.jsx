@@ -166,7 +166,7 @@ const DonutChart = ({ series }) => {
     <div className="relative h-[150px] w-[150px]">
       <svg className="h-full w-full -rotate-90" viewBox="0 0 120 120">
         <circle cx="60" cy="60" fill="none" r={radius} stroke="#e2e8f0" strokeWidth="16" />
-        {series.map((item) => {
+        {series.filter((item) => item.percent > 0).map((item) => {
           const dash = (clamp(item.percent) / 100) * circumference;
           const segment = (
             <circle
@@ -202,7 +202,7 @@ const LegendRow = ({ item, compact = false }) => (
       <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${item.className}`} />
       <span className="text-sm font-semibold text-slate-700">{item.label}</span>
     </div>
-    <div className={compact ? "mt-2 flex items-end justify-between gap-2" : "text-right"}>
+    <div className={compact ? "mt-2 flex items-end justify-between gap-2" : "flex items-baseline justify-end gap-2 text-right"}>
       <span className="text-lg font-bold text-slate-950">{item.value}</span>
       <span className="text-xs font-semibold text-slate-500">{item.percent}%</span>
     </div>

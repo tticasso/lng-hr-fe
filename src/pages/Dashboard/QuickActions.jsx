@@ -9,6 +9,9 @@ const QuickActions = memo(({
   onSupportClick,
   onCheckInClick,
   onCheckOutClick,
+  canUseLeave = true,
+  canUseOT = true,
+  canUsePayroll = true,
   isOffline = false,
   checkingAttendance = false,
 }) => {
@@ -21,7 +24,7 @@ const QuickActions = memo(({
           className="group flex min-h-[120px] flex-col items-center justify-center rounded-xl border border-gray-100 bg-gray-50 p-4 transition-all hover:border-emerald-200 hover:bg-emerald-50 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-gray-100 disabled:hover:bg-gray-50 disabled:hover:shadow-none"
           onClick={onCheckInClick}
           disabled={isOffline || checkingAttendance}
-          title={isOffline ? "Ban dang offline" : "Check In"}
+          title={isOffline ? "Bạn đang offline" : "Check In"}
         >
           <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-emerald-500 shadow-sm group-hover:text-emerald-600">
             <LogIn size={20} />
@@ -44,41 +47,47 @@ const QuickActions = memo(({
           </span>
         </button>
 
-        <button
-          className="group flex min-h-[120px] flex-col items-center justify-center rounded-xl border border-gray-100 bg-gray-50 p-4 transition-all hover:border-blue-200 hover:bg-blue-50 hover:shadow-sm"
-          onClick={onLeaveClick}
-        >
-          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-blue-500 shadow-sm group-hover:text-blue-600">
-            <Coffee size={20} />
-          </div>
-          <span className="text-center text-sm font-semibold text-gray-700 group-hover:text-blue-700">
-            Xin nghỉ phép
-          </span>
-        </button>
+        {canUseLeave && (
+          <button
+            className="group flex min-h-[120px] flex-col items-center justify-center rounded-xl border border-gray-100 bg-gray-50 p-4 transition-all hover:border-blue-200 hover:bg-blue-50 hover:shadow-sm"
+            onClick={onLeaveClick}
+          >
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-blue-500 shadow-sm group-hover:text-blue-600">
+              <Coffee size={20} />
+            </div>
+            <span className="text-center text-sm font-semibold text-gray-700 group-hover:text-blue-700">
+              Xin nghỉ phép
+            </span>
+          </button>
+        )}
 
-        <button
-          className="group flex min-h-[120px] flex-col items-center justify-center rounded-xl border border-gray-100 bg-gray-50 p-4 transition-all hover:border-orange-200 hover:bg-orange-50 hover:shadow-sm"
-          onClick={onOTClick}
-        >
-          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-orange-500 shadow-sm group-hover:text-orange-600">
-            <Clock size={20} />
-          </div>
-          <span className="text-center text-sm font-semibold text-gray-700 group-hover:text-orange-700">
-            Đăng ký OT
-          </span>
-        </button>
+        {canUseOT && (
+          <button
+            className="group flex min-h-[120px] flex-col items-center justify-center rounded-xl border border-gray-100 bg-gray-50 p-4 transition-all hover:border-orange-200 hover:bg-orange-50 hover:shadow-sm"
+            onClick={onOTClick}
+          >
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-orange-500 shadow-sm group-hover:text-orange-600">
+              <Clock size={20} />
+            </div>
+            <span className="text-center text-sm font-semibold text-gray-700 group-hover:text-orange-700">
+              Đăng ký OT
+            </span>
+          </button>
+        )}
 
-        <button
-          className="group flex min-h-[120px] flex-col items-center justify-center rounded-xl border border-gray-100 bg-gray-50 p-4 transition-all hover:border-green-200 hover:bg-green-50 hover:shadow-sm"
-          onClick={onPayrollClick}
-        >
-          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-green-500 shadow-sm group-hover:text-green-600">
-            <DollarSign size={20} />
-          </div>
-          <span className="text-center text-sm font-semibold text-gray-700 group-hover:text-green-700">
-            Phiếu lương
-          </span>
-        </button>
+        {canUsePayroll && (
+          <button
+            className="group flex min-h-[120px] flex-col items-center justify-center rounded-xl border border-gray-100 bg-gray-50 p-4 transition-all hover:border-green-200 hover:bg-green-50 hover:shadow-sm"
+            onClick={onPayrollClick}
+          >
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-green-500 shadow-sm group-hover:text-green-600">
+              <DollarSign size={20} />
+            </div>
+            <span className="text-center text-sm font-semibold text-gray-700 group-hover:text-green-700">
+              Phiếu lương
+            </span>
+          </button>
+        )}
 
         <button
           className="group flex min-h-[120px] flex-col items-center justify-center rounded-xl border border-gray-100 bg-gray-50 p-4 transition-all hover:border-purple-200 hover:bg-purple-50 hover:shadow-sm"
@@ -99,7 +108,7 @@ const QuickActions = memo(({
           <AlertCircle size={20} className="shrink-0 text-red-500" />
           <div className="min-w-0">
             <p className="text-sm font-bold text-gray-800">IT Support</p>
-            <p className="font-bold text-red-500">Không phải lỗi, đấy là tính năng.</p>
+            <p className="font-bold text-red-500">Không phải lỗi, đây là tính năng.</p>
             <p className="text-xs text-gray-500">huuluan0511@gmail.com</p>
           </div>
         </div>

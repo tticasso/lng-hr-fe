@@ -178,9 +178,11 @@ const Header = () => {
         // XĂ¡c Ä‘á»‹nh route vĂ  tab dá»±a trĂªn type
         const handleToastClick = () => {
           if (data.type === "LEAVE_CREATED") {
-            navigate(hasPagePermission(ACCESS.LEAVE_APPROVALS) ? ROUTES.LEAVE_APPROVALS : ROUTES.LEAVE);
+            if (hasPagePermission(ACCESS.LEAVE_APPROVALS)) navigate(ROUTES.LEAVE_APPROVALS);
+            else if (hasPagePermission(ACCESS.MY_LEAVE)) navigate(ROUTES.LEAVE);
           } else if (data.type === "OT_CREATED") {
-            navigate(hasPagePermission(ACCESS.OT_APPROVALS) ? ROUTES.OVERTIME_APPROVALS : ROUTES.OVERTIME);
+            if (hasPagePermission(ACCESS.OT_APPROVALS)) navigate(ROUTES.OVERTIME_APPROVALS);
+            else if (hasPagePermission(ACCESS.MY_OT)) navigate(ROUTES.OVERTIME);
           }
         };
 
@@ -276,21 +278,17 @@ const Header = () => {
     // âœ… Xá»­ lĂ½ Ä‘iá»u hÆ°á»›ng theo relatedModel
     if (relatedModel === "Overtime") {
       setOpenNotify(false);
-      const otPath = hasPagePermission(ACCESS.OT_APPROVALS)
-        ? ROUTES.OVERTIME_APPROVALS
-        : ROUTES.OVERTIME;
-      navigate(otPath);
+      if (hasPagePermission(ACCESS.OT_APPROVALS)) navigate(ROUTES.OVERTIME_APPROVALS);
+      else if (hasPagePermission(ACCESS.MY_OT)) navigate(ROUTES.OVERTIME);
     }
     else if (relatedModel === "Payroll") {
       // Äiá»u hÆ°á»›ng Ä‘áº¿n trang Myleave vá»›i tab LEAVE
       setOpenNotify(false);
-      navigate(ROUTES.MY_PAYSLIP);
+      if (hasPagePermission(ACCESS.MY_PAYSLIP)) navigate(ROUTES.MY_PAYSLIP);
     } else if (relatedModel === "Leave") {
       setOpenNotify(false);
-      const leavePath = hasPagePermission(ACCESS.LEAVE_APPROVALS)
-        ? ROUTES.LEAVE_APPROVALS
-        : ROUTES.LEAVE;
-      navigate(leavePath);
+      if (hasPagePermission(ACCESS.LEAVE_APPROVALS)) navigate(ROUTES.LEAVE_APPROVALS);
+      else if (hasPagePermission(ACCESS.MY_LEAVE)) navigate(ROUTES.LEAVE);
     } else if (relatedModel === "Announcement") {
       // // Hiá»ƒn thá»‹ modal chi tiáº¿t thĂ´ng bĂ¡o
       // setSelectedAnnouncementId(relatedId);
@@ -313,14 +311,23 @@ const Header = () => {
   const allPages = useMemo(() => {
     const pages = [
       { path: ROUTES.DASHBOARD, label: "Tổng quan", keywords: ["tong quan", "dashboard", "home"] },
-      { path: ROUTES.TIMESHEET, label: "Lịch làm việc", keywords: ["lich lam viec", "timesheet", "cham cong"] },
-      { path: ROUTES.MY_PAYSLIP, label: "Phiếu lương", keywords: ["phieu luong", "payslip", "luong"] },
     ];
 
-    pages.push(
-      { path: ROUTES.LEAVE, label: "Đơn nghỉ của tôi", keywords: ["yeu cau", "nghi phep", "leave", "request"] },
-      { path: ROUTES.OVERTIME, label: "Đơn OT của tôi", keywords: ["ot", "overtime", "tang ca"] },
-    );
+    if (hasPagePermission(ACCESS.TIMESHEET)) {
+      pages.push({ path: ROUTES.TIMESHEET, label: "Lịch làm việc", keywords: ["lich lam viec", "timesheet", "cham cong"] });
+    }
+
+    if (hasPagePermission(ACCESS.MY_PAYSLIP)) {
+      pages.push({ path: ROUTES.MY_PAYSLIP, label: "Phiếu lương", keywords: ["phieu luong", "payslip", "luong"] });
+    }
+
+    if (hasPagePermission(ACCESS.MY_LEAVE)) {
+      pages.push({ path: ROUTES.LEAVE, label: "Đơn nghỉ của tôi", keywords: ["yeu cau", "nghi phep", "leave", "request"] });
+    }
+
+    if (hasPagePermission(ACCESS.MY_OT)) {
+      pages.push({ path: ROUTES.OVERTIME, label: "Đơn OT của tôi", keywords: ["ot", "overtime", "tang ca"] });
+    }
 
     if (hasPagePermission(ACCESS.LEAVE_APPROVALS)) {
       pages.push({ path: ROUTES.LEAVE_APPROVALS, label: "Phê duyệt đơn nghỉ", keywords: ["quan ly yeu cau", "duyet don", "leave management"] });
@@ -426,6 +433,10 @@ const Header = () => {
     setTimeout(() => setShowSearchResults(false), 200);
   };
 
+  const canOpenProfile = hasPagePermission(ACCESS.PROFILE);
+  const ProfileContainer = canOpenProfile ? Link : "div";
+  const profileContainerProps = canOpenProfile ? { to: ROUTES.PROFILE } : {};
+
   return (
     <>
       {/* HEADER */}
@@ -505,8 +516,8 @@ const Header = () => {
             )}
           </button>
 
-          <Link
-            to={ROUTES.PROFILE}
+          <ProfileContainer
+            {...profileContainerProps}
             className="flex items-center gap-2 sm:gap-3 p-1.5 sm:p-2 hover:bg-gray-100 rounded-full min-w-0"
           >
             <div
@@ -523,7 +534,7 @@ const Header = () => {
             <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold shrink-0">
               {initials}
             </div>
-          </Link>
+          </ProfileContainer>
         </div>
       </header>
 

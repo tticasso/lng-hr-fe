@@ -37,13 +37,8 @@ import { formatEmployeeCode } from "../../utils/employeeDisplay";
 const USER_PAGE_SIZE = 50;
 const MAX_USER_PREFETCH = 500;
 
-const getAccountRoleName = (account) => (
-  typeof account?.role === "string" ? account.role : account?.role?.name
-);
-
 const buildAccountUpdatePayload = (account, overrides = {}) => ({
   username: account?.username,
-  roleName: getAccountRoleName(account),
   isActive: account?.isActive !== false,
   ...overrides,
 });
@@ -53,6 +48,7 @@ const UserManagement = () => {
   const { user } = useAuth();
   const userInfo = user;
   const canWriteAccounts = hasAnyPermission(user, ACCESS.USER_REGISTER);
+  const canWriteRoles = hasPermission(user, "WRITE_ROLES");
   const canImportProfiles = hasPermission(user, "WRITE_EMPLOYEES");
   const [users, setUsers] = useState([]);
   const [rolesList, setRolesList] = useState([]);
@@ -683,6 +679,7 @@ const UserManagement = () => {
           onRefresh={fetchUsers}
           onAction={(type, user) => setActionData({ type, user })}
           canWriteAccounts={canWriteAccounts}
+          canWriteRoles={canWriteRoles}
         />
       )}
 

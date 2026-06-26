@@ -28,6 +28,9 @@ const canReadAttendance = (user) => {
   return isHRDashboardUser(user);
 };
 
+const emptyListResult = { data: { data: [] } };
+const emptyObjectResult = { data: { data: null } };
+
 export const useDashboardData = (user, selectedDate = formatLocalDate(new Date())) => {
   const [mySheetData, setMySheetData] = useState(null);
   const [leaveRequests, setLeaveRequests] = useState([]);
@@ -55,28 +58,32 @@ export const useDashboardData = (user, selectedDate = formatLocalDate(new Date()
         const year = now.getFullYear();
 
         // Critical data for above-the-fold widgets. Do not block the dashboard on secondary lists.
-        const resMySheet = await attendancesAPI.getdatamoth(month, year);
-        if (!isMounted) return;
-
-        setMySheetData(resMySheet.data.data);
+        if (hasAnyPermission(user, ACCESS.TIMESHEET)) {
+          const resMySheet = await attendancesAPI.getdatamoth(month, year);
+          if (!isMounted) return;
+          setMySheetData(resMySheet.data.data);
+        } else {
+          setMySheetData(null);
+        }
         setLoading(false);
 
+        const isHRUser = isHRDashboardUser(user);
         const secondaryRequests = [
-          isHRDashboardUser(user)
-            ? Promise.resolve({ data: { data: [] } })
+          isHRUser || !hasAnyPermission(user, ACCESS.MY_LEAVE)
+            ? Promise.resolve(emptyListResult)
             : leaveAPI.getbyUSER(1, DASHBOARD_REQUEST_LIMIT),
-          isHRDashboardUser(user)
-            ? Promise.resolve({ data: { data: [] } })
+          isHRUser || !hasAnyPermission(user, ACCESS.MY_OT)
+            ? Promise.resolve(emptyListResult)
             : OTApi.getMy({ page: 1, limit: DASHBOARD_REQUEST_LIMIT }),
-          isHRDashboardUser(user)
-            ? Promise.resolve({ data: { data: [] } })
+          isHRUser || !hasAnyPermission(user, ACCESS.ANNOUNCEMENTS)
+            ? Promise.resolve(emptyListResult)
             : announcementAPI.get({ page: 1, limit: DASHBOARD_ANNOUNCEMENT_LIMIT }),
-          isHRDashboardUser(user)
-            ? Promise.resolve({ data: { data: [] } })
+          isHRUser
+            ? Promise.resolve(emptyListResult)
             : dashboardAPI.getUpcomingEvents({ limit: DASHBOARD_EVENT_LIMIT, days: 90 }),
-          isHRDashboardUser(user)
+          isHRUser
             ? dashboardAPI.getHRRequestsSummary({ page: 1, limit: DASHBOARD_REQUEST_LIMIT })
-            : Promise.resolve({ data: { data: null } }),
+            : Promise.resolve(emptyObjectResult),
         ];
 
         if (canReadAttendance(user)) {
@@ -87,9 +94,9 @@ export const useDashboardData = (user, selectedDate = formatLocalDate(new Date()
           };
 
           secondaryRequests.push(
-            isHRDashboardUser(user)
+            isHRUser
               ? dashboardAPI.getHROverview({ date: dailyAttendanceParams.date })
-              : Promise.resolve({ data: { data: null } })
+              : Promise.resolve(emptyObjectResult)
           );
 
           secondaryRequests.push(

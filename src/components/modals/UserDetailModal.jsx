@@ -153,7 +153,15 @@ const getInitialRoleId = (user, rolesList) => (
   ""
 );
 
-const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh, canWriteAccounts = false }) => {
+const UserDetailModal = ({
+  user,
+  onClose,
+  rolesList,
+  onAction,
+  onRefresh,
+  canWriteAccounts = false,
+  canWriteRoles = false,
+}) => {
   const [accountForm, setAccountForm] = useState({
     username: user.username || "",
     password: "",
@@ -212,19 +220,29 @@ const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh, canWri
       return;
     }
 
-    const selectedRoleObj = rolesList.find((r) => r._id === accountForm.roleId);
-    const roleName = selectedRoleObj?.name;
-    
-    if (!roleName) {
-      toast.error("Không tìm thấy vai trò");
-      return;
-    }
-
     const payload = {
       username,
-      roleName,
       isActive: accountForm.isActive,
     };
+    const currentRoleId = getInitialRoleId(user, rolesList);
+    const roleChanged = accountForm.roleId !== currentRoleId;
+
+    if (roleChanged) {
+      if (!canWriteRoles) {
+        toast.error("Bạn cần quyền WRITE_ROLES để thay đổi vai trò");
+        return;
+      }
+
+      const selectedRoleObj = rolesList.find((r) => r._id === accountForm.roleId);
+      const roleName = selectedRoleObj?.name;
+
+      if (!roleName) {
+        toast.error("Không tìm thấy vai trò");
+        return;
+      }
+
+      payload.roleName = roleName;
+    }
     if (accountForm.password) payload.password = accountForm.password;
 
     setIsUpdatingAccount(true);
@@ -368,7 +386,8 @@ const UserDetailModal = ({ user, onClose, rolesList, onAction, onRefresh, canWri
                   className="w-full border border-gray-300 rounded-lg p-2.5 bg-gray-50 font-medium text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
                   value={accountForm.roleId}
                   onChange={(e) => handleAccountFieldChange("roleId", e.target.value)}
-                  disabled={!canWriteAccounts || isUpdatingAccount}
+                  disabled={!canWriteAccounts || !canWriteRoles || isUpdatingAccount}
+                  title={canWriteRoles ? "Vai trò" : "Cần quyền WRITE_ROLES"}
                 >
                   {rolesList.map((r) => (
                     <option key={r._id} value={r._id}>

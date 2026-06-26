@@ -67,6 +67,7 @@ const Sidebar = () => {
   const canSeeOrganization = canAccess(ACCESS_GROUPS.ORGANIZATION);
   const canSeeHRWorkspace = canAccess(ACCESS_GROUPS.HR_WORKSPACE);
   const canApproveRequests = canAccess(ACCESS_GROUPS.REQUEST_APPROVALS);
+  const canSeePersonalRequests = canAccess([...ACCESS.MY_LEAVE, ...ACCESS.MY_OT]);
   const canSeePayrollOps = canAccess(ACCESS_GROUPS.PAYROLL_OPS);
   const canSeeSystem = canAccess(ACCESS_GROUPS.SYSTEM);
 
@@ -78,11 +79,11 @@ const Sidebar = () => {
         title: "Cá nhân",
         items: [
           { path: ROUTES.DASHBOARD, label: "Tổng quan", icon: Home },
-          { path: ROUTES.TIMESHEET, label: "Lịch làm việc", icon: CalendarCheck2 },
-          { path: ROUTES.MY_PAYSLIP, label: "Phiếu lương", icon: DollarSign },
+          { path: ROUTES.TIMESHEET, label: "Lịch làm việc", icon: CalendarCheck2, permissions: ACCESS.TIMESHEET },
+          { path: ROUTES.MY_PAYSLIP, label: "Phiếu lương", icon: DollarSign, permissions: ACCESS.MY_PAYSLIP },
         ],
       },
-      ...(canSeeOrganization || canSeeHRWorkspace || canApproveRequests
+      ...(canSeeOrganization || canSeeHRWorkspace || canApproveRequests || canSeePersonalRequests
         ? [
             {
               title: "Nhân sự",
@@ -152,6 +153,7 @@ const Sidebar = () => {
                       path: ROUTES.LEAVE,
                       label: "Đơn nghỉ",
                       icon: CalendarMinus,
+                      permissions: ACCESS.MY_LEAVE,
                     },
                     {
                       path: ROUTES.LEAVE_APPROVALS,
@@ -164,6 +166,7 @@ const Sidebar = () => {
                       path: ROUTES.OVERTIME,
                       label: "Đơn OT",
                       icon: Timer,
+                      permissions: ACCESS.MY_OT,
                     },
                     {
                       path: ROUTES.OVERTIME_APPROVALS,
@@ -237,7 +240,7 @@ const Sidebar = () => {
           ]
         : []),
     ],
-    [canApproveRequests, canSeeHRWorkspace, canSeeOrganization, canSeePayrollOps, canSeeSystem],
+    [canApproveRequests, canSeeHRWorkspace, canSeeOrganization, canSeePayrollOps, canSeePersonalRequests, canSeeSystem],
   );
 
   const visibleMenuPaths = useMemo(() => {

@@ -1,4 +1,4 @@
-import { DATA_SCOPE_POLICIES } from "../config/accessControl";
+import { DATA_SCOPE_POLICIES } from "../config/accessControl.js";
 
 const LEGACY_PERMISSION_ALIASES = {
   READ_ACCOUNTS: ["READ_USER"],
@@ -87,7 +87,7 @@ export const getPermissionNames = (user) => {
 };
 
 export const isSuperAdmin = (user) =>
-  getRoleName(user) === "ADMIN" || getPermissionNames(user).includes("MANAGE_SYSTEM");
+  getPermissionNames(user).includes("MANAGE_SYSTEM");
 
 export const hasPermission = (user, permissionName) =>
   isSuperAdmin(user) || getPermissionNames(user).includes(permissionName);
