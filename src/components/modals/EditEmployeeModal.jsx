@@ -489,25 +489,25 @@ const EditEmployeeModal = ({ employee, onClose, onSuccess }) => {
                       <label className={labelClass}>
                         Chức danh <span className="text-red-500">*</span>
                       </label>
-                      <select
+                      <input
                         name="jobTitle"
                         value={formData.jobTitle}
                         onChange={handleChange}
                         className={inputClass("jobTitle")}
-                      >
-                        <option value="">-- Chọn --</option>
-                        <option value="Seller">Seller</option>
-                        <option value="Developer">Developer</option>
-                        <option value="HR">HR</option>
-                        <option value="Manager">Manager</option>
-                        <option value="Design">Design</option>
-                        <option value="SPSale">SP Sale</option>
-                        <option value="Boss">Tổng giám đốc</option>
-                        <option value="CS">CS</option>
-                         <option value="QC">Quản lý đơn hàng</option>
-                          <option value="Legal">Pháp chế</option>
-                        {/* <option value="Leader">Leader</option> */}
-                      </select>
+                        list="job-title-options"
+                      />
+                      <datalist id="job-title-options">
+                        <option value="Seller" />
+                        <option value="Developer" />
+                        <option value="HR" />
+                        <option value="Manager" />
+                        <option value="Design" />
+                        <option value="SPSale" />
+                        <option value="Boss" />
+                        <option value="CS" />
+                        <option value="QC" />
+                        <option value="Legal" />
+                      </datalist>
                       <ErrorMsg field="jobTitle" />
                     </div>
                   </div>
