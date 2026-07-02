@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { Users, Calendar, TrendingUp, TrendingDown, Search, Filter, RefreshCw, Loader2, Edit, X, Save, AlertCircle, Plus, Minus, History } from "lucide-react";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
@@ -6,9 +6,13 @@ import { leavebalanceAPI } from "../../apis/leavebalaneAPI";
 import { toast } from "react-toastify";
 import { useAuth } from "../../context/AuthContext";
 import { hasPermission } from "../../utils/authPermissions";
-import { ACCESS } from "../../config/accessControl";
 import { formatEmployeeCode } from "../../utils/employeeDisplay";
 import { matchesSearchText } from "../../utils/searchText";
+import {
+    getLeaveBalanceReadMode,
+    LEAVE_BALANCE_READ_MODES,
+    LEAVE_BALANCE_WRITE_PERMISSION,
+} from "./leaveBalanceAccess";
 
 const buildPageList = (current, total) => {
     if (total <= 1) return [1];
@@ -110,7 +114,12 @@ const LeaveBalanceHistoryList = ({ leaveBalance, limit }) => {
 
 const LeaveBalance = () => {
     const { user } = useAuth();
-    const canUpdateLeave = hasPermission(user, ACCESS.LEAVE_BALANCE.at(-1));
+    const readMode = useMemo(
+        () => getLeaveBalanceReadMode((permission) => hasPermission(user, permission)),
+        [user],
+    );
+    const canUpdateLeave = hasPermission(user, LEAVE_BALANCE_WRITE_PERMISSION);
+    const canReadLeaveBalanceDirectory = readMode === LEAVE_BALANCE_READ_MODES.DIRECTORY;
     const [leaveBalances, setLeaveBalances] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -139,22 +148,29 @@ const LeaveBalance = () => {
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [historyLoading, setHistoryLoading] = useState(false);
 
-    useEffect(() => {
-        callAPI();
-    }, []);
-
-    const callAPI = async () => {
+    const callAPI = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await leavebalanceAPI.get();
-            const data = res?.data?.data || [];
+            let data = [];
+            if (readMode === LEAVE_BALANCE_READ_MODES.DIRECTORY) {
+                const res = await leavebalanceAPI.get();
+                data = res?.data?.data || [];
+            } else if (readMode === LEAVE_BALANCE_READ_MODES.MINE) {
+                const res = await leavebalanceAPI.getMine();
+                const myLeaveBalance = res?.data?.data;
+                data = myLeaveBalance ? [myLeaveBalance] : [];
+            }
             setLeaveBalances(data);
         } catch {
             setLeaveBalances([]);
         } finally {
             setLoading(false);
         }
-    };
+    }, [readMode]);
+
+    useEffect(() => {
+        callAPI();
+    }, [callAPI]);
 
     // Lọc dữ liệu theo search và year
     const filteredData = useMemo(() => {
@@ -326,7 +342,9 @@ const LeaveBalance = () => {
 
         setHistoryLoading(true);
         try {
-            const res = await leavebalanceAPI.getById(leaveBalance._id);
+            const res = canReadLeaveBalanceDirectory
+                ? await leavebalanceAPI.getById(leaveBalance._id)
+                : await leavebalanceAPI.getMine();
             setSelectedLeaveBalance(res?.data?.data || leaveBalance);
         } catch (error) {
             toast.error(error.normalizedMessage || "Không thể tải lịch sử công phép");

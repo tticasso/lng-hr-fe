@@ -9,6 +9,10 @@ import {
 } from "lucide-react";
 import Card from "../../../components/common/Card";
 import { statCardColors } from "../utils/constants";
+import {
+  formatLeaveDays,
+  getAnnualLeaveHistoryRows,
+} from "../utils/leaveStats";
 
 const OT_TYPE_LABELS = {
   weekday: "Ngày thường",
@@ -154,7 +158,17 @@ const getOTBreakdown = (timesheetData, attendanceData) => {
 };
 
 const StatCard = memo(
-  ({ icon, label, value, sub, color, isWarning, detailContent, detailTitle }) => {
+  ({
+    icon,
+    label,
+    value,
+    sub,
+    color,
+    isWarning,
+    detailContent,
+    detailTitle,
+    detailClassName = "w-64",
+  }) => {
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const detailRef = useRef(null);
 
@@ -204,7 +218,7 @@ const StatCard = memo(
             </button>
 
             {isDetailOpen && (
-              <div className="absolute right-0 top-full z-30 mt-2 w-64 rounded-lg border border-gray-200 bg-white p-3 text-left shadow-xl">
+              <div className={`absolute right-0 top-full z-30 mt-2 rounded-lg border border-gray-200 bg-white p-3 text-left shadow-xl ${detailClassName}`}>
                 {detailContent}
               </div>
             )}
@@ -239,6 +253,60 @@ const OTDetailPopover = memo(({ totalHours, details }) => (
 ));
 
 OTDetailPopover.displayName = "OTDetailPopover";
+
+const AnnualLeaveDetailPopover = memo(({ leave, historyRows, hasHistorySource }) => (
+  <>
+    <div className="mb-2 flex items-center justify-between border-b border-gray-100 pb-2">
+      <span className="text-xs font-bold uppercase text-gray-700">
+        Lịch sử phép năm
+      </span>
+      <span className="font-mono text-xs font-bold text-purple-600">
+        {formatLeaveDays(leave?.remaining ?? leave?.currentBalance)}
+      </span>
+    </div>
+
+    {historyRows.length ? (
+      <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+        {historyRows.map((item) => (
+          <div key={item.key} className="rounded-md border border-gray-100 bg-gray-50 p-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-gray-800">{item.label}</p>
+                <p className="mt-0.5 line-clamp-2 text-[11px] text-gray-500">
+                  {item.reason}
+                </p>
+              </div>
+              <span
+                className={`shrink-0 font-mono text-xs font-bold ${
+                  item.tone === "positive"
+                    ? "text-green-600"
+                    : item.tone === "negative"
+                      ? "text-red-600"
+                      : "text-gray-500"
+                }`}
+              >
+                {item.amount > 0 ? "+" : ""}
+                {formatLeaveDays(item.amount)}
+              </span>
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-gray-400">
+              <span>{item.dateLabel}</span>
+              <span>{item.userLabel}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 p-3 text-center text-xs text-gray-500">
+        {hasHistorySource
+          ? "Chưa có lịch sử công phép."
+          : "Chưa tải được lịch sử công phép."}
+      </div>
+    )}
+  </>
+));
+
+AnnualLeaveDetailPopover.displayName = "AnnualLeaveDetailPopover";
 
 const WORK_BREAKDOWN_LABELS = {
   attendance: "Công chấm thực tế",
@@ -325,7 +393,7 @@ WorkDetailPopover.displayName = "WorkDetailPopover";
 
 StatCard.displayName = "StatCard";
 
-const TimesheetStats = memo(({ timesheetData, attendanceData = [] }) => {
+const TimesheetStats = memo(({ timesheetData, attendanceData = [], leaveBalance = null }) => {
   const otBreakdown = useMemo(
     () => getOTBreakdown(timesheetData, attendanceData),
     [timesheetData, attendanceData],
@@ -347,6 +415,10 @@ const TimesheetStats = memo(({ timesheetData, attendanceData = [] }) => {
   const totalOTHours =
     timesheetData?.overtime?.totalHours ??
     otDetails.reduce((sum, [, hours]) => sum + toHours(hours), 0);
+  const annualLeaveHistoryRows = useMemo(
+    () => getAnnualLeaveHistoryRows(leaveBalance),
+    [leaveBalance],
+  );
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -412,6 +484,17 @@ const TimesheetStats = memo(({ timesheetData, attendanceData = [] }) => {
         }`}
         sub={`Còn lại: ${timesheetData?.leave?.remaining || 0}`}
         color="purple"
+        detailTitle="Xem chi tiết phép năm"
+        detailClassName="w-80"
+        detailContent={
+          timesheetData?.leave ? (
+            <AnnualLeaveDetailPopover
+              leave={leaveBalance || timesheetData.leave}
+              historyRows={annualLeaveHistoryRows}
+              hasHistorySource={Boolean(leaveBalance)}
+            />
+          ) : null
+        }
       />
 
       {/* Late Count */}

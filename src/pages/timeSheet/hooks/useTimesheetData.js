@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { attendancesAPI } from "../../../apis/attendancesAPI";
 import { holidayAPI } from "../../../apis/holidayAPI";
 import { leaveAPI } from "../../../apis/leaveAPI";
+import { leavebalanceAPI } from "../../../apis/leavebalaneAPI";
 import { OTApi } from "../../../apis/OTAPI";
 
 const pad2 = (n) => String(n).padStart(2, "0");
@@ -68,6 +69,7 @@ export const useTimesheetData = (selectedMonth, selectedYear) => {
   const [attendanceData, setAttendanceData] = useState([]);
   const [holidayData, setHolidayData] = useState([]);
   const [leaveRequests, setLeaveRequests] = useState([]);
+  const [leaveBalance, setLeaveBalance] = useState(null);
   const [otRequests, setOTRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -94,12 +96,14 @@ export const useTimesheetData = (selectedMonth, selectedYear) => {
           resAttendance,
           resHoliday,
           resLeaveRequests,
+          resLeaveBalance,
           resOTRequests,
         ] = await Promise.all([
           attendancesAPI.getdatamoth(month, year),
           attendancesAPI.getme(month, year),
           holidayAPI.get(startDate, endDate),
           leaveAPI.getbyUSER(1, 100).catch(() => null),
+          leavebalanceAPI.getMine().catch(() => null),
           OTApi.getMy({ page: 1, limit: 100, month, year }).catch(() => null),
         ]);
 
@@ -117,6 +121,7 @@ export const useTimesheetData = (selectedMonth, selectedYear) => {
           );
           setHolidayData(asArray(holidayPayload));
           setLeaveRequests(asArray(getResponsePayload(resLeaveRequests)));
+          setLeaveBalance(getResponsePayload(resLeaveBalance) || null);
           setOTRequests(asArray(getResponsePayload(resOTRequests)));
         }
       } catch (err) {
@@ -127,6 +132,7 @@ export const useTimesheetData = (selectedMonth, selectedYear) => {
           setAttendanceData([]);
           setHolidayData([]);
           setLeaveRequests([]);
+          setLeaveBalance(null);
           setOTRequests([]);
         }
       } finally {
@@ -148,6 +154,7 @@ export const useTimesheetData = (selectedMonth, selectedYear) => {
     attendanceData,
     holidayData,
     leaveRequests,
+    leaveBalance,
     otRequests,
     loading,
     error,

@@ -36,6 +36,7 @@ const MyTimesheet = () => {
     attendanceData,
     holidayData,
     leaveRequests,
+    leaveBalance,
     otRequests,
     loading,
   } =
@@ -133,6 +134,7 @@ const MyTimesheet = () => {
         <TimesheetStats
           timesheetData={timesheetData}
           attendanceData={attendanceData}
+          leaveBalance={leaveBalance}
         />
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">

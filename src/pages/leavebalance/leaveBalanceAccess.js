@@ -1,0 +1,27 @@
+export const LEAVE_BALANCE_OWN_PERMISSION = "READ_MY_LEAVE_BALANCE";
+
+export const LEAVE_BALANCE_DIRECTORY_PERMISSIONS = [
+  "READ_LEAVE_BALANCES",
+  "READ_ALL_LEAVE_BALANCES",
+  "WRITE_LEAVE_BALANCES",
+];
+
+export const LEAVE_BALANCE_WRITE_PERMISSION = "WRITE_LEAVE_BALANCES";
+
+export const LEAVE_BALANCE_READ_MODES = {
+  DIRECTORY: "directory",
+  MINE: "mine",
+  NONE: "none",
+};
+
+export const getLeaveBalanceReadMode = (canAccess) => {
+  if (LEAVE_BALANCE_DIRECTORY_PERMISSIONS.some(canAccess)) {
+    return LEAVE_BALANCE_READ_MODES.DIRECTORY;
+  }
+
+  if (canAccess(LEAVE_BALANCE_OWN_PERMISSION)) {
+    return LEAVE_BALANCE_READ_MODES.MINE;
+  }
+
+  return LEAVE_BALANCE_READ_MODES.NONE;
+};
