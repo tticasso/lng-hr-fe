@@ -39,6 +39,7 @@ export const usePayrollOverview = () => {
     search: "",
     department: "",
     status: "",
+    employeeStatus: "",
   });
 
   const fetchPayrollData = useMemo(() => async () => {
@@ -81,6 +82,12 @@ export const usePayrollOverview = () => {
 
     if (filters.status) {
       result = result.filter((item) => item.status === filters.status);
+    }
+
+    if (filters.employeeStatus) {
+      result = result.filter(
+        (item) => (item.employeeId?.status || item.employeeStatus) === filters.employeeStatus,
+      );
     }
 
     return result;

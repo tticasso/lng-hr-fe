@@ -62,6 +62,19 @@ const PayrollOverviewFilters = ({
           ))}
         </select>
       </div>
+
+      <div className="min-w-0 xl:w-52 xl:flex-none">
+        <select
+          name="employeeStatus"
+          value={filters.employeeStatus}
+          onChange={onFilterChange}
+          className="h-12 w-full cursor-pointer rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-700 focus:border-blue-500 focus:outline-none"
+        >
+          <option value="">Loại nhân sự (Tất cả)</option>
+          <option value="Active">Chính thức</option>
+          <option value="Probation">Thử việc</option>
+        </select>
+      </div>
     </div>
   );
 
