@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { X, Calendar, Tag, Pin, Clock, MapPin, Users } from "lucide-react";
 import DOMPurify from "dompurify";
 import { announcementAPI } from "../../apis/announcements";
+import { formatEmployeeCode } from "../../utils/employeeDisplay";
+import { getAvatarUrl, hasAvatar } from "../../utils/avatar";
 
 const CATEGORY_LABELS = {
   NEWS: "Tin tức",
@@ -94,6 +96,8 @@ const AnnouncementDetailModal = ({ isOpen, onClose, announcementId }) => {
   const audienceText = announcement?.sendToAll
     ? "Toàn công ty"
     : `${announcement?.targetDepartments?.length || 0} phòng ban`;
+
+  const viewers = Array.isArray(announcement?.readBy) ? announcement.readBy : [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -222,6 +226,51 @@ const AnnouncementDetailModal = ({ isOpen, onClose, announcementId }) => {
                               Tải xuống
                             </a>
                           )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {viewers.length > 0 && (
+                <div>
+                  <h3 className="mb-3 text-lg font-bold text-gray-800">
+                    Da xem ({viewers.length})
+                  </h3>
+                  <div className="max-h-56 divide-y overflow-y-auto rounded-lg border border-gray-200">
+                    {viewers.map((viewer) => {
+                      const employee = viewer.employee;
+                      const name = employee?.fullName || viewer.accountId || "--";
+
+                      return (
+                        <div
+                          key={`${viewer.accountId}-${viewer.readAt}`}
+                          className="flex items-center gap-3 p-3"
+                        >
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-xs font-bold text-blue-700">
+                            {hasAvatar(employee?.avatar) ? (
+                              <img
+                                src={getAvatarUrl(employee.avatar, 48)}
+                                alt="Avatar"
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              name.charAt(0).toUpperCase()
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-gray-800">
+                              {name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {formatEmployeeCode(employee?.employeeCode, "Chua co ma")}
+                              {employee?.departmentId?.name ? ` - ${employee.departmentId.name}` : ""}
+                            </p>
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {formatDate(viewer.readAt)}
+                          </span>
                         </div>
                       );
                     })}

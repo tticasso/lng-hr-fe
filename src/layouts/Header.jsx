@@ -14,6 +14,7 @@ import { ACCESS } from "../config/accessControl";
 import { ROUTES } from "../config/routes";
 import logoImage from "../assets/logo-sm.webp";
 import { matchesSearchText } from "../utils/searchText";
+import { getAvatarUrl, hasAvatar } from "../utils/avatar";
 
 // âœ… Format thá»i gian thĂ´ng bĂ¡o: rĂµ rĂ ng + chuyĂªn nghiá»‡p
 const formatNotifyTime = (dateInput) => {
@@ -71,6 +72,7 @@ const Header = () => {
   // Láº¥y thĂ´ng tin tá»« user context thay vĂ¬ gá»i API
   const fullName = user?.fullName || "";
   const jobTitle = user?.jobTitle || "";
+  const avatarUrl = user?.avatar || user?.employee?.avatar || "";
 
   // âœ… tab filter: all (thĂ´ng bĂ¡o) | unread (chÆ°a Ä‘á»c)
   const [notifyTab, setNotifyTab] = useState("all");
@@ -531,8 +533,16 @@ const Header = () => {
               </p>
             </div>
 
-            <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold shrink-0">
-              {initials}
+            <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold shrink-0 overflow-hidden">
+              {hasAvatar(avatarUrl) ? (
+                <img
+                  src={getAvatarUrl(avatarUrl, 48)}
+                  alt="Avatar"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                initials
+              )}
             </div>
           </ProfileContainer>
         </div>

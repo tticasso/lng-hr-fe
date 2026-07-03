@@ -33,6 +33,7 @@ import { getListData, getPagination, hasPaginationMetadata } from "../../shared/
 import { hasAnyPermission, hasPermission } from "../../utils/authPermissions";
 import { ACCESS } from "../../config/accessControl";
 import { formatEmployeeCode } from "../../utils/employeeDisplay";
+import { getAvatarUrl, hasAvatar } from "../../utils/avatar";
 
 const USER_PAGE_SIZE = 50;
 const MAX_USER_PREFETCH = 500;
@@ -279,13 +280,10 @@ const UserManagement = () => {
 
   // Helper Avatar (Logic yêu cầu 1)
   const renderAvatarTable = (user) => {
-    if (
-      user.employee?.avatar &&
-      user.employee.avatar !== "default-avatar.jpg"
-    ) {
+    if (hasAvatar(user.employee?.avatar)) {
       return (
         <img
-          src={user.employee.avatar}
+          src={getAvatarUrl(user.employee.avatar, 48)}
           className="w-full h-full object-cover"
           alt="avt"
         />
@@ -680,6 +678,7 @@ const UserManagement = () => {
           onAction={(type, user) => setActionData({ type, user })}
           canWriteAccounts={canWriteAccounts}
           canWriteRoles={canWriteRoles}
+          canWriteEmployees={canImportProfiles}
         />
       )}
 

@@ -193,6 +193,12 @@ const Announcements = () => {
   const [scheduledTime, setScheduledTime] = useState("");
   const [category, setCategory] = useState(ANNOUNCEMENT_CATEGORY.NEWS);
   const [priority, setPriority] = useState("LOW"); // HIGH, NORMAL, LOW, URGENT
+  const [eventStartDate, setEventStartDate] = useState("");
+  const [eventStartTime, setEventStartTime] = useState("");
+  const [eventEndDate, setEventEndDate] = useState("");
+  const [eventEndTime, setEventEndTime] = useState("");
+  const [eventLocation, setEventLocation] = useState("");
+  const [eventMandatory, setEventMandatory] = useState(false);
 
   // Handler mở modal chi tiết
   const handleViewDetail = (announcementId) => {
@@ -221,6 +227,24 @@ const Announcements = () => {
       setTitle(data.title || "");
       setCategory(data.category || ANNOUNCEMENT_CATEGORY.NEWS);
       setPriority(data.priority || "LOW");
+      if (data.eventDetails?.startDate) {
+        const { date: startDate, time: startTime } = parseScheduledAt(data.eventDetails.startDate);
+        setEventStartDate(startDate);
+        setEventStartTime(startTime);
+      } else {
+        setEventStartDate("");
+        setEventStartTime("");
+      }
+      if (data.eventDetails?.endDate) {
+        const { date: endDate, time: endTime } = parseScheduledAt(data.eventDetails.endDate);
+        setEventEndDate(endDate);
+        setEventEndTime(endTime);
+      } else {
+        setEventEndDate("");
+        setEventEndTime("");
+      }
+      setEventLocation(data.eventDetails?.location || "");
+      setEventMandatory(Boolean(data.eventDetails?.isMandatory));
       
       // Set content vào editor
       if (editor && data.content) {
@@ -308,6 +332,12 @@ const Announcements = () => {
     }
     setCategory(ANNOUNCEMENT_CATEGORY.NEWS);
     setPriority("LOW");
+    setEventStartDate("");
+    setEventStartTime("");
+    setEventEndDate("");
+    setEventEndTime("");
+    setEventLocation("");
+    setEventMandatory(false);
     setScheduleType(ANNOUNCEMENT_SCHEDULE_TYPE.NOW);
     setScheduledDate("");
     setScheduledTime("");
@@ -376,6 +406,17 @@ const Announcements = () => {
         errors.scheduledTime = "Vui lòng chọn giờ lên lịch!";
       }
     }
+    if (category === ANNOUNCEMENT_CATEGORY.EVENT) {
+      if (!eventStartDate) {
+        errors.eventStartDate = "Vui long chon ngay su kien!";
+      }
+      if (!eventStartTime) {
+        errors.eventStartTime = "Vui long chon gio su kien!";
+      }
+      if ((eventEndDate && !eventEndTime) || (!eventEndDate && eventEndTime)) {
+        errors.eventEndDate = "Ngay ket thuc va gio ket thuc phai di cung nhau.";
+      }
+    }
 
     // Nếu có lỗi, hiển thị và dừng
     if (Object.keys(errors).length > 0) {
@@ -422,6 +463,20 @@ const Announcements = () => {
       status: status,
       scheduledAt: scheduledAt
     };
+
+    if (category === ANNOUNCEMENT_CATEGORY.EVENT) {
+      const startDate = buildScheduledDateTime(eventStartDate, eventStartTime);
+      const endDate = eventEndDate && eventEndTime
+        ? buildScheduledDateTime(eventEndDate, eventEndTime)
+        : null;
+
+      payload.eventDetails = {
+        startDate,
+        endDate,
+        location: eventLocation.trim(),
+        isMandatory: eventMandatory
+      };
+    }
 
     // Nếu có phòng ban cụ thể, thêm targetDepartments
     if (!sendToAll && selectedDepartments.length > 0) {
@@ -1042,6 +1097,41 @@ const Announcements = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Mức độ quan trọng
                 </label>
+                {category === ANNOUNCEMENT_CATEGORY.EVENT && (
+                  <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 p-3 space-y-3">
+                    <p className="text-xs font-bold uppercase tracking-wider text-emerald-700">Thong tin su kien</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Ngay bat dau</label>
+                        <input type="date" value={eventStartDate} onChange={(e) => setEventStartDate(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-blue-500" />
+                        {validationErrors.eventStartDate && <p className="text-red-500 text-xs mt-1">{validationErrors.eventStartDate}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Gio bat dau</label>
+                        <TimePicker value={eventStartTime ? dayjs(eventStartTime, "HH:mm") : null} onChange={(time) => setEventStartTime(time ? time.format("HH:mm") : "")} format="HH:mm" minuteStep={5} placeholder="Chon gio" className="w-full" status={validationErrors.eventStartTime ? "error" : ""} />
+                        {validationErrors.eventStartTime && <p className="text-red-500 text-xs mt-1">{validationErrors.eventStartTime}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Ngay ket thuc</label>
+                        <input type="date" value={eventEndDate} onChange={(e) => setEventEndDate(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-blue-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Gio ket thuc</label>
+                        <TimePicker value={eventEndTime ? dayjs(eventEndTime, "HH:mm") : null} onChange={(time) => setEventEndTime(time ? time.format("HH:mm") : "")} format="HH:mm" minuteStep={5} placeholder="Chon gio" className="w-full" status={validationErrors.eventEndDate ? "error" : ""} />
+                      </div>
+                    </div>
+                    {validationErrors.eventEndDate && <p className="text-red-500 text-xs">{validationErrors.eventEndDate}</p>}
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Dia diem</label>
+                      <input type="text" value={eventLocation} onChange={(e) => setEventLocation(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-blue-500" placeholder="VD: Van phong, Google Meet..." />
+                    </div>
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                      <input type="checkbox" checked={eventMandatory} onChange={(e) => setEventMandatory(e.target.checked)} className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
+                      Bat buoc tham gia
+                    </label>
+                  </div>
+                )}
+
                 <select
                   value={priority}
                   onChange={(e) => setPriority(e.target.value)}

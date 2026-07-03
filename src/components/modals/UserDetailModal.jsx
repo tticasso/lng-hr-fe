@@ -12,12 +12,15 @@ import {
   Loader2,
   LogIn,
   Key,
+  Camera,
 } from "lucide-react";
 import Button from "../common/Button";
 import StatusBadge from "../common/StatusBadge";
 import { accountApi } from "../../apis/accountApi";
+import { employeeApi } from "../../apis/employeeApi";
 import { toast } from "react-toastify";
 import { formatEmployeeCode } from "../../utils/employeeDisplay";
+import { getAvatarUrl, hasAvatar } from "../../utils/avatar";
 
 const permissionActionColumns = [
   { key: "read", label: "Xem" },
@@ -161,6 +164,7 @@ const UserDetailModal = ({
   onRefresh,
   canWriteAccounts = false,
   canWriteRoles = false,
+  canWriteEmployees = false,
 }) => {
   const [accountForm, setAccountForm] = useState({
     username: user.username || "",
@@ -169,6 +173,8 @@ const UserDetailModal = ({
     isActive: user.isActive !== false,
   });
   const [isUpdatingAccount, setIsUpdatingAccount] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(user.employee?.avatar || "");
   const selectedRoleObj = useMemo(
     () => rolesList.find((role) => role._id === accountForm.roleId) || user.role,
     [accountForm.roleId, rolesList, user.role],
@@ -185,12 +191,11 @@ const UserDetailModal = ({
   // Helper Avatar (Logic yêu cầu 1)
   const renderAvatar = () => {
     if (
-      user.employee?.avatar &&
-      user.employee.avatar !== "default-avatar.jpg"
+      hasAvatar(avatarUrl)
     ) {
       return (
         <img
-          src={user.employee.avatar}
+          src={getAvatarUrl(avatarUrl, 80)}
           className="w-full h-full object-cover"
           alt="avatar"
         />
@@ -203,6 +208,38 @@ const UserDetailModal = ({
 
   const handleAccountFieldChange = (field, value) => {
     setAccountForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    if (!canWriteEmployees) {
+      toast.error("Bạn cần quyền WRITE_EMPLOYEES để đổi ảnh nhân viên");
+      return;
+    }
+    if (!user.employee?._id) {
+      toast.error("Tài khoản này chưa có hồ sơ nhân viên");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast.error("Vui lòng chọn file ảnh.");
+      return;
+    }
+
+    setAvatarUploading(true);
+    try {
+      const res = await employeeApi.updateEmployeeAvatar(user.employee._id, file);
+      const avatar = res.data?.data?.avatar;
+      if (avatar) setAvatarUrl(avatar);
+      toast.success("Cập nhật ảnh đại diện thành công");
+      onRefresh();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Upload ảnh thất bại");
+    } finally {
+      setAvatarUploading(false);
+    }
   };
 
   const handleUpdateAccount = async () => {
@@ -271,8 +308,24 @@ const UserDetailModal = ({
         {/* HEADER */}
         <div className="p-6 border-b flex justify-between items-start bg-gray-50">
           <div className="flex gap-4">
-            <div className="w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center text-3xl font-bold border-4 border-white shadow overflow-hidden">
+            <div className="relative w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center text-3xl font-bold border-4 border-white shadow overflow-hidden">
               {renderAvatar()}
+              {canWriteEmployees && (
+                <label className="absolute inset-x-0 bottom-0 flex h-6 cursor-pointer items-center justify-center bg-black/55 text-white hover:bg-black/70">
+                  {avatarUploading ? (
+                    <Loader2 className="animate-spin" size={14} />
+                  ) : (
+                    <Camera size={14} />
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={avatarUploading}
+                    onChange={handleAvatarChange}
+                  />
+                </label>
+              )}
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-800">

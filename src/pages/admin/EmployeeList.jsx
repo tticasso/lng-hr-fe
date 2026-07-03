@@ -25,6 +25,7 @@ import { useAuth } from "../../context/AuthContext";
 import { hasPermission } from "../../utils/authPermissions";
 import { ROUTES } from "../../config/routes";
 import { formatEmployeeCode } from "../../utils/employeeDisplay";
+import { getAvatarUrl, hasAvatar } from "../../utils/avatar";
 
 // Import Modal vừa tạo
 import EditEmployeeModal from "../../components/modals/EditEmployeeModal";
@@ -598,9 +599,9 @@ const EmployeeList = () => {
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-blue-100 border border-white shadow-sm flex items-center justify-center text-blue-700 font-bold text-sm overflow-hidden shrink-0">
-                          {emp.avatar && emp.avatar !== "default-avatar.jpg" ? (
+                          {hasAvatar(emp.avatar) ? (
                             <img
-                              src={emp.avatar}
+                              src={getAvatarUrl(emp.avatar, 48)}
                               alt="avt"
                               className="w-full h-full object-cover"
                             />

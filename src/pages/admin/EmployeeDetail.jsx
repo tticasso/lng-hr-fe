@@ -32,6 +32,7 @@ import { employeeApi } from "../../apis/employeeApi";
 import { toast } from "react-toastify";
 import { ROUTES } from "../../config/routes";
 import { formatEmployeeCode } from "../../utils/employeeDisplay";
+import { getAvatarUrl, hasAvatar } from "../../utils/avatar";
 
 const EmployeeDetail = () => {
   const navigate = useNavigate();
@@ -302,9 +303,9 @@ const EmployeeDetail = () => {
         <div className="flex flex-col lg:flex-row justify-between items-start gap-6">
           <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-start w-full lg:w-auto">
             <div className="h-24 w-24 rounded-full bg-white border-4 border-blue-50 shadow-md flex items-center justify-center text-3xl font-bold text-blue-600 shrink-0 overflow-hidden">
-              {employee.avatar && employee.avatar !== "default-avatar.jpg" ? (
+              {hasAvatar(employee.avatar) ? (
                 <img
-                  src={employee.avatar}
+                  src={getAvatarUrl(employee.avatar, 112)}
                   alt="Avatar"
                   className="w-full h-full object-cover"
                 />

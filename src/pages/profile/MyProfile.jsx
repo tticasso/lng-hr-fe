@@ -18,6 +18,7 @@ import {
   AlertCircle,
   Landmark,
   Key,
+  Camera,
 } from "lucide-react";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
@@ -29,6 +30,7 @@ import { useNavigate } from "react-router-dom";
 import { authApi } from "../../apis/authApi";
 import { formatEmployeeCode } from "../../utils/employeeDisplay";
 import { ROUTES } from "../../config/routes";
+import { getAvatarUrl, hasAvatar } from "../../utils/avatar";
 
 // --- CÁC REGEX CHUẨN VIỆT NAM ---
 const VIETNAM_PHONE_REGEX = /^(\+84|0)(3|5|7|8|9)[0-9]{8}$/;
@@ -79,6 +81,7 @@ const MyProfile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [errors, setErrors] = useState({});
 
   // ====== CHANGE PASSWORD STATE ======
@@ -232,6 +235,30 @@ const MyProfile = () => {
       }
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Vui lòng chọn file ảnh.");
+      return;
+    }
+
+    setAvatarUploading(true);
+    try {
+      const res = await employeeApi.updateMyAvatar(file);
+      const updatedProfile = extractProfilePayload(res);
+      if (updatedProfile) setProfile(buildProfile(updatedProfile));
+      await refreshProfile();
+      toast.success("Cập nhật ảnh đại diện thành công!");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Upload ảnh thất bại.");
+    } finally {
+      setAvatarUploading(false);
     }
   };
 
@@ -556,10 +583,10 @@ const MyProfile = () => {
       <Card className="relative overflow-hidden border-t-4 border-t-blue-600">
         <div className="flex flex-col lg:flex-row gap-6 justify-between items-start">
           <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-start w-full lg:w-auto">
-            <div className="h-28 w-28 rounded-full bg-blue-50 border-4 border-white shadow-sm flex items-center justify-center overflow-hidden">
-              {profile.avatar && profile.avatar !== "default-avatar.jpg" ? (
+            <div className="relative h-28 w-28 rounded-full bg-blue-50 border-4 border-white shadow-sm flex items-center justify-center overflow-hidden">
+              {hasAvatar(profile.avatar) ? (
                 <img
-                  src={profile.avatar}
+                  src={getAvatarUrl(profile.avatar, 128)}
                   alt="Avatar"
                   className="w-full h-full object-cover"
                 />
@@ -568,6 +595,20 @@ const MyProfile = () => {
                   {profile.fullName?.charAt(0).toUpperCase()}
                 </span>
               )}
+              <label className="absolute inset-x-0 bottom-0 flex h-9 cursor-pointer items-center justify-center bg-black/55 text-white transition hover:bg-black/70">
+                {avatarUploading ? (
+                  <Loader2 className="animate-spin" size={18} />
+                ) : (
+                  <Camera size={18} />
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={avatarUploading}
+                  onChange={handleAvatarChange}
+                />
+              </label>
             </div>
             <div className="text-center sm:text-left space-y-2">
               <div className="flex items-center gap-3 justify-center sm:justify-start">

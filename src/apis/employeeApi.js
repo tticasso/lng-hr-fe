@@ -21,8 +21,28 @@ export const employeeApi = {
     return apiClient.patch("/employees/update-me", data);
   },
 
+  updateMyAvatar: (file) => {
+    const formData = new FormData();
+    formData.append("avatar", file);
+    return apiClient.patch("/employees/update-me/avatar", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
   updateEmployee: (id, data) => {
     return apiClient.patch(`/employees/update-employee/${id}`, data);
+  },
+
+  updateEmployeeAvatar: (id, file) => {
+    const formData = new FormData();
+    formData.append("avatar", file);
+    return apiClient.patch(`/employees/update-employee/${id}/avatar`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
   },
 
   updateStatus: (id, data) => {

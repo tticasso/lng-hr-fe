@@ -8,6 +8,7 @@ import {
 
 import { formatStandardWorkday, getPayrollWorkDays } from "./attendanceUtils";
 import { formatEmployeeCode } from "../../../utils/employeeDisplay";
+import { getAvatarUrl, hasAvatar as hasAvatarUrl } from "../../../utils/avatar";
 
 const SOURCE_META = {
   WEB_APP: {
@@ -137,6 +138,8 @@ const AttendanceDetailDrawer = ({
     selectedEmployee,
     loadingDetail ? null : employeeDetail,
   );
+  const avatarUrl = selectedEmployee.avatar || employeeDetail?.avatar || "";
+  const hasAvatar = hasAvatarUrl(avatarUrl);
 
   return (
     <div
@@ -149,8 +152,16 @@ const AttendanceDetailDrawer = ({
       >
         <div className="flex items-start justify-between border-b border-gray-100 bg-gray-50 p-5">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-xl font-bold text-white shadow-md">
-              {selectedEmployee.fullName?.substring(0, 2).toUpperCase() || "??"}
+            <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-xl font-bold text-white shadow-md">
+              {hasAvatar ? (
+                <img
+                  src={getAvatarUrl(avatarUrl, 64)}
+                  alt="Avatar"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                selectedEmployee.fullName?.substring(0, 2).toUpperCase() || "??"
+              )}
             </div>
             <div>
               <h2 className="text-lg font-bold text-gray-800">

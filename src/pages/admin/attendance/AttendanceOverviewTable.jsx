@@ -15,6 +15,25 @@ import {
   getPaidHolidayWorkDays,
   getPayrollWorkDays,
 } from "./attendanceUtils";
+import { getAvatarUrl, hasAvatar } from "../../../utils/avatar";
+
+const renderAvatar = (employee, sizeClass) => {
+  const initials = employee.fullName?.substring(0, 2).toUpperCase() || "??";
+
+  return (
+    <div className={`${sizeClass} shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-xs font-bold text-white shadow-sm`}>
+      {hasAvatar(employee.avatar) ? (
+        <img
+          src={getAvatarUrl(employee.avatar, 48)}
+          alt="Avatar"
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        initials
+      )}
+    </div>
+  );
+};
 
 const AttendanceOverviewTable = ({
   filtersNode,
@@ -36,7 +55,6 @@ const AttendanceOverviewTable = ({
   const mobileContent = (
     <div className="space-y-3">
       {employees.map((emp, index) => {
-        const avatar = emp.fullName?.substring(0, 2).toUpperCase() || "??";
         const payrollWorkDays = getPayrollWorkDays(emp);
         const paidHolidayWorkDays = getPaidHolidayWorkDays(emp);
 
@@ -56,9 +74,7 @@ const AttendanceOverviewTable = ({
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-xs font-bold text-white shadow-sm">
-                  {avatar}
-                </div>
+                {renderAvatar(emp, "flex h-10 w-10 items-center justify-center")}
                 <div className="min-w-0">
                   <p className="truncate font-bold text-gray-800">
                     {emp.fullName || "--"}
@@ -135,7 +151,6 @@ const AttendanceOverviewTable = ({
       </thead>
       <tbody className="divide-y divide-gray-100 bg-white">
         {employees.map((emp, index) => {
-          const avatar = emp.fullName?.substring(0, 2).toUpperCase() || "??";
           const payrollWorkDays = getPayrollWorkDays(emp);
           const paidHolidayWorkDays = getPaidHolidayWorkDays(emp);
 
@@ -152,9 +167,7 @@ const AttendanceOverviewTable = ({
               </td>
               <td className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-xs font-bold text-white shadow-sm">
-                    {avatar}
-                  </div>
+                  {renderAvatar(emp, "flex h-8 w-8 items-center justify-center")}
                   <div>
                     <p className="font-bold text-gray-800">{emp.fullName || "--"}</p>
                     <p className="font-mono text-xs text-gray-500">
