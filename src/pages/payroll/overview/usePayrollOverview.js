@@ -23,6 +23,21 @@ import {
 
 const getEmployeeId = (employee) => employee?._id || employee?.id || employee;
 
+const payrollEmailJobToResponse = (job) => {
+  if (job?.status === "FAILED") {
+    const error = new Error(job.errorMessage || "Gửi email phiếu lương hàng loạt thất bại");
+    error.normalizedMessage = error.message;
+    throw error;
+  }
+
+  return {
+    data: {
+      status: job?.status === "COMPLETED" ? "success" : "partial_success",
+      data: job?.summary || {},
+    },
+  };
+};
+
 export const usePayrollOverview = () => {
   const { user } = useAuth();
   const canRunPayroll = hasPermission(user, ACCESS.PAYROLL_ENGINE[0]);
@@ -283,6 +298,15 @@ const handleReopenPayroll = async (payroll) => {
     setDetailModalPayroll(null);
   };
 
+  const waitForPayrollEmailJobResult = async (res) => {
+    const jobId = res.data?.data?.jobId;
+    if (!jobId) return res;
+
+    toast.info("Đã bắt đầu gửi email phiếu lương. Hệ thống sẽ tự cập nhật khi hoàn tất.");
+    const job = await payrollAPI.pollPayrollEmailJob(jobId);
+    return payrollEmailJobToResponse(job);
+  };
+
   const handleSendPayrollEmailsBulk = async () => {
     if (!canRunPayroll) {
       toast.error("Bạn không có quyền WRITE_PAYROLLS để gửi email phiếu lương hàng loạt.");
@@ -309,10 +333,10 @@ const handleReopenPayroll = async (payroll) => {
 
     try {
       setSendingBulkEmails(true);
-      const res = await payrollAPI.sendEmailsBulk({
+      const res = await waitForPayrollEmailJobResult(await payrollAPI.sendEmailsBulk({
         month: parseInt(month, 10),
         year: parseInt(year, 10),
-      });
+      }));
       const result = res.data?.data || {};
       const alreadySentCount = Number(result.skippedAlreadySent || 0);
       const skippedCount =
@@ -330,6 +354,7 @@ const handleReopenPayroll = async (payroll) => {
           `Đã gửi mới ${result.sent || 0}/${result.total || 0} email. Đã gửi trước đó: ${alreadySentCount}.`,
         );
       }
+      await fetchPayrollData();
     } catch (error) {
       toast.error(error.normalizedMessage || "Gửi email phiếu lương hàng loạt thất bại");
     } finally {
@@ -369,7 +394,7 @@ const handleReopenPayroll = async (payroll) => {
       await payrollAPI.finalize(payload);
       toast.success("Đã chốt kỳ lương thành công");
 
-      const res = await payrollAPI.sendEmailsBulk(payload);
+      const res = await waitForPayrollEmailJobResult(await payrollAPI.sendEmailsBulk(payload));
       const result = res.data?.data || {};
       const alreadySentCount = Number(result.skippedAlreadySent || 0);
       const skippedCount =

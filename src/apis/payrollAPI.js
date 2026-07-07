@@ -1,6 +1,12 @@
 import apiClient from "./apiClient";
 
 const PAYROLL_EMAIL_TIMEOUT_MS = Number(import.meta.env.VITE_PAYROLL_EMAIL_TIMEOUT_MS || 120000);
+const PAYROLL_EMAIL_JOB_POLL_MS = Number(import.meta.env.VITE_PAYROLL_EMAIL_JOB_POLL_MS || 2000);
+const PAYROLL_EMAIL_JOB_DONE = new Set(["COMPLETED", "PARTIAL_SUCCESS", "FAILED"]);
+
+const wait = (ms) => new Promise((resolve) => {
+  setTimeout(resolve, ms);
+});
 
 export const payrollAPI = {
   getall: (month, year, params = {}) => {
@@ -47,6 +53,29 @@ export const payrollAPI = {
     return apiClient.post("/payrolls/send-emails", payload, {
       timeout: PAYROLL_EMAIL_TIMEOUT_MS,
     });
+  },
+
+  getPayrollEmailJob: (jobId) => {
+    return apiClient.get(`/payrolls/email-jobs/${jobId}`);
+  },
+
+  pollPayrollEmailJob: async (jobId, options = {}) => {
+    const intervalMs = Number(options.intervalMs || PAYROLL_EMAIL_JOB_POLL_MS);
+
+    while (true) {
+      const res = await payrollAPI.getPayrollEmailJob(jobId);
+      const job = res.data?.data;
+
+      if (typeof options.onProgress === "function") {
+        options.onProgress(job);
+      }
+
+      if (PAYROLL_EMAIL_JOB_DONE.has(job?.status)) {
+        return job;
+      }
+
+      await wait(intervalMs);
+    }
   },
 
   deletePeriod: (payload) => {

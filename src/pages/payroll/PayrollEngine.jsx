@@ -37,6 +37,21 @@ import {
 import { formatEmployeeCode } from "../../utils/employeeDisplay";
 import { matchesSearchText } from "../../utils/searchText";
 
+const payrollEmailJobToResponse = (job) => {
+  if (job?.status === "FAILED") {
+    const error = new Error(job.errorMessage || "Gửi email phiếu lương thất bại");
+    error.normalizedMessage = error.message;
+    throw error;
+  }
+
+  return {
+    data: {
+      status: job?.status === "COMPLETED" ? "success" : "partial_success",
+      data: job?.summary || {},
+    },
+  };
+};
+
 const PayrollEngine = () => {
   const { user } = useAuth();
   const canRunPayroll = hasPermission(user, ACCESS.PAYROLL_ENGINE[0]);
@@ -100,31 +115,28 @@ const PayrollEngine = () => {
     );
   });
 
+  const fetchPayrollData = async ({ showToast = true } = {}) => {
+    try {
+      setLoadingData(true);
+
+      const [year, month] = selectedMonth.split("-");
+      const res = await payrollAPI.getall(month, year);
+      const apiData = res.data?.data?.data || res.data?.data || [];
+      setPayrollData(apiData);
+
+      if (showToast) toast.success("Tải dữ liệu lương thành công");
+    } catch (error) {
+      console.error("Error fetching payroll data:", error);
+      toast.error("Không thể tải dữ liệu lương. Vui lòng thử lại.");
+      setPayrollData([]);
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
   // useEffect: Gọi API khi chuyển sang tab 2
   useEffect(() => {
     if (currentStep === 2) {
-      const fetchPayrollData = async () => {
-        try {
-          setLoadingData(true);
-
-          const [year, month] = selectedMonth.split("-");
-
-          const res = await payrollAPI.getall(month, year);
-
-          // Extract data từ response
-          const apiData = res.data?.data?.data || res.data?.data || [];
-          setPayrollData(apiData);
-
-          toast.success("Tải dữ liệu lương thành công");
-        } catch (error) {
-          console.error("Error fetching payroll data:", error);
-          toast.error("Không thể tải dữ liệu lương. Vui lòng thử lại.");
-          setPayrollData([]);
-        } finally {
-          setLoadingData(false);
-        }
-      };
-
       fetchPayrollData();
     }
   }, [currentStep, selectedMonth]); // Chạy lại khi currentStep hoặc selectedMonth thay đổi
@@ -215,8 +227,19 @@ const PayrollEngine = () => {
   };
 
   const sendPayrollEmailsForSelectedMonth = async (payload) => {
-    const res = await payrollAPI.sendEmailsBulk(payload);
+    const startRes = await payrollAPI.sendEmailsBulk(payload);
+    const jobId = startRes.data?.data?.jobId;
+
+    if (!jobId) {
+      showPayrollEmailResult(startRes);
+      return;
+    }
+
+    toast.info("Đã bắt đầu gửi email phiếu lương. Hệ thống sẽ tự cập nhật khi hoàn tất.");
+    const job = await payrollAPI.pollPayrollEmailJob(jobId);
+    const res = payrollEmailJobToResponse(job);
     showPayrollEmailResult(res);
+    await fetchPayrollData({ showToast: false });
   };
 
   const handleSendPayrollEmails = async () => {
