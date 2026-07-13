@@ -3,12 +3,14 @@ import PayrollOverviewHeader from "./overview/PayrollOverviewHeader";
 import PayrollOverviewTable from "./overview/PayrollOverviewTable";
 import PayrollSummaryCards from "./overview/PayrollSummaryCards";
 import { usePayrollOverview } from "./overview/usePayrollOverview";
+import PayrollActionConfirmModal from "../../components/modals/PayrollActionConfirmModal";
 import PayrollAdjustmentModal from "../../components/modals/PayrollAdjustmentModal";
 import PayrollDetailModal from "../../components/modals/PayrollDetailModal";
 
 const AllPayRoll = () => {
   const {
     departments,
+    employees,
     canRunPayroll,
     fetchPayrollData,
     filteredData,
@@ -17,6 +19,7 @@ const AllPayRoll = () => {
     handleExportExcel,
     handleFilterChange,
     handlePayment,
+    handleFinalizeSelectedPayrolls,
     handleSelectAll,
     handleSelectRow,
     handleFinalizeAndSendPayrollEmails,
@@ -27,6 +30,8 @@ const AllPayRoll = () => {
     handleOpenAdjustments,
     handleOpenBulkAdjustments,
     handleCloseAdjustments,
+    handleClosePayrollActionConfirm,
+    handleConfirmPayrollAction,
     handleOpenDetails,
     handleCloseDetails,
     isAllSelected,
@@ -37,6 +42,8 @@ const AllPayRoll = () => {
     deletingPayrollPeriod,
     adjustmentModalPayroll,
     detailModalPayroll,
+    payrollActionConfirm,
+    confirmingPayrollAction,
     selectedPayrollItems,
     selectedMonth,
     selectedRows,
@@ -48,6 +55,7 @@ const AllPayRoll = () => {
     <PayrollOverviewFilters
       filters={filters}
       departments={departments}
+      employees={employees}
       onFilterChange={handleFilterChange}
       selectedCount={selectedRows.length}
       totalCount={filteredData.length}
@@ -61,6 +69,7 @@ const AllPayRoll = () => {
         onChangeMonth={(e) => setSelectedMonth(e.target.value)}
         onRefresh={fetchPayrollData}
         onPayment={handlePayment}
+        onFinalizeSelected={handleFinalizeSelectedPayrolls}
         onBulkAdjustments={handleOpenBulkAdjustments}
         onFinalizeAndSend={handleFinalizeAndSendPayrollEmails}
         onDeletePeriod={handleDeletePayrollPeriod}
@@ -110,6 +119,14 @@ const AllPayRoll = () => {
         isOpen={Boolean(detailModalPayroll)}
         onClose={handleCloseDetails}
         payroll={detailModalPayroll}
+      />
+
+      <PayrollActionConfirmModal
+        {...(payrollActionConfirm || {})}
+        isOpen={Boolean(payrollActionConfirm)}
+        loading={confirmingPayrollAction}
+        onClose={handleClosePayrollActionConfirm}
+        onConfirm={handleConfirmPayrollAction}
       />
     </div>
   );

@@ -20,9 +20,11 @@ const PayrollActionMenu = ({
   deleteDisabled,
   deletingPayrollPeriod,
   exportDisabled,
+  finalizingAndSending,
   onBulkAdjustments,
   onDeletePeriod,
   onExport,
+  onFinalizeSelected,
   onPayment,
   selectedCount,
 }) => {
@@ -59,6 +61,13 @@ const PayrollActionMenu = ({
   };
 
   const menuItems = [
+    canRunPayroll && {
+      key: "finalize-selected",
+      label: `Chốt (${selectedCount})`,
+      icon: finalizingAndSending ? <Loader2 size={16} className="animate-spin" /> : <Lock size={16} />,
+      disabled: selectedCount === 0 || finalizingAndSending,
+      onClick: onFinalizeSelected,
+    },
     canRunPayroll && {
       key: "payment",
       label: `Thanh toán (${selectedCount})`,
@@ -138,6 +147,7 @@ const PayrollOverviewHeader = ({
   onBulkAdjustments,
   onDeletePeriod,
   onFinalizeAndSend,
+  onFinalizeSelected,
   onSendEmailsBulk,
   onExport,
   loading,
@@ -209,9 +219,11 @@ const PayrollOverviewHeader = ({
           deleteDisabled={deleteDisabled}
           deletingPayrollPeriod={deletingPayrollPeriod}
           exportDisabled={exportDisabled}
+          finalizingAndSending={finalizingAndSending}
           onBulkAdjustments={onBulkAdjustments}
           onDeletePeriod={onDeletePeriod}
           onExport={onExport}
+          onFinalizeSelected={onFinalizeSelected}
           onPayment={onPayment}
           selectedCount={selectedCount}
         />

@@ -11,7 +11,7 @@ const wait = (ms) => new Promise((resolve) => {
 export const payrollAPI = {
   getall: (month, year, params = {}) => {
     return apiClient.get("/payrolls", {
-      params: { month, year, limit: 50, ...params },
+      params: { month, year, limit: 1000, ...params },
     });
   },
 

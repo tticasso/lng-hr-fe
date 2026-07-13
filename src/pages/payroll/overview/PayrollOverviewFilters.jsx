@@ -6,6 +6,7 @@ import { statusOptions } from "./payrollOverviewUtils";
 const PayrollOverviewFilters = ({
   filters,
   departments,
+  employees,
   onFilterChange,
   selectedCount,
   totalCount,
@@ -25,6 +26,22 @@ const PayrollOverviewFilters = ({
           placeholder="Tìm kiếm theo tên, mã nhân viên, phòng ban..."
           className="h-12 w-full rounded-lg border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+      </div>
+
+      <div className="min-w-0 xl:w-64 xl:flex-none">
+        <select
+          name="employeeId"
+          value={filters.employeeId}
+          onChange={onFilterChange}
+          className="h-12 w-full cursor-pointer rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-700 focus:border-blue-500 focus:outline-none"
+        >
+          <option value="">Nhân viên (Tất cả)</option>
+          {employees.map((employee) => (
+            <option key={employee._id || employee.id} value={employee._id || employee.id}>
+              {employee.fullName || "--"} ({employee.employeeCode || "--"})
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="relative min-w-0 xl:w-60 xl:flex-none">

@@ -20,6 +20,11 @@ import {
   getSalaryPeriodBreakdownItems,
   OT_TYPE_LABELS,
 } from "./payrollOverviewUtils";
+import {
+  buildPayrollQueryParams,
+  buildSelectedPayrollPayload,
+  getSelectedPayrollsByStatus,
+} from "./payrollOverviewQuery";
 
 const getEmployeeId = (employee) => employee?._id || employee?.id || employee;
 
@@ -49,9 +54,13 @@ export const usePayrollOverview = () => {
   const [deletingPayrollPeriod, setDeletingPayrollPeriod] = useState(false);
   const [adjustmentModalPayroll, setAdjustmentModalPayroll] = useState(null);
   const [detailModalPayroll, setDetailModalPayroll] = useState(null);
+  const [payrollActionConfirm, setPayrollActionConfirm] = useState(null);
+  const [confirmingPayrollAction, setConfirmingPayrollAction] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
+  const [employeeOptions, setEmployeeOptions] = useState([]);
   const [filters, setFilters] = useState({
     search: "",
+    employeeId: "",
     department: "",
     status: "",
     employeeStatus: "",
@@ -61,7 +70,7 @@ export const usePayrollOverview = () => {
     try {
       setLoading(true);
       const [year, month] = selectedMonth.split("-");
-      const res = await payrollAPI.getall(month, year);
+      const res = await payrollAPI.getall(month, year, buildPayrollQueryParams(filters));
       const apiData = res.data?.data?.data || res.data?.data || [];
       setPayrollData(apiData);
       toast.success("Tải dữ liệu lương thành công");
@@ -72,11 +81,21 @@ export const usePayrollOverview = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedMonth]);
+  }, [selectedMonth, filters.employeeId]);
 
   useEffect(() => {
     fetchPayrollData();
   }, [fetchPayrollData]);
+
+  useEffect(() => {
+    if (filters.employeeId) return;
+
+    setEmployeeOptions(
+      payrollData
+        .map((item) => item.employeeId)
+        .filter((employee) => employee?._id || employee?.id),
+    );
+  }, [filters.employeeId, payrollData]);
 
   const filteredData = useMemo(() => {
     let result = [...payrollData];
@@ -116,6 +135,37 @@ export const usePayrollOverview = () => {
     return Array.from(deptSet);
   }, [payrollData]);
 
+  const employees = employeeOptions;
+
+  const getPeriodParts = () => {
+    const [year, month] = selectedMonth.split("-");
+    return {
+      year,
+      month,
+      monthNumber: parseInt(month, 10),
+      yearNumber: parseInt(year, 10),
+      label: `${month}/${year}`,
+    };
+  };
+
+  const handleClosePayrollActionConfirm = () => {
+    if (!confirmingPayrollAction) setPayrollActionConfirm(null);
+  };
+
+  const handleConfirmPayrollAction = async () => {
+    if (!payrollActionConfirm?.onConfirm) return;
+
+    try {
+      setConfirmingPayrollAction(true);
+      await payrollActionConfirm.onConfirm();
+      setPayrollActionConfirm(null);
+    } catch (error) {
+      console.error("[ERROR] Error running payroll action:", error);
+    } finally {
+      setConfirmingPayrollAction(false);
+    }
+  };
+
   const selectedPayrollItems = useMemo(
     () => payrollData.filter((item) => selectedRows.includes(item._id)),
     [payrollData, selectedRows],
@@ -143,6 +193,7 @@ export const usePayrollOverview = () => {
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters((prev) => ({ ...prev, [name]: value }));
+    if (name === "employeeId") setSelectedRows([]);
   };
 
   const handleSelectRow = (rowId) => {
@@ -175,35 +226,103 @@ export const usePayrollOverview = () => {
       return;
     }
 
-    const [year, month] = selectedMonth.split("-");
-    const payload = isAllSelected
-      ? { month: parseInt(month, 10), year: parseInt(year, 10) }
-      : {
-          month: parseInt(month, 10),
-          year: parseInt(year, 10),
-          payrollIds: selectedRows,
-        };
+    const finalizedPayrolls = getSelectedPayrollsByStatus(payrollData, selectedRows, ["FINALIZED"]);
+    const finalizedIds = finalizedPayrolls.map((item) => item._id);
 
-    try {
-      await payrollAPI.markpaid(payload);
-      toast.success("Thanh toán thành công");
-      await fetchPayrollData();
-      setSelectedRows([]);
-    } catch (error) {
-      console.error("[ERROR] Error marking payroll as paid:", error);
-      toast.error("Thanh toán thất bại");
+    if (finalizedIds.length === 0) {
+      toast.warning("Chỉ có thể thanh toán phiếu lương đã chốt.");
+      return;
     }
+
+    const payload = buildSelectedPayrollPayload(selectedMonth, finalizedIds);
+    const ignoredCount = selectedRows.length - finalizedIds.length;
+
+    setPayrollActionConfirm({
+      title: "Xác nhận thanh toán lương",
+      description: `Thanh toán ${finalizedIds.length} phiếu lương đã chốt.`,
+      confirmLabel: "Thanh toán",
+      items: finalizedPayrolls,
+      summary: [
+        { label: "Được thanh toán", value: finalizedIds.length },
+        { label: "Bỏ qua", value: ignoredCount },
+      ],
+      warning: ignoredCount > 0 ? "Các phiếu chưa chốt sẽ không được thanh toán." : "",
+      onConfirm: async () => {
+        try {
+          await payrollAPI.markpaid(payload);
+          toast.success("Thanh toán thành công");
+          await fetchPayrollData();
+          setSelectedRows([]);
+        } catch (error) {
+          toast.error("Thanh toán thất bại");
+          throw error;
+        }
+      },
+    });
+  };
+
+  const handleFinalizeSelectedPayrolls = async () => {
+    if (!canRunPayroll) {
+      toast.error("Bạn không có quyền WRITE_PAYROLLS để chốt bảng lương.");
+      return;
+    }
+
+    const draftPayrolls = getSelectedPayrollsByStatus(payrollData, selectedRows, ["DRAFT"]);
+    const draftIds = draftPayrolls.map((item) => item._id);
+    if (draftIds.length === 0) {
+      toast.warning("Vui lòng chọn ít nhất một phiếu DRAFT để chốt.");
+      return;
+    }
+
+    const { label: periodLabel } = getPeriodParts();
+    const ignoredCount = selectedRows.length - draftIds.length;
+
+    setPayrollActionConfirm({
+      title: "Xác nhận chốt lương",
+      description: `Chốt ${draftIds.length} phiếu lương kỳ ${periodLabel}.`,
+      confirmLabel: "Chốt lương",
+      items: draftPayrolls,
+      summary: [
+        { label: "Sẽ chốt", value: draftIds.length },
+        { label: "Bỏ qua", value: ignoredCount },
+      ],
+      warning: ignoredCount > 0 ? "Các phiếu không ở trạng thái DRAFT sẽ không được chốt lại." : "",
+      onConfirm: async () => {
+        try {
+          setFinalizingAndSending(true);
+          await payrollAPI.finalize(buildSelectedPayrollPayload(selectedMonth, draftIds));
+          toast.success(`Đã chốt ${draftIds.length} phiếu lương`);
+          await fetchPayrollData();
+          setSelectedRows([]);
+        } catch (error) {
+          toast.error(error.normalizedMessage || error.response?.data?.message || "Chốt lương thất bại");
+          throw error;
+        } finally {
+          setFinalizingAndSending(false);
+        }
+      },
+    });
   };
 
   const handleSendPayrollEmail = async (payrollId) => {
-    if (!window.confirm("Gửi email phiếu lương cho nhân viên này?")) return;
+    const payroll = payrollData.find((item) => item._id === payrollId);
 
-    try {
-      await payrollAPI.sendEmail(payrollId);
-      toast.success("Đã gửi email phiếu lương");
-    } catch (error) {
-      toast.error(error.normalizedMessage || "Gửi email phiếu lương thất bại");
-    }
+    setPayrollActionConfirm({
+      title: "Xác nhận gửi phiếu lương",
+      description: "Gửi email phiếu lương cho nhân viên này.",
+      confirmLabel: "Gửi email",
+      items: payroll ? [payroll] : [],
+      summary: [{ label: "Số phiếu", value: 1 }],
+      onConfirm: async () => {
+        try {
+          await payrollAPI.sendEmail(payrollId);
+          toast.success("Đã gửi email phiếu lương");
+        } catch (error) {
+          toast.error(error.normalizedMessage || "Gửi email phiếu lương thất bại");
+          throw error;
+        }
+      },
+    });
   };
 
 const handleReopenPayroll = async (payroll) => {
@@ -215,22 +334,26 @@ const handleReopenPayroll = async (payroll) => {
     if (!payroll?._id) return;
 
     const employeeName = payroll.employeeId?.fullName || payroll.employeeId?.employeeCode || "nhân viên này";
-    if (
-      !window.confirm(
-        `Mở lại phiếu lương của ${employeeName} về DRAFT? Trạng thái email sẽ được reset để có thể gửi lại sau khi chốt lại.`,
-      )
-    ) {
-      return;
-    }
-
-    try {
-      await payrollAPI.reopen(payroll._id);
-      toast.success("Đã mở lại phiếu lương về DRAFT");
-      await fetchPayrollData();
-      setSelectedRows((prev) => prev.filter((id) => id !== payroll._id));
-    } catch (error) {
-      toast.error(error.normalizedMessage || "Mở lại phiếu lương thất bại");
-    }
+    setPayrollActionConfirm({
+      title: "Xác nhận mở lại phiếu lương",
+      description: `Mở lại phiếu lương của ${employeeName} về DRAFT.`,
+      confirmLabel: "Mở lại",
+      tone: "warning",
+      items: [payroll],
+      summary: [{ label: "Số phiếu", value: 1 }],
+      warning: "Trạng thái email sẽ được reset để có thể gửi lại sau khi chốt lại.",
+      onConfirm: async () => {
+        try {
+          await payrollAPI.reopen(payroll._id);
+          toast.success("Đã mở lại phiếu lương về DRAFT");
+          await fetchPayrollData();
+          setSelectedRows((prev) => prev.filter((id) => id !== payroll._id));
+        } catch (error) {
+          toast.error(error.normalizedMessage || "Mở lại phiếu lương thất bại");
+          throw error;
+        }
+      },
+    });
   };
 
   const handleOpenAdjustments = (payroll) => {
@@ -313,53 +436,70 @@ const handleReopenPayroll = async (payroll) => {
       return;
     }
 
-    const [year, month] = selectedMonth.split("-");
-    const emailReadyCount = payrollData.filter((item) =>
-      ["FINALIZED", "PAID"].includes(item.status),
-    ).length;
+    const { monthNumber, yearNumber, label: periodLabel } = getPeriodParts();
+    const emailReadyPayrolls = selectedRows.length > 0
+      ? getSelectedPayrollsByStatus(payrollData, selectedRows, ["FINALIZED", "PAID"])
+      : payrollData.filter((item) => ["FINALIZED", "PAID"].includes(item.status));
+    const selectedEmailReadyIds = emailReadyPayrolls.map((item) => item._id);
+    const emailReadyCount = emailReadyPayrolls.length;
 
     if (emailReadyCount === 0) {
       toast.warning("Kỳ lương này chưa có bản lương đã chốt hoặc đã thanh toán.");
       return;
     }
 
-    if (
-      !window.confirm(
-        `Gửi email phiếu lương tháng ${month}/${year} cho ${emailReadyCount} nhân viên?`,
-      )
-    ) {
-      return;
-    }
+    const ignoredCount = selectedRows.length > 0 ? selectedRows.length - emailReadyCount : 0;
 
-    try {
-      setSendingBulkEmails(true);
-      const res = await waitForPayrollEmailJobResult(await payrollAPI.sendEmailsBulk({
-        month: parseInt(month, 10),
-        year: parseInt(year, 10),
-      }));
-      const result = res.data?.data || {};
-      const alreadySentCount = Number(result.skippedAlreadySent || 0);
-      const skippedCount =
-        Number(result.skippedNoEmployee || 0) +
-        Number(result.skippedNoEmail || 0) +
-        Number(result.skippedInvalidEmail || 0) +
-        alreadySentCount;
+    setPayrollActionConfirm({
+      title: "Xác nhận gửi email phiếu lương",
+      description: `Gửi email phiếu lương kỳ ${periodLabel} cho ${emailReadyCount} nhân viên.`,
+      confirmLabel: "Gửi email",
+      items: emailReadyPayrolls,
+      summary: [
+        { label: "Sẽ gửi", value: emailReadyCount },
+        { label: "Bỏ qua", value: ignoredCount },
+      ],
+      warning: ignoredCount > 0 ? "Các phiếu chưa chốt sẽ không được gửi email." : "",
+      onConfirm: async () => {
+        try {
+          setSendingBulkEmails(true);
+          if (selectedRows.length > 0) {
+            await Promise.all(selectedEmailReadyIds.map((payrollId) => payrollAPI.sendEmail(payrollId)));
+            toast.success(`Đã gửi email cho ${selectedEmailReadyIds.length} phiếu lương đã chọn.`);
+            await fetchPayrollData();
+            return;
+          }
 
-      if (res.data?.status === "partial_success") {
-        toast.warning(
-          `Đã gửi mới ${result.sent || 0}/${result.total || 0} email. Đã gửi trước đó: ${alreadySentCount}. Lỗi: ${result.failed || 0}, bỏ qua: ${skippedCount}.`,
-        );
-      } else {
-        toast.success(
-          `Đã gửi mới ${result.sent || 0}/${result.total || 0} email. Đã gửi trước đó: ${alreadySentCount}.`,
-        );
-      }
-      await fetchPayrollData();
-    } catch (error) {
-      toast.error(error.normalizedMessage || "Gửi email phiếu lương hàng loạt thất bại");
-    } finally {
-      setSendingBulkEmails(false);
-    }
+          const res = await waitForPayrollEmailJobResult(await payrollAPI.sendEmailsBulk({
+            month: monthNumber,
+            year: yearNumber,
+          }));
+          const result = res.data?.data || {};
+          const alreadySentCount = Number(result.skippedAlreadySent || 0);
+          const skippedCount =
+            Number(result.skippedNoEmployee || 0) +
+            Number(result.skippedNoEmail || 0) +
+            Number(result.skippedInvalidEmail || 0) +
+            alreadySentCount;
+
+          if (res.data?.status === "partial_success") {
+            toast.warning(
+              `Đã gửi mới ${result.sent || 0}/${result.total || 0} email. Đã gửi trước đó: ${alreadySentCount}. Lỗi: ${result.failed || 0}, bỏ qua: ${skippedCount}.`,
+            );
+          } else {
+            toast.success(
+              `Đã gửi mới ${result.sent || 0}/${result.total || 0} email. Đã gửi trước đó: ${alreadySentCount}.`,
+            );
+          }
+          await fetchPayrollData();
+        } catch (error) {
+          toast.error(error.normalizedMessage || "Gửi email phiếu lương hàng loạt thất bại");
+          throw error;
+        } finally {
+          setSendingBulkEmails(false);
+        }
+      },
+    });
   };
 
   const handleFinalizeAndSendPayrollEmails = async () => {
@@ -368,58 +508,93 @@ const handleReopenPayroll = async (payroll) => {
       return;
     }
 
-    const [year, month] = selectedMonth.split("-");
-    const draftCount = payrollData.filter((item) => item.status === "DRAFT").length;
+    const { monthNumber, yearNumber, label: periodLabel } = getPeriodParts();
+    const draftPayrolls = selectedRows.length > 0
+      ? getSelectedPayrollsByStatus(payrollData, selectedRows, ["DRAFT"])
+      : payrollData.filter((item) => item.status === "DRAFT");
+    const selectedSendablePayrolls = getSelectedPayrollsByStatus(
+      payrollData,
+      selectedRows,
+      ["FINALIZED", "PAID"],
+    );
+    const selectedDraftIds = draftPayrolls.map((item) => item._id);
+    const selectedSendableIds = selectedSendablePayrolls.map((item) => item._id);
+    const draftCount = draftPayrolls.length;
 
     if (draftCount === 0) {
       toast.warning("Kỳ lương này không còn phiếu DRAFT để chốt. Bạn có thể dùng nút Gửi phiếu đã chốt.");
       return;
     }
 
-    if (
-      !window.confirm(
-        `Chốt ${draftCount} phiếu lương tháng ${month}/${year} và gửi email cho nhân viên?`,
-      )
-    ) {
-      return;
-    }
+    const periodSendablePayrolls = payrollData.filter((item) => ["FINALIZED", "PAID"].includes(item.status));
+    const idsToSend = [...new Set([...selectedDraftIds, ...selectedSendableIds])];
+    const previewPayrolls = selectedRows.length > 0
+      ? [...draftPayrolls, ...selectedSendablePayrolls]
+      : [...draftPayrolls, ...periodSendablePayrolls];
+    const sendCount = selectedRows.length > 0 ? idsToSend.length : previewPayrolls.length;
 
-    try {
-      setFinalizingAndSending(true);
-      const payload = {
-        month: parseInt(month, 10),
-        year: parseInt(year, 10),
-      };
+    setPayrollActionConfirm({
+      title: "Xác nhận chốt và gửi phiếu lương",
+      description: `Chốt ${draftCount} phiếu lương kỳ ${periodLabel} và gửi email cho ${sendCount} nhân viên.`,
+      confirmLabel: "Chốt & gửi",
+      items: previewPayrolls,
+      summary: [
+        { label: "Sẽ chốt", value: draftCount },
+        { label: "Sẽ gửi", value: sendCount },
+      ],
+      warning: selectedRows.length > 0 && selectedRows.length > previewPayrolls.length
+        ? "Các phiếu đã chọn nhưng không ở trạng thái DRAFT/FINALIZED/PAID sẽ được bỏ qua."
+        : "",
+      onConfirm: async () => {
+        try {
+          setFinalizingAndSending(true);
+          const payload = selectedRows.length > 0
+            ? buildSelectedPayrollPayload(selectedMonth, selectedDraftIds)
+            : {
+                month: monthNumber,
+                year: yearNumber,
+              };
 
-      await payrollAPI.finalize(payload);
-      toast.success("Đã chốt kỳ lương thành công");
+          await payrollAPI.finalize(payload);
+          toast.success("Đã chốt kỳ lương thành công");
 
-      const res = await waitForPayrollEmailJobResult(await payrollAPI.sendEmailsBulk(payload));
-      const result = res.data?.data || {};
-      const alreadySentCount = Number(result.skippedAlreadySent || 0);
-      const skippedCount =
-        Number(result.skippedNoEmployee || 0) +
-        Number(result.skippedNoEmail || 0) +
-        Number(result.skippedInvalidEmail || 0) +
-        alreadySentCount;
+          if (selectedRows.length > 0) {
+            await Promise.all(idsToSend.map((payrollId) => payrollAPI.sendEmail(payrollId)));
+            toast.success(`Đã gửi email cho ${idsToSend.length} phiếu lương đã chọn.`);
+            await fetchPayrollData();
+            setSelectedRows([]);
+            return;
+          }
 
-      if (res.data?.status === "partial_success") {
-        toast.warning(
-          `Đã gửi mới ${result.sent || 0}/${result.total || 0} email. Đã gửi trước đó: ${alreadySentCount}. Lỗi: ${result.failed || 0}, bỏ qua: ${skippedCount}.`,
-        );
-      } else {
-        toast.success(
-          `Đã gửi mới ${result.sent || 0}/${result.total || 0} email. Đã gửi trước đó: ${alreadySentCount}.`,
-        );
-      }
+          const res = await waitForPayrollEmailJobResult(await payrollAPI.sendEmailsBulk(payload));
+          const result = res.data?.data || {};
+          const alreadySentCount = Number(result.skippedAlreadySent || 0);
+          const skippedCount =
+            Number(result.skippedNoEmployee || 0) +
+            Number(result.skippedNoEmail || 0) +
+            Number(result.skippedInvalidEmail || 0) +
+            alreadySentCount;
 
-      await fetchPayrollData();
-      setSelectedRows([]);
-    } catch (error) {
-      toast.error(error.normalizedMessage || error.response?.data?.message || "Chốt lương và gửi email thất bại");
-    } finally {
-      setFinalizingAndSending(false);
-    }
+          if (res.data?.status === "partial_success") {
+            toast.warning(
+              `Đã gửi mới ${result.sent || 0}/${result.total || 0} email. Đã gửi trước đó: ${alreadySentCount}. Lỗi: ${result.failed || 0}, bỏ qua: ${skippedCount}.`,
+            );
+          } else {
+            toast.success(
+              `Đã gửi mới ${result.sent || 0}/${result.total || 0} email. Đã gửi trước đó: ${alreadySentCount}.`,
+            );
+          }
+
+          await fetchPayrollData();
+          setSelectedRows([]);
+        } catch (error) {
+          toast.error(error.normalizedMessage || error.response?.data?.message || "Chốt lương và gửi email thất bại");
+          throw error;
+        } finally {
+          setFinalizingAndSending(false);
+        }
+      },
+    });
   };
 
   const handleDeletePayrollPeriod = async () => {
@@ -448,13 +623,36 @@ const handleReopenPayroll = async (payroll) => {
     if (draftCount > 0) {
       payload.status = "DRAFT";
 
-      if (
-        !window.confirm(
-          `Xoá ${draftCount} phiếu lương DRAFT tháng ${periodLabel}? Các phiếu đã chốt/đã thanh toán sẽ không bị xoá.`,
-        )
-      ) {
-        return;
-      }
+      setPayrollActionConfirm({
+        title: "Xác nhận xoá dữ liệu lương DRAFT",
+        description: `Xoá ${draftCount} phiếu lương DRAFT tháng ${periodLabel}.`,
+        confirmLabel: "Xoá DRAFT",
+        tone: "danger",
+        items: payrollData.filter((item) => item.status === "DRAFT"),
+        summary: [
+          { label: "DRAFT", value: draftCount },
+          { label: "Đã chốt", value: finalizedCount },
+          { label: "Đã thanh toán", value: paidCount },
+        ],
+        warning: "Các phiếu đã chốt/đã thanh toán sẽ không bị xoá.",
+        onConfirm: async () => {
+          try {
+            setDeletingPayrollPeriod(true);
+            const res = await payrollAPI.deletePeriod(payload);
+            const result = res.data?.data || {};
+
+            toast.success(`Đã xoá ${result.deleted || 0} phiếu lương tháng ${periodLabel}.`);
+            await fetchPayrollData();
+            setSelectedRows([]);
+          } catch (error) {
+            toast.error(error.normalizedMessage || error.response?.data?.message || "Xoá dữ liệu bảng lương thất bại");
+            throw error;
+          } finally {
+            setDeletingPayrollPeriod(false);
+          }
+        },
+      });
+      return;
     } else {
       const confirmText = window.prompt(
         `Kỳ ${periodLabel} không còn DRAFT. Thao tác này sẽ xoá ${finalizedCount} phiếu đã chốt và ${paidCount} phiếu đã thanh toán. Nhập XOA để xác nhận.`,
@@ -607,6 +805,7 @@ const handleReopenPayroll = async (payroll) => {
 
   return {
     departments,
+    employees,
     canRunPayroll,
     fetchPayrollData,
     filteredData,
@@ -615,6 +814,7 @@ const handleReopenPayroll = async (payroll) => {
     handleExportExcel,
     handleFilterChange,
     handlePayment,
+    handleFinalizeSelectedPayrolls,
     handleSelectAll,
     handleSelectRow,
     handleSendPayrollEmailsBulk,
@@ -625,6 +825,8 @@ const handleReopenPayroll = async (payroll) => {
     handleOpenAdjustments,
     handleOpenBulkAdjustments,
     handleCloseAdjustments,
+    handleClosePayrollActionConfirm,
+    handleConfirmPayrollAction,
     handleOpenDetails,
     handleCloseDetails,
     isAllSelected,
@@ -635,6 +837,8 @@ const handleReopenPayroll = async (payroll) => {
     deletingPayrollPeriod,
     adjustmentModalPayroll,
     detailModalPayroll,
+    payrollActionConfirm,
+    confirmingPayrollAction,
     selectedPayrollItems,
     selectedMonth,
     selectedRows,
