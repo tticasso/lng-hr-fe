@@ -29,6 +29,10 @@ export const accountApi = {
     return apiClient.patch("/accounts/reset-password", { accountId });
   },
 
+  revokeTokens: (payload) => {
+    return apiClient.patch("/accounts/revoke-tokens", payload);
+  },
+
   updateRole: (id, roleName, currentAccount = {}) => {
     return accountApi.update(id, {
       username: currentAccount.username,

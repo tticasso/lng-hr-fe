@@ -12,6 +12,7 @@ import {
   Loader2,
   RefreshCw,
   Upload,
+  KeyRound,
 } from "lucide-react";
 
 import Card from "../../components/common/Card";
@@ -62,13 +63,14 @@ const UserManagement = () => {
     mode: "server",
   });
   const [filters, setFilters] = useState({ search: "", role: "", status: "" });
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
 
   // Modal States
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null); // Cho detail modal
 
   // Action Modal State
-  const [actionData, setActionData] = useState({ type: null, user: null });
+  const [actionData, setActionData] = useState({ type: null, user: null, users: [] });
   const [isProcessing, setIsProcessing] = useState(false);
   const [newPasswordResult, setNewPasswordResult] = useState(null); // Lưu pass sau reset
 
@@ -197,6 +199,9 @@ const UserManagement = () => {
       }));
 
       setUsers(merged);
+      setSelectedUserIds((current) =>
+        current.filter((id) => merged.some((account) => account._id === id)),
+      );
       setPagination({
         ...pageMeta,
         mode:
@@ -226,6 +231,9 @@ const UserManagement = () => {
     pagination.mode === "client"
       ? users.slice((pagination.page - 1) * pagination.limit, pagination.page * pagination.limit)
       : users;
+  const selectedUsers = users.filter((item) => selectedUserIds.includes(item._id));
+  const pageUserIds = paginatedUsers.map((item) => item._id).filter(Boolean);
+  const isPageSelected = pageUserIds.length > 0 && pageUserIds.every((id) => selectedUserIds.includes(id));
 
   // --- Handlers ---
   const handleFilterChange = (field, value) => {
@@ -242,15 +250,54 @@ const UserManagement = () => {
     fetchUsers({ page });
   };
 
+  const toggleSelectUser = (userId) => {
+    setSelectedUserIds((current) =>
+      current.includes(userId)
+        ? current.filter((id) => id !== userId)
+        : [...current, userId],
+    );
+  };
+
+  const toggleSelectPage = () => {
+    setSelectedUserIds((current) => {
+      if (isPageSelected) {
+        return current.filter((id) => !pageUserIds.includes(id));
+      }
+      return [...new Set([...current, ...pageUserIds])];
+    });
+  };
+
   const handleConfirmAction = async () => {
-    if (!actionData.user) return;
+    const targetUsers = actionData.users?.length ? actionData.users : (actionData.user ? [actionData.user] : []);
+    if (targetUsers.length === 0) return;
     if (!canWriteAccounts) {
       toast.error("Bạn cần quyền WRITE_ACCOUNTS để thay đổi tài khoản");
       setActionData({ type: null, user: null });
       return;
     }
     setIsProcessing(true);
-    const userId = actionData.user._id;
+    const userId = actionData.user?._id;
+
+    if (actionData.type === "revoke_tokens") {
+      try {
+        const accountIds = targetUsers.map((item) => item._id).filter(Boolean);
+        await accountApi.revokeTokens(
+          accountIds.length === 1
+            ? { accountId: accountIds[0] }
+            : { accountIds },
+        );
+        toast.success(`Đã thu hồi token ${accountIds.length} tài khoản`);
+        setSelectedUserIds((current) => current.filter((id) => !accountIds.includes(id)));
+        fetchUsers({ page: pagination.page });
+        setActionData({ type: null, user: null, users: [] });
+      } catch (error) {
+        toast.error(error.response?.data?.message || "Thao tÃ¡c tháº¥t báº¡i");
+        setActionData({ type: null, user: null, users: [] });
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
+    }
 
     try {
       if (actionData.type === "reset") {
@@ -467,12 +514,32 @@ const UserManagement = () => {
               <RefreshCw size={16} />
             )}
           </Button>
+          {canWriteAccounts && selectedUsers.length > 0 && (
+            <Button
+              variant="secondary"
+              className="gap-2 text-orange-600 border-orange-200 hover:bg-orange-50"
+              onClick={() => setActionData({ type: "revoke_tokens", users: selectedUsers })}
+            >
+              <KeyRound size={16} />
+              Thu hồi token ({selectedUsers.length})
+            </Button>
+          )}
         </div>
 
         <div className="flex-1 overflow-auto">
           <table className="w-full min-w-[980px] text-left text-sm border-collapse">
             <thead className="bg-white border-b text-xs uppercase text-gray-500 font-semibold sticky top-0 z-10">
               <tr>
+                {canWriteAccounts && (
+                  <th className="w-12 p-4">
+                    <input
+                      type="checkbox"
+                      checked={isPageSelected}
+                      onChange={toggleSelectPage}
+                      aria-label="Chọn tất cả tài khoản trên trang"
+                    />
+                  </th>
+                )}
                 <th className="p-4">Thông tin tài khoản</th>
                 <th className="p-4">Tên đăng nhập</th>
                 <th className="p-4">Email</th>
@@ -485,6 +552,16 @@ const UserManagement = () => {
             <tbody className="divide-y bg-white">
               {paginatedUsers.map((user) => (
                 <tr key={user._id} className="hover:bg-blue-50/30">
+                  {canWriteAccounts && (
+                    <td className="w-12 p-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedUserIds.includes(user._id)}
+                        onChange={() => toggleSelectUser(user._id)}
+                        aria-label={`Chọn tài khoản ${user.username}`}
+                      />
+                    </td>
+                  )}
                   <td className="p-4">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600 border overflow-hidden shrink-0">
@@ -548,6 +625,13 @@ const UserManagement = () => {
                       </button>
                       {canWriteAccounts && (
                         <>
+                      <button
+                        onClick={() => setActionData({ type: "revoke_tokens", user })}
+                        className="p-1.5 text-amber-600 hover:bg-amber-50 rounded"
+                        title="Thu hồi token"
+                      >
+                        <KeyRound size={16} />
+                      </button>
                       <button
                         onClick={() => setActionData({ type: "reset", user })}
                         className="p-1.5 text-orange-500 hover:bg-orange-50 rounded"
@@ -687,10 +771,11 @@ const UserManagement = () => {
         <ActionModal
           type={actionData.type}
           user={actionData.user}
+          users={actionData.users || []}
           newPassword={newPasswordResult}
           processing={isProcessing}
           onClose={() => {
-            setActionData({ type: null, user: null });
+            setActionData({ type: null, user: null, users: [] });
             setNewPasswordResult(null);
           }}
           onConfirm={handleConfirmAction}

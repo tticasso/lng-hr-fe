@@ -362,7 +362,17 @@ const UserDetailModal = ({
 
           {/* Quick Actions */}
           {canWriteAccounts && (
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4">
+              <Button
+                variant="secondary"
+                className="flex-1 justify-center border-amber-200 text-amber-600 hover:bg-amber-50"
+                onClick={() => {
+                  onClose();
+                  onAction("revoke_tokens", user);
+                }}
+              >
+                <Key size={16} className="mr-2" /> Thu hồi token
+              </Button>
               <Button
                 variant="secondary"
                 className="flex-1 justify-center border-orange-200 text-orange-600 hover:bg-orange-50"
