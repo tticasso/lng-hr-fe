@@ -13,6 +13,10 @@ export const dashboardAPI = {
     return apiClient.get("/dashboard/hr-attendance-trend", { params });
   },
 
+  getAttendanceInsights: (params) => {
+    return apiClient.get("/dashboard/attendance-insights", { params });
+  },
+
   getUpcomingEvents: (params) => {
     return apiClient.get("/dashboard/upcoming-events", { params });
   },

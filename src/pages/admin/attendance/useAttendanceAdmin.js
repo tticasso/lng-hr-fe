@@ -372,6 +372,13 @@ export const useAttendanceAdmin = () => {
     }
   };
 
+  const handleSqlAttendanceSynced = async () => {
+    await refreshAttendanceList();
+    if (selectedEmployee) {
+      await refreshEmployeeDetail();
+    }
+  };
+
   const handleBulkAttendanceSubmit = async (payload) => {
     if (!canWriteAttendance) {
       toast.error("Bạn không có quyền WRITE_ATTENDANCE để tạo công hàng loạt");
@@ -546,6 +553,7 @@ export const useAttendanceAdmin = () => {
     handleOpenEditModal,
     handlePreviousPeriod,
     handleSaveAttendance,
+    handleSqlAttendanceSynced,
     handleSyncData,
     handleSyncHoliday,
     isEditModalOpen,

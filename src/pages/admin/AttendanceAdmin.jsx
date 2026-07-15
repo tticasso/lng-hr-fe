@@ -6,6 +6,7 @@ import AttendanceAdminHeader from "./attendance/AttendanceAdminHeader";
 import AttendanceDetailDrawer from "./attendance/AttendanceDetailDrawer";
 import AttendanceFilters from "./attendance/AttendanceFilters";
 import AttendanceOverviewTable from "./attendance/AttendanceOverviewTable";
+import SqlAttendanceSyncPanel from "./attendance/SqlAttendanceSyncPanel";
 import { useAttendanceAdmin } from "./attendance/useAttendanceAdmin";
 
 const AttendanceAdmin = () => {
@@ -31,6 +32,7 @@ const AttendanceAdmin = () => {
     handleOpenEditModal,
     handlePreviousPeriod,
     handleSaveAttendance,
+    handleSqlAttendanceSynced,
     handleSyncData,
     handleSyncHoliday,
     isEditModalOpen,
@@ -93,6 +95,11 @@ const AttendanceAdmin = () => {
         openOTDetailId={openOTDetailId}
         setOpenOTDetailId={setOpenOTDetailId}
         otTypeLabels={OT_TYPE_LABELS}
+      />
+
+      <SqlAttendanceSyncPanel
+        canWriteAttendance={canWriteAttendance}
+        onSynced={handleSqlAttendanceSynced}
       />
 
       <AttendanceDetailDrawer

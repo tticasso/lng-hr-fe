@@ -84,7 +84,7 @@ export const buildWorkforceComposition = (hrOverview = {}) => {
   return [
     {
       key: "active",
-      label: "Chinh thuc",
+      label: "Chính thức",
       value: snapshot.active,
       percent: chartPercent(snapshot.active, total),
       color: "#0058be",
@@ -92,7 +92,7 @@ export const buildWorkforceComposition = (hrOverview = {}) => {
     },
     {
       key: "probation",
-      label: "Thu viec",
+      label: "Thử việc",
       value: snapshot.probation,
       percent: chartPercent(snapshot.probation, total),
       color: "#8b5cf6",
@@ -100,7 +100,7 @@ export const buildWorkforceComposition = (hrOverview = {}) => {
     },
     {
       key: "onLeave",
-      label: "Dang nghi",
+      label: "Đang nghỉ",
       value: snapshot.onLeave,
       percent: chartPercent(snapshot.onLeave, total),
       color: "#10b981",
@@ -109,45 +109,73 @@ export const buildWorkforceComposition = (hrOverview = {}) => {
   ];
 };
 
-export const buildAttendanceChartSeries = (hrOverview = {}) => {
-  const health = getAttendanceHealth(hrOverview);
-  const expected = health.expectedEmployees || health.records || 0;
+export const buildAttendanceInsightCards = (attendanceInsights = {}) => {
+  const summary = attendanceInsights?.summary || {};
 
   return [
     {
-      key: "present",
-      label: "Co mat",
-      value: health.present,
-      percent: chartPercent(health.present, expected),
-      color: "#0058be",
-      className: "bg-blue-600",
-    },
-    {
-      key: "absent",
-      label: "Vang",
-      value: health.absent,
-      percent: chartPercent(health.absent, expected),
-      color: "#e11d48",
-      className: "bg-rose-500",
+      key: "records",
+      label: "Bản ghi",
+      value: toNumber(summary.records),
+      detail: `${toNumber(summary.present)} có mặt`,
+      tone: "blue",
     },
     {
       key: "late",
-      label: "Di muon",
-      value: health.late,
-      percent: chartPercent(health.late, expected),
-      color: "#f59e0b",
-      className: "bg-amber-500",
+      label: "Đi muộn",
+      value: toNumber(summary.late),
+      detail: `${toNumber(summary.totalLateMinutes)} phút`,
+      tone: "amber",
+    },
+    {
+      key: "early",
+      label: "Về sớm",
+      value: toNumber(summary.early),
+      detail: `${toNumber(summary.totalEarlyMinutes)} phút`,
+      tone: "sky",
     },
     {
       key: "missingCheckOuts",
-      label: "Thieu out",
-      value: health.missingCheckOuts,
-      percent: chartPercent(health.missingCheckOuts, expected),
-      color: "#0ea5e9",
-      className: "bg-sky-500",
+      label: "Thiếu check-out",
+      value: toNumber(summary.missingCheckOuts),
+      detail: `${toNumber(summary.missingCheckIn)} thiếu check-in`,
+      tone: "violet",
+    },
+    {
+      key: "noAttendanceRecords",
+      label: "Không chấm công",
+      value: toNumber(summary.noAttendanceRecords),
+      detail: `${toNumber(summary.absentRecords)} vắng mặt`,
+      tone: "rose",
+    },
+    {
+      key: "errors",
+      label: "Lỗi",
+      value: toNumber(summary.errors),
+      detail: `${toNumber(summary.onLeave)} nghỉ phép`,
+      tone: "slate",
     },
   ];
 };
+
+export const buildAttendanceInsightTrendSeries = (attendanceInsights = {}) => (
+  (attendanceInsights?.daily || []).map((item) => {
+    const late = toNumber(item.late);
+    const early = toNumber(item.early);
+    const missingCheckOuts = toNumber(item.missingCheckOuts);
+    const absentOrNoRecord = toNumber(item.absentOrNoRecord);
+
+    return {
+      date: item.date,
+      label: item.label || item.date,
+      late,
+      early,
+      missingCheckOuts,
+      absentOrNoRecord,
+      maxValue: Math.max(late, early, missingCheckOuts, absentOrNoRecord),
+    };
+  })
+);
 
 export const buildRequestStatusSeries = (hrRequestsSummary, fallback = {}) => {
   const analytics = getRequestAnalytics(hrRequestsSummary, fallback);
@@ -158,7 +186,7 @@ export const buildRequestStatusSeries = (hrRequestsSummary, fallback = {}) => {
     segments: [
       {
         key: "pending",
-        label: "Cho duyet",
+        label: "Chờ duyệt",
         value: analytics.pending,
         percent: chartPercent(analytics.pending, total),
         color: "#f59e0b",
@@ -166,7 +194,7 @@ export const buildRequestStatusSeries = (hrRequestsSummary, fallback = {}) => {
       },
       {
         key: "approved",
-        label: "Da duyet",
+        label: "Đã duyệt",
         value: analytics.approved,
         percent: chartPercent(analytics.approved, total),
         color: "#10b981",
@@ -174,7 +202,7 @@ export const buildRequestStatusSeries = (hrRequestsSummary, fallback = {}) => {
       },
       {
         key: "rejected",
-        label: "Tu choi",
+        label: "Từ chối",
         value: analytics.rejected,
         percent: chartPercent(analytics.rejected, total),
         color: "#e11d48",
@@ -182,7 +210,7 @@ export const buildRequestStatusSeries = (hrRequestsSummary, fallback = {}) => {
       },
       {
         key: "cancelled",
-        label: "Da huy",
+        label: "Đã hủy",
         value: analytics.cancelled,
         percent: chartPercent(analytics.cancelled, total),
         color: "#64748b",
@@ -240,5 +268,5 @@ export const buildHRMetricCards = ({ hrOverview = {} } = {}) => {
       detail: `Ngày ${hrOverview?.date || "--"}`,
       tone: "sky",
     },
-  ];
+  ].filter((card) => !["present", "absent", "late"].includes(card.key));
 };

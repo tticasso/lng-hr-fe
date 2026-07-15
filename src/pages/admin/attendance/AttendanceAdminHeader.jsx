@@ -1,6 +1,9 @@
+import { Dropdown } from "antd";
 import {
+  ChevronDown,
   Download,
   Lock,
+  MoreHorizontal,
   RefreshCcw,
   Unlock,
   Upload,
@@ -26,6 +29,43 @@ const AttendanceAdminHeader = ({
   isExportDisabled,
   canWriteAttendance = false,
 }) => {
+  const moreMenuItems = [
+    {
+      key: "import",
+      icon: <Upload size={14} />,
+      label: "Import dữ liệu",
+    },
+    {
+      key: "syncData",
+      icon: <RefreshCcw size={14} />,
+      label: "Đồng bộ dữ liệu",
+    },
+    {
+      key: "syncHoliday",
+      icon: <RefreshCcw size={14} />,
+      label: "Đồng bộ lịch nghỉ",
+    },
+    {
+      type: "divider",
+    },
+    {
+      key: "toggleLock",
+      icon: isPeriodLocked ? <Unlock size={14} /> : <Lock size={14} />,
+      label: isPeriodLocked ? "Mở khóa sổ công" : "Khóa sổ công",
+    },
+  ];
+
+  const handleMoreAction = ({ key }) => {
+    const handlers = {
+      import: onImport,
+      syncData: onSyncData,
+      syncHoliday: onSyncHoliday,
+      toggleLock: onToggleLock,
+    };
+
+    handlers[key]?.();
+  };
+
   const lockBadge = isPeriodLocked ? (
     <span className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-100 px-2 py-1 text-xs text-red-600">
       <Lock size={10} /> Đã khóa sổ
@@ -36,78 +76,98 @@ const AttendanceAdminHeader = ({
     </span>
   );
 
+  const secondaryActions = (
+    <>
+      <Button
+        variant="secondary"
+        className="h-9 gap-2 rounded-lg px-3 text-sm"
+        onClick={onImport}
+      >
+        <Upload size={15} /> Import
+      </Button>
+      <Button
+        onClick={onSyncData}
+        variant="secondary"
+        className="h-9 gap-2 rounded-lg px-3 text-sm"
+      >
+        <RefreshCcw size={15} /> Đồng bộ dữ liệu
+      </Button>
+      <Button
+        onClick={onSyncHoliday}
+        variant="secondary"
+        className="h-9 gap-2 rounded-lg px-3 text-sm"
+      >
+        <RefreshCcw size={15} /> Lịch nghỉ
+      </Button>
+      <Button
+        variant="secondary"
+        className="h-9 gap-2 rounded-lg px-3 text-sm"
+        onClick={onToggleLock}
+      >
+        {isPeriodLocked ? <Unlock size={15} /> : <Lock size={15} />}
+        {isPeriodLocked ? "Mở khóa" : "Khóa sổ"}
+      </Button>
+    </>
+  );
+
   const actions = (
-    <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-[240px_repeat(6,minmax(0,1fr))]">
+    <div className="flex w-full flex-col gap-3 2xl:flex-row 2xl:items-center 2xl:justify-end">
       <MonthNavigator
         month={month}
         year={year}
         onPrevious={onPreviousPeriod}
         onNext={onNextPeriod}
-        className="w-full min-w-0"
+        className="w-full min-w-0 2xl:w-[240px]"
       />
 
-      {canWriteAttendance && (
-        <Button
-          variant="secondary"
-          className="h-14 min-w-0 gap-2 rounded-xl px-3 text-sm"
-          onClick={onImport}
-        >
-          <Upload size={16} /> Import dữ liệu
-        </Button>
-      )}
+      <div className="flex flex-col gap-2 xl:flex-row xl:flex-wrap xl:items-center xl:justify-end">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+          {canWriteAttendance && (
+            <Button
+              className="h-10 gap-2 rounded-lg bg-blue-600 px-4 text-sm text-white hover:bg-blue-700"
+              onClick={onOpenBulkAttendance}
+            >
+              <UserPlus size={16} /> Tạo công hàng loạt
+            </Button>
+          )}
 
-      {canWriteAttendance && (
-        <Button
-          variant="secondary"
-          className="h-14 min-w-0 gap-2 rounded-xl px-3 text-sm"
-          onClick={onOpenBulkAttendance}
-        >
-          <UserPlus size={16} /> Tạo công hàng loạt
-        </Button>
-      )}
+          <Button
+            variant="secondary"
+            className="h-10 gap-2 rounded-lg px-4 text-sm"
+            onClick={onExport}
+            disabled={isExportDisabled}
+          >
+            <Download size={16} /> Xuất Excel
+          </Button>
+        </div>
 
-      <Button
-        variant="secondary"
-        className="h-14 min-w-0 gap-2 rounded-xl px-3 text-sm"
-        onClick={onExport}
-        disabled={isExportDisabled}
-      >
-        <Download size={16} /> Xuất Excel
-      </Button>
+        {canWriteAttendance && (
+          <>
+            <div className="hidden items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 p-1 xl:flex">
+              <span className="px-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Công cụ
+              </span>
+              {secondaryActions}
+            </div>
 
-      {canWriteAttendance && (
-        <Button
-          onClick={onSyncData}
-          variant="secondary"
-          className="h-14 min-w-0 gap-2 rounded-xl px-3 text-sm"
-        >
-          <RefreshCcw size={16} /> Đồng bộ dữ liệu
-        </Button>
-      )}
-
-      {canWriteAttendance && (
-        <Button
-          onClick={onSyncHoliday}
-          variant="secondary"
-          className="h-14 min-w-0 gap-2 rounded-xl px-3 text-sm"
-        >
-          <RefreshCcw size={16} /> Đồng bộ lịch nghỉ
-        </Button>
-      )}
-
-      {canWriteAttendance && (
-        <Button
-          className={`h-14 min-w-0 gap-2 rounded-xl px-3 text-sm text-white shadow-md ${
-            isPeriodLocked
-              ? "bg-gray-500 hover:bg-gray-600"
-              : "bg-blue-600 hover:bg-blue-700"
-          }`}
-          onClick={onToggleLock}
-        >
-          {isPeriodLocked ? <Unlock size={16} /> : <Lock size={16} />}
-          {isPeriodLocked ? "Mở khóa sổ" : "Khóa sổ công"}
-        </Button>
-      )}
+            <div className="sm:w-auto xl:hidden">
+              <Dropdown
+                menu={{ items: moreMenuItems, onClick: handleMoreAction }}
+                placement="bottomRight"
+                trigger={["click"]}
+              >
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-10 w-full gap-2 rounded-lg px-4 text-sm sm:w-auto"
+                >
+                  <MoreHorizontal size={16} /> Thêm <ChevronDown size={14} />
+                </Button>
+              </Dropdown>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 
