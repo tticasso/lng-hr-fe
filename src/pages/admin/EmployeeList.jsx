@@ -579,8 +579,9 @@ const EmployeeList = () => {
                   <th className="p-4">Nhân viên</th>
                   <th className="p-4">Mã NV</th>
                   <th className="p-4">Chức vụ</th>
-                  <th className="p-4">Thông tin HĐ</th>
                   <th className="p-4">Ngày vào</th>
+                  <th className="p-4">Hết thử việc</th>
+                  <th className="p-4">Ngày nghỉ việc</th>
                   <th className="p-4">Trạng thái</th>
                   <th className="p-4 text-center">Hành động</th>
                 </tr>
@@ -637,19 +638,15 @@ const EmployeeList = () => {
                       </p>
                     </td>
 
-                    {/* Employment Info */}
-                    <td className="p-4">
-                      <p className="text-sm font-medium text-gray-800">
-                        {emp.employmentType || "---"}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {emp.workMode || "Onsite"}
-                      </p>
-                    </td>
-
                     {/* Date */}
                     <td className="p-4 text-sm text-gray-600">
                       {formatDate(emp.startDate)}
+                    </td>
+                    <td className="p-4 text-sm text-gray-600">
+                      {formatDate(emp.probationEndDate)}
+                    </td>
+                    <td className="p-4 text-sm text-gray-600">
+                      {formatDate(emp.endDate)}
                     </td>
 
                     {/* Status */}
