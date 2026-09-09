@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { Alert, Button, DatePicker, Descriptions, InputNumber, Space, Statistic, Tag } from "antd";
+import { Alert, Button, DatePicker, Descriptions, InputNumber, Space, Tag } from "antd";
 import dayjs from "dayjs";
 import { ChevronDown, RefreshCcw, Wifi, WifiOff } from "lucide-react";
 import { toast } from "react-toastify";
@@ -88,10 +88,13 @@ const SqlAttendanceSyncPanel = ({ canWriteAttendance = false, onSynced }) => {
   const isConnected = Boolean(health?.connected);
   const latestStatus = status?.status || "--";
   const skippedCount = status?.skippedEmployees?.length || 0;
+  const hasSyncMetadata = Boolean(
+    health?.databaseName || health?.loginName || status?.finishedAt || status?.errorMessage,
+  );
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+    <section className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-lg font-bold text-gray-900">Đồng bộ Wise Eye</h2>
@@ -116,41 +119,34 @@ const SqlAttendanceSyncPanel = ({ canWriteAttendance = false, onSynced }) => {
         </Button>
       </div>
 
-      {error && (
-        <Alert
-          className="mb-4"
-          type="error"
-          showIcon
-          message="Lỗi đồng bộ Wise Eye"
-          description={error}
-        />
-      )}
+      {error && <Alert className="mb-3 py-2" type="error" showIcon message={`Lỗi đồng bộ Wise Eye: ${error}`} />}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Statistic
-          title="Trạng thái lần cuối"
-          value={latestStatus}
-          valueStyle={{
-            color: getSyncStatusTone(latestStatus) === "error" ? "#dc2626" : "#16a34a",
-            fontSize: 20,
-          }}
-        />
-        <Statistic title="Số bản ghi" value={status?.operations || 0} />
-        <Statistic title="Đã khớp" value={status?.matchedEmployees || 0} />
-        <Statistic
-          title="Bỏ qua"
-          value={skippedCount}
-          valueStyle={{ color: skippedCount > 0 ? "#dc2626" : undefined }}
-        />
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
+        <div className="flex items-baseline justify-between gap-2 sm:block">
+          <span className="text-xs text-gray-500">Trạng thái</span>
+          <strong className={getSyncStatusTone(latestStatus) === "error" ? "text-red-600" : "text-green-600"}>{latestStatus}</strong>
+        </div>
+        <div className="flex items-baseline justify-between gap-2 sm:block">
+          <span className="text-xs text-gray-500">Bản ghi</span>
+          <strong>{status?.operations || 0}</strong>
+        </div>
+        <div className="flex items-baseline justify-between gap-2 sm:block">
+          <span className="text-xs text-gray-500">Đã khớp</span>
+          <strong>{status?.matchedEmployees || 0}</strong>
+        </div>
+        <div className="flex items-baseline justify-between gap-2 sm:block">
+          <span className="text-xs text-gray-500">Bỏ qua</span>
+          <strong className={skippedCount > 0 ? "text-red-600" : undefined}>{skippedCount}</strong>
+        </div>
       </div>
 
       {canWriteAttendance && (
-        <details className="mt-4 rounded-lg border border-gray-200 bg-gray-50">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-gray-700">
+        <details className="mt-3 rounded-lg border border-gray-200 bg-gray-50">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-sm font-semibold text-gray-700">
             <span>Đồng bộ thủ công</span>
             <ChevronDown size={16} className="text-gray-500" />
           </summary>
-          <Space direction="vertical" className="w-full border-t border-gray-200 bg-white p-4" size="middle">
+          <Space direction="vertical" className="w-full border-t border-gray-200 bg-white p-3" size="middle">
             <DatePicker.RangePicker
               className="w-full"
               value={dateRange}
@@ -177,25 +173,27 @@ const SqlAttendanceSyncPanel = ({ canWriteAttendance = false, onSynced }) => {
         </details>
       )}
 
-      <Descriptions className="mt-4" size="small" bordered column={{ xs: 1, md: 2 }}>
-        <Descriptions.Item label="Database">
-          {health?.databaseName || "--"}
-        </Descriptions.Item>
-        <Descriptions.Item label="Login">
-          {health?.loginName || "--"}
-        </Descriptions.Item>
-        <Descriptions.Item label="Khoảng sync">
-          {formatSyncDateRange(status)}
-        </Descriptions.Item>
-        <Descriptions.Item label="Kết thúc lúc">
-          {formatSyncDateTime(status?.finishedAt)}
-        </Descriptions.Item>
-        {status?.errorMessage && (
-          <Descriptions.Item label="Lỗi gần nhất" span={2}>
-            <span className="text-red-600">{status.errorMessage}</span>
+      {hasSyncMetadata && (
+        <Descriptions className="mt-3" size="small" bordered column={{ xs: 1, md: 2 }}>
+          <Descriptions.Item label="Database">
+            {health?.databaseName || "--"}
           </Descriptions.Item>
-        )}
-      </Descriptions>
+          <Descriptions.Item label="Login">
+            {health?.loginName || "--"}
+          </Descriptions.Item>
+          <Descriptions.Item label="Khoảng sync">
+            {formatSyncDateRange(status)}
+          </Descriptions.Item>
+          <Descriptions.Item label="Kết thúc lúc">
+            {formatSyncDateTime(status?.finishedAt)}
+          </Descriptions.Item>
+          {status?.errorMessage && (
+            <Descriptions.Item label="Lỗi gần nhất" span={2}>
+              <span className="text-red-600">{status.errorMessage}</span>
+            </Descriptions.Item>
+          )}
+        </Descriptions>
+      )}
     </section>
   );
 };
