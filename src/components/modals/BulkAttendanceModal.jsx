@@ -330,6 +330,11 @@ const BulkAttendanceModal = ({
                     </div>
                   ))}
                 </div>
+                {!isDelete && result?.skippedIneligibleDates?.length > 0 && (
+                  <p className="mt-4 text-sm text-amber-800">
+                    Bỏ qua {result.skippedIneligibleDates.length} ngày không còn trong thời gian làm việc: {result.skippedIneligibleDates.map(({ date }) => date).join(", ")}.
+                  </p>
+                )}
               </div>
 
               <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
