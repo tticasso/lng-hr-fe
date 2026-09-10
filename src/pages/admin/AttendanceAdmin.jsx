@@ -10,7 +10,7 @@ import SqlAttendanceSyncPanel from "./attendance/SqlAttendanceSyncPanel";
 import { useAttendanceAdmin } from "./attendance/useAttendanceAdmin";
 
 const AttendanceAdmin = () => {
-  const [isBulkAttendanceModalOpen, setIsBulkAttendanceModalOpen] = useState(false);
+  const [bulkAttendanceOperation, setBulkAttendanceOperation] = useState(null);
   const {
     OT_TYPE_LABELS,
     bulkAttendanceLoading,
@@ -23,6 +23,7 @@ const AttendanceAdmin = () => {
     filteredAttendanceData,
     filters,
     handleBulkAttendanceSubmit,
+    handleBulkAttendanceDelete,
     handleEmployeeClick,
     handleExportExcel,
     handleFileChange,
@@ -77,7 +78,8 @@ const AttendanceAdmin = () => {
         onPreviousPeriod={handlePreviousPeriod}
         onNextPeriod={handleNextPeriod}
         onImport={handleImportClick}
-        onOpenBulkAttendance={() => setIsBulkAttendanceModalOpen(true)}
+        onOpenBulkAttendance={() => setBulkAttendanceOperation("WRITE")}
+        onOpenBulkDelete={() => setBulkAttendanceOperation("DELETE")}
         onExport={handleExportExcel}
         onSyncData={handleSyncData}
         onSyncHoliday={handleSyncHoliday}
@@ -126,10 +128,11 @@ const AttendanceAdmin = () => {
       <BulkAttendanceModal
         departments={departments}
         defaultDate={`${selectedPeriod}-01`}
-        isOpen={isBulkAttendanceModalOpen}
+        isOpen={Boolean(bulkAttendanceOperation)}
         loading={bulkAttendanceLoading}
-        onClose={() => setIsBulkAttendanceModalOpen(false)}
-        onSubmit={handleBulkAttendanceSubmit}
+        operation={bulkAttendanceOperation}
+        onClose={() => setBulkAttendanceOperation(null)}
+        onSubmit={bulkAttendanceOperation === "DELETE" ? handleBulkAttendanceDelete : handleBulkAttendanceSubmit}
         result={bulkAttendanceResult}
         canWriteAttendance={canWriteAttendance}
       />

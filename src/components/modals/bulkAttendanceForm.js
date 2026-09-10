@@ -25,3 +25,12 @@ export const buildBulkAttendancePayload = (formData, dryRun) => {
 
   return payload;
 };
+
+export const buildBulkAttendanceDeletePayload = (formData, dryRun) => ({
+  dates: formData.dates,
+  employeeCodes: splitEmployeeCodes(formData.employeeCodesText),
+  excludeEmployeeCodes: splitEmployeeCodes(formData.excludeEmployeeCodesText),
+  departmentIds: formData.departmentIds,
+  dryRun,
+  confirm: !dryRun,
+});

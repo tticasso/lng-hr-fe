@@ -70,6 +70,10 @@ export const attendancesAPI = {
     return apiClient.post("/attendances/bulk-write", payload);
   },
 
+  bulkDelete: (payload) => {
+    return apiClient.post("/attendances/bulk-delete", payload);
+  },
+
   updateAtendances: (id, payload) => {
     return apiClient.patch(`/attendances/${id}`, payload);
   },

@@ -49,6 +49,10 @@ export const employeeApi = {
     return apiClient.patch(`/employees/status/${id}`, data);
   },
 
+  reconcilePostEmploymentAttendance: (id, data) => {
+    return apiClient.post(`/employees/${id}/reconcile-attendance`, data);
+  },
+
   restore: (id, data) => {
     return apiClient.patch(`/employees/restore/${id}`, data);
   },

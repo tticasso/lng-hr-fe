@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { DatePicker, Select } from "antd";
 import dayjs from "dayjs";
-import { AlertTriangle, Check, CheckCircle2, Loader2, Users, X } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, Loader2, Trash2, Users, X } from "lucide-react";
 
 import Button from "../common/Button";
-import { buildBulkAttendancePayload } from "./bulkAttendanceForm";
+import { buildBulkAttendanceDeletePayload, buildBulkAttendancePayload } from "./bulkAttendanceForm";
 
 const reasonOptions = [
   { value: "COMPANY_MOVE", label: "Công ty chuyển đồ" },
@@ -39,10 +39,12 @@ const BulkAttendanceModal = ({
   defaultDate,
   isOpen,
   loading = false,
+  operation = "WRITE",
   onClose,
   onSubmit,
   result,
 }) => {
+  const isDelete = operation === "DELETE";
   const [formData, setFormData] = useState({
     dates: defaultDate ? [defaultDate] : [],
     updateMode: "FULL",
@@ -72,13 +74,17 @@ const BulkAttendanceModal = ({
   };
 
   const handleSubmit = async (dryRun) => {
-    const response = await onSubmit?.(buildBulkAttendancePayload(formData, dryRun));
+    const payload = isDelete
+      ? buildBulkAttendanceDeletePayload(formData, dryRun)
+      : buildBulkAttendancePayload(formData, dryRun);
+    const response = await onSubmit?.(payload);
     if (dryRun && response) setIsPreview(true);
     if (!dryRun && response) handleClose();
   };
 
   const isCheckoutOnly = formData.updateMode === "CHECK_OUT_ONLY";
-  const canSubmit = formData.dates.length > 0 && Boolean(formData.checkOut);
+  const hasEmployeeScope = Boolean(formData.employeeCodesText.trim()) || formData.departmentIds.length > 0;
+  const canSubmit = formData.dates.length > 0 && (isDelete ? hasEmployeeScope : Boolean(formData.checkOut));
   const departmentOptions = departments.map((department) => ({
     value: department._id,
     label: department.name,
@@ -91,10 +97,12 @@ const BulkAttendanceModal = ({
           <div>
             <h3 className="flex items-center gap-2 text-lg font-bold text-gray-900">
               <Users size={20} className="text-blue-600" />
-              Tạo công hàng loạt
+              {isDelete ? "Xóa công hàng loạt" : "Tạo công hàng loạt"}
             </h3>
             <p className="mt-1 text-sm text-gray-500">
-              Chọn người, chọn ngày rồi xem trước trước khi cập nhật.
+              {isDelete
+                ? "Chọn người và ngày, xem trước rồi xác nhận xóa vĩnh viễn."
+                : "Chọn người, chọn ngày rồi xem trước trước khi cập nhật."}
             </p>
           </div>
           <button
@@ -110,7 +118,7 @@ const BulkAttendanceModal = ({
         <div className="overflow-y-auto px-5 py-5 sm:px-6 lg:overflow-visible">
           {!isPreview ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-2 rounded-xl bg-gray-200 p-1">
+              {!isDelete && <div className="grid grid-cols-2 gap-2 rounded-xl bg-gray-200 p-1">
                 {[
                   ["FULL", "Gán đầy đủ ca"],
                   ["CHECK_OUT_ONLY", "Chỉ sửa giờ ra"],
@@ -128,7 +136,7 @@ const BulkAttendanceModal = ({
                     {label}
                   </button>
                 ))}
-              </div>
+              </div>}
 
               <div className="grid items-start gap-4 lg:grid-cols-[0.9fr_1.1fr]">
                 <div className="space-y-4">
@@ -174,7 +182,9 @@ const BulkAttendanceModal = ({
                   </details>
 
                   <p className="text-xs text-gray-500">
-                    Bỏ trống cả mã nhân viên và phòng ban sẽ áp dụng cho toàn bộ nhân viên active/probation.
+                    {isDelete
+                      ? "Bắt buộc chọn mã nhân viên hoặc phòng ban để tránh xóa nhầm."
+                      : "Bỏ trống cả mã nhân viên và phòng ban sẽ áp dụng cho toàn bộ nhân viên active/probation."}
                   </p>
                 </div>
               </Section>
@@ -199,7 +209,7 @@ const BulkAttendanceModal = ({
               </Section>
                 </div>
 
-              <Section number="3" title="Nội dung cập nhật">
+              {!isDelete && <Section number="3" title="Nội dung cập nhật">
                 <div className="space-y-4">
                   <div className={`grid grid-cols-1 gap-3 ${isCheckoutOnly ? "sm:grid-cols-2" : "sm:grid-cols-4"}`}>
                     {!isCheckoutOnly && (
@@ -297,25 +307,23 @@ const BulkAttendanceModal = ({
                     </label>
                   )}
                 </div>
-              </Section>
+              </Section>}
               </div>
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
-                <div className="flex items-center gap-2 font-semibold text-blue-900">
-                  <CheckCircle2 size={18} /> Sẵn sàng cập nhật
+              <div className={`rounded-xl border p-5 ${isDelete ? "border-red-200 bg-red-50" : "border-blue-200 bg-blue-50"}`}>
+                <div className={`flex items-center gap-2 font-semibold ${isDelete ? "text-red-900" : "text-blue-900"}`}>
+                  {isDelete ? <Trash2 size={18} /> : <CheckCircle2 size={18} />} {isDelete ? "Sẵn sàng xóa" : "Sẵn sàng cập nhật"}
                 </div>
-                <p className="mt-2 text-sm text-blue-800">
-                  {result?.matchedEmployees || 0} nhân viên × {result?.dateCount || 1} ngày, dự kiến xử lý {result?.targetRecords || 0} bản ghi.
+                <p className={`mt-2 text-sm ${isDelete ? "text-red-800" : "text-blue-800"}`}>
+                  {result?.matchedEmployees || 0} nhân viên × {result?.dateCount || 1} ngày, dự kiến {isDelete ? "xóa" : "xử lý"} {result?.targetRecords || 0} bản ghi.
                 </p>
                 <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {[
-                    ["Sẽ xử lý", result?.targetRecords],
-                    ["Đã có công", result?.existingRecords],
-                    ["Bỏ qua", result?.skippedExisting],
-                    ["Thiếu attendance", result?.skippedMissing],
-                  ].map(([label, value]) => (
+                  {(isDelete
+                    ? [["Sẽ xóa", result?.targetRecords], ["Nhân viên", result?.matchedEmployees], ["Ngày", result?.dateCount]]
+                    : [["Sẽ xử lý", result?.targetRecords], ["Đã có công", result?.existingRecords], ["Bỏ qua", result?.skippedExisting], ["Thiếu attendance", result?.skippedMissing]]
+                  ).map(([label, value]) => (
                     <div key={label} className="rounded-lg bg-white p-3">
                       <div className="text-xs text-gray-500">{label}</div>
                       <div className="mt-1 text-xl font-bold text-gray-900">{value || 0}</div>
@@ -326,7 +334,7 @@ const BulkAttendanceModal = ({
 
               <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                 <AlertTriangle size={17} className="mt-0.5 shrink-0" />
-                Xác nhận sẽ cập nhật attendance và có thể ảnh hưởng payroll.
+                {isDelete ? "Xác nhận sẽ xóa vĩnh viễn các attendance đã xem trước và có thể ảnh hưởng payroll." : "Xác nhận sẽ cập nhật attendance và có thể ảnh hưởng payroll."}
               </div>
             </div>
           )}
@@ -356,7 +364,7 @@ const BulkAttendanceModal = ({
                 className="gap-2 bg-blue-600 text-white hover:bg-blue-700"
               >
                 {loading && <Loader2 size={16} className="animate-spin" />}
-                Xác nhận cập nhật
+                {isDelete ? "Xác nhận xóa" : "Xác nhận cập nhật"}
               </Button>
             </>
           )}

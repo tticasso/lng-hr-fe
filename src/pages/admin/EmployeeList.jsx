@@ -244,6 +244,36 @@ const EmployeeList = () => {
     }
   };
 
+  const handleReconcilePostEmploymentAttendance = async (employee) => {
+    if (!canWriteEmployees) {
+      toast.error("Bạn không có quyền WRITE_EMPLOYEES để đồng bộ công sau nghỉ việc");
+      return;
+    }
+
+    const employeeId = employee._id || employee.id;
+    try {
+      const previewResponse = await employeeApi.reconcilePostEmploymentAttendance(employeeId, { dryRun: true });
+      const preview = previewResponse.data?.data || previewResponse.data;
+      if (!preview.targetRecords) {
+        toast.info("Không có record công nào sau ngày nghỉ việc");
+        return;
+      }
+
+      if (!window.confirm(
+        `${employee.fullName || employee.employeeCode} có ${preview.targetRecords} record sau ngày nghỉ. `
+        + "Hệ thống sẽ giữ record để audit, nhưng đưa công và OT về 0. Tiếp tục?"
+      )) {
+        return;
+      }
+
+      const resultResponse = await employeeApi.reconcilePostEmploymentAttendance(employeeId, { confirm: true });
+      const result = resultResponse.data?.data || resultResponse.data;
+      toast.success(`Đã đánh dấu ${result.updated} record công không hợp lệ`);
+    } catch (error) {
+      toast.error(error.normalizedMessage || "Đồng bộ công sau nghỉ việc thất bại");
+    }
+  };
+
   // Helper Render Pagination
   const renderPaginationNumbers = () => {
     const pages = [];
@@ -675,6 +705,15 @@ const EmployeeList = () => {
                         >
                           <Edit size={18} />
                         </button>
+                        {!emp.isDeleted && emp.endDate && (
+                          <button
+                            onClick={() => handleReconcilePostEmploymentAttendance(emp)}
+                            className="p-2 text-violet-600 hover:bg-violet-100 rounded-lg transition"
+                            title="Đồng bộ công sau nghỉ việc"
+                          >
+                            <RefreshCw size={18} />
+                          </button>
+                        )}
                         {emp.isDeleted ? (
                           <button
                             onClick={() => handleRestoreEmployee(emp)}

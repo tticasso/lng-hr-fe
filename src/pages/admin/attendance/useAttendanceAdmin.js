@@ -413,6 +413,36 @@ export const useAttendanceAdmin = () => {
     }
   };
 
+  const handleBulkAttendanceDelete = async (payload) => {
+    if (!canWriteAttendance) {
+      toast.error("Bạn không có quyền WRITE_ATTENDANCE để xóa công hàng loạt");
+      return null;
+    }
+
+    try {
+      setBulkAttendanceLoading(true);
+      const res = await attendancesAPI.bulkDelete(payload);
+      const result = res.data?.data || {};
+      setBulkAttendanceResult(result);
+
+      if (payload.dryRun) {
+        toast.info(`Xem trước: ${result.targetRecords || 0} bản ghi sẽ bị xóa`);
+        return result;
+      }
+
+      toast.success(`Đã xóa ${result.deleted || 0} bản ghi chấm công`);
+      await refreshAttendanceList();
+      if (selectedEmployee) await refreshEmployeeDetail();
+      return result;
+    } catch (error) {
+      console.error("[ERROR] Bulk attendance delete failed:", error);
+      toast.error(error.response?.data?.message || "Xóa công hàng loạt thất bại");
+      return null;
+    } finally {
+      setBulkAttendanceLoading(false);
+    }
+  };
+
   const handleExportExcel = async () => {
     try {
       const XLSX = await import("xlsx");
@@ -544,6 +574,7 @@ export const useAttendanceAdmin = () => {
     filteredAttendanceData,
     filters,
     handleBulkAttendanceSubmit,
+    handleBulkAttendanceDelete,
     handleEmployeeClick,
     handleExportExcel,
     handleFileChange,

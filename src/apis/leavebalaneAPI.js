@@ -29,6 +29,10 @@ export const leavebalanceAPI = {
     return apiClient.post("/leave-balances/carry-over", payload);
   },
 
+  bulkAdjust: (payload) => {
+    return apiClient.post("/leave-balances/bulk-adjust", payload);
+  },
+
   put: (id, payload) => {
     return apiClient.put(`/leave-balances/${id}`, payload);
   },

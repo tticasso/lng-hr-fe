@@ -147,6 +147,18 @@ const LeaveBalance = () => {
     const [adjustErrors, setAdjustErrors] = useState({});
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [historyLoading, setHistoryLoading] = useState(false);
+    const [selectedLeaveBalanceIds, setSelectedLeaveBalanceIds] = useState([]);
+    const [showBulkAdjustModal, setShowBulkAdjustModal] = useState(false);
+    const [bulkAdjustLoading, setBulkAdjustLoading] = useState(false);
+    const [bulkAdjustForm, setBulkAdjustForm] = useState({
+        amount: 0,
+        reason: "",
+        action: "MANUAL_ADJUSTMENT"
+    });
+    const [bulkAdjustErrors, setBulkAdjustErrors] = useState({});
+    const [bulkPreview, setBulkPreview] = useState(null);
+    const [showAccrualModal, setShowAccrualModal] = useState(false);
+    const [accrualLoading, setAccrualLoading] = useState(false);
 
     const callAPI = useCallback(async () => {
         setLoading(true);
@@ -192,6 +204,12 @@ const LeaveBalance = () => {
         const start = (currentPage - 1) * pagination.limit;
         return filteredData.slice(start, start + pagination.limit);
     }, [currentPage, filteredData, pagination.limit]);
+    const visibleLeaveBalanceIds = useMemo(
+        () => paginatedData.map((item) => item._id),
+        [paginatedData],
+    );
+    const allVisibleSelected = visibleLeaveBalanceIds.length > 0
+        && visibleLeaveBalanceIds.every((id) => selectedLeaveBalanceIds.includes(id));
 
     const formatDate = (dateString) => {
         if (!dateString) return "--";
@@ -200,6 +218,7 @@ const LeaveBalance = () => {
 
     useEffect(() => {
         setPagination((prev) => ({ ...prev, page: 1 }));
+        setSelectedLeaveBalanceIds([]);
     }, [searchTerm, yearFilter]);
 
     useEffect(() => {
@@ -399,6 +418,99 @@ const LeaveBalance = () => {
         return Object.keys(errors).length === 0;
     };
 
+    const validateBulkAdjustForm = () => {
+        const errors = {};
+        const amount = Number(bulkAdjustForm.amount);
+        const reason = bulkAdjustForm.reason.trim();
+
+        if (!Number.isFinite(amount) || amount <= 0 || amount > 365) {
+            errors.amount = "Số ngày điều chỉnh phải từ 0 đến 365";
+        }
+        if (reason.length < 5 || reason.length > 500) {
+            errors.reason = "Lý do phải có từ 5 đến 500 ký tự";
+        }
+
+        setBulkAdjustErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
+    const openBulkAdjustModal = () => {
+        if (!canUpdateLeave || selectedLeaveBalanceIds.length === 0) return;
+        setBulkAdjustForm({ amount: 0, reason: "", action: "MANUAL_ADJUSTMENT" });
+        setBulkAdjustErrors({});
+        setBulkPreview(null);
+        setShowBulkAdjustModal(true);
+    };
+
+    const closeBulkAdjustModal = () => {
+        setShowBulkAdjustModal(false);
+        setBulkPreview(null);
+        setBulkAdjustErrors({});
+    };
+
+    const handleBulkAdjustFormChange = (event) => {
+        const { name, value } = event.target;
+        setBulkAdjustForm((prev) => ({
+            ...prev,
+            [name]: name === "amount" ? Number(value) : value
+        }));
+        setBulkPreview(null);
+        if (bulkAdjustErrors[name]) {
+            setBulkAdjustErrors((prev) => ({ ...prev, [name]: "" }));
+        }
+    };
+
+    const buildBulkAdjustPayload = (confirm = false) => ({
+        leaveBalanceIds: selectedLeaveBalanceIds,
+        amount: Math.abs(Number(bulkAdjustForm.amount)),
+        action: bulkAdjustForm.action,
+        reason: bulkAdjustForm.reason.trim(),
+        ...(confirm ? { confirm: true } : { dryRun: true })
+    });
+
+    const handleBulkAdjustPreview = async () => {
+        if (!validateBulkAdjustForm()) return;
+
+        setBulkAdjustLoading(true);
+        try {
+            const response = await leavebalanceAPI.bulkAdjust(buildBulkAdjustPayload());
+            setBulkPreview(response?.data?.details || null);
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Không thể xem trước điều chỉnh");
+        } finally {
+            setBulkAdjustLoading(false);
+        }
+    };
+
+    const handleBulkAdjust = async () => {
+        if (!canUpdateLeave || !bulkPreview || !validateBulkAdjustForm()) return;
+
+        setBulkAdjustLoading(true);
+        try {
+            const response = await leavebalanceAPI.bulkAdjust(buildBulkAdjustPayload(true));
+            toast.success(`Đã điều chỉnh ${response?.data?.details?.modified || 0} nhân viên`);
+            setSelectedLeaveBalanceIds([]);
+            closeBulkAdjustModal();
+            await callAPI();
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Điều chỉnh hàng loạt thất bại");
+        } finally {
+            setBulkAdjustLoading(false);
+        }
+    };
+
+    const toggleLeaveBalanceSelection = (id) => {
+        setSelectedLeaveBalanceIds((selected) => selected.includes(id)
+            ? selected.filter((selectedId) => selectedId !== id)
+            : [...selected, id]);
+    };
+
+    const toggleVisibleLeaveBalanceSelection = () => {
+        setSelectedLeaveBalanceIds((selected) => allVisibleSelected
+            ? selected.filter((id) => !visibleLeaveBalanceIds.includes(id))
+            : [...new Set([...selected, ...visibleLeaveBalanceIds])]);
+    };
+
     const handleAdjustLeaveBalance = async () => {
         if (!canUpdateLeave) {
             toast.error("Bạn không có quyền WRITE_LEAVE_BALANCES để điều chỉnh công phép");
@@ -459,18 +571,12 @@ const LeaveBalance = () => {
 
         const selectedYear = Number(yearFilter || new Date().getFullYear());
         const labels = {
-            accrual: "chạy cộng phép thủ công",
             reset: "reset phép năm",
             carry: "chuyển phép năm",
         };
         if (!window.confirm(`Bạn có chắc muốn ${labels[type]}?`)) return;
 
         try {
-            if (type === "accrual") {
-                const currentMonth = new Date().getMonth();
-                const date = new Date(selectedYear, currentMonth, 1).toISOString();
-                await leavebalanceAPI.triggerManualAccrual({ date });
-            }
             if (type === "reset") await leavebalanceAPI.resetYear({ year: selectedYear });
             if (type === "carry") {
                 await leavebalanceAPI.carryOver({
@@ -482,6 +588,33 @@ const LeaveBalance = () => {
             await callAPI();
         } catch (error) {
             toast.error(error.normalizedMessage || "Thao tác thất bại");
+        }
+    };
+
+    const openAccrualModal = () => {
+        if (!canUpdateLeave) {
+            toast.error("Bạn không có quyền WRITE_LEAVE_BALANCES để vận hành công phép");
+            return;
+        }
+        setShowAccrualModal(true);
+    };
+
+    const runManualAccrual = async () => {
+        const selectedYear = Number(yearFilter || new Date().getFullYear());
+        const currentMonth = new Date().getMonth();
+
+        setAccrualLoading(true);
+        try {
+            await leavebalanceAPI.triggerManualAccrual({
+                date: new Date(selectedYear, currentMonth, 1).toISOString()
+            });
+            toast.success("Chạy cộng phép thành công");
+            setShowAccrualModal(false);
+            await callAPI();
+        } catch (error) {
+            toast.error(error.normalizedMessage || "Chạy cộng phép thất bại");
+        } finally {
+            setAccrualLoading(false);
         }
     };
 
@@ -551,7 +684,7 @@ const LeaveBalance = () => {
 
                     {canUpdateLeave && (
                     <div className="flex flex-wrap gap-2">
-                        <Button variant="secondary" onClick={() => runLeaveBalanceJob("accrual")}>
+                        <Button variant="secondary" onClick={openAccrualModal}>
                             Cộng phép
                         </Button>
                         <Button variant="secondary" onClick={() => runLeaveBalanceJob("carry")}>
@@ -559,6 +692,13 @@ const LeaveBalance = () => {
                         </Button>
                         <Button variant="secondary" onClick={() => runLeaveBalanceJob("reset")}>
                             Reset năm
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            disabled={selectedLeaveBalanceIds.length === 0}
+                            onClick={openBulkAdjustModal}
+                        >
+                            Điều chỉnh đã chọn ({selectedLeaveBalanceIds.length})
                         </Button>
                     </div>
                     )}
@@ -602,6 +742,17 @@ const LeaveBalance = () => {
                             <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
                                 <tr className="text-xs uppercase text-gray-500 font-semibold tracking-wider">
                                     <th className="p-4 w-10">#</th>
+                                    {canUpdateLeave && (
+                                        <th className="p-4 w-10">
+                                            <input
+                                                type="checkbox"
+                                                aria-label="Chọn tất cả nhân viên trên trang"
+                                                checked={allVisibleSelected}
+                                                onChange={toggleVisibleLeaveBalanceSelection}
+                                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                            />
+                                        </th>
+                                    )}
                                     <th className="p-4">Nhân viên</th>
                                     <th className="p-4">Năm</th>
                                     {/* <th className="p-4">Tỷ lệ/tháng</th> */}
@@ -622,6 +773,17 @@ const LeaveBalance = () => {
                                         <td className="p-4 text-sm text-gray-500">
                                             {(currentPage - 1) * pagination.limit + index + 1}
                                         </td>
+                                        {canUpdateLeave && (
+                                            <td className="p-4">
+                                                <input
+                                                    type="checkbox"
+                                                    aria-label={`Chọn ${item.employeeId?.fullName || "nhân viên"}`}
+                                                    checked={selectedLeaveBalanceIds.includes(item._id)}
+                                                    onChange={() => toggleLeaveBalanceSelection(item._id)}
+                                                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                />
+                                            </td>
+                                        )}
 
                                         {/* Employee Info */}
                                         <td className="p-4">
@@ -812,6 +974,93 @@ const LeaveBalance = () => {
                     </div>
                 )}
             </Card>
+            {showAccrualModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+                    <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-lg bg-white shadow-xl">
+                        <div className="flex shrink-0 items-center justify-between border-b bg-green-50 p-4">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-800">Chạy cộng phép thủ công</h3>
+                                <p className="text-xs text-gray-500">Xem trước trước khi thực hiện</p>
+                            </div>
+                            <button type="button" onClick={() => setShowAccrualModal(false)} disabled={accrualLoading} className="rounded-full p-2 hover:bg-white">
+                                <X size={20} className="text-gray-500" />
+                            </button>
+                        </div>
+                        <div className="min-h-0 overflow-y-auto p-5">
+                            <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-gray-700">
+                                <p className="font-semibold text-green-800">Xem trước thay đổi</p>
+                                <dl className="mt-3 space-y-2">
+                                    <div className="flex justify-between gap-4"><dt>Tháng chạy</dt><dd className="font-medium">{new Date(Number(yearFilter || new Date().getFullYear()), new Date().getMonth(), 1).toLocaleDateString("vi-VN", { month: "long", year: "numeric" })}</dd></div>
+                                    <div className="flex justify-between gap-4"><dt>Phạm vi</dt><dd className="text-right font-medium">Toàn bộ nhân viên Active</dd></div>
+                                    <div className="flex justify-between gap-4"><dt>Định mức</dt><dd className="font-medium">Theo cấu hình từng nhân viên</dd></div>
+                                </dl>
+                            </div>
+                            <p className="mt-4 text-sm leading-6 text-gray-600">Hệ thống chỉ cộng khi nhân viên chưa được cộng phép cho tháng này; các bản ghi đã có sẽ được bỏ qua để tránh cộng trùng.</p>
+                        </div>
+                        <div className="flex shrink-0 justify-end gap-3 border-t bg-gray-50 p-4">
+                            <Button variant="secondary" onClick={() => setShowAccrualModal(false)} disabled={accrualLoading}>Hủy</Button>
+                            <Button onClick={runManualAccrual} disabled={accrualLoading} className="flex items-center gap-2 bg-green-600 text-white hover:bg-green-700">
+                                {accrualLoading && <Loader2 size={16} className="animate-spin" />}
+                                Chạy cộng phép
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {showBulkAdjustModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+                    <div className="w-full max-w-md overflow-hidden rounded-lg bg-white shadow-xl">
+                        <div className="flex items-center justify-between border-b bg-blue-50 p-4">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-800">Điều chỉnh công phép hàng loạt</h3>
+                                <p className="text-xs text-gray-500">{selectedLeaveBalanceIds.length} nhân viên đã chọn</p>
+                            </div>
+                            <button onClick={closeBulkAdjustModal} className="rounded-full p-2 hover:bg-white" disabled={bulkAdjustLoading}>
+                                <X size={20} className="text-gray-500" />
+                            </button>
+                        </div>
+                        <div className="space-y-4 p-6">
+                            <div>
+                                <label className="mb-2 block text-sm font-medium text-gray-700">Loại điều chỉnh</label>
+                                <div className="flex gap-4">
+                                    <label className="flex items-center gap-2 text-sm text-green-700">
+                                        <input type="radio" name="action" value="MANUAL_ADJUSTMENT" checked={bulkAdjustForm.action === "MANUAL_ADJUSTMENT"} onChange={handleBulkAdjustFormChange} />
+                                        Cộng thêm
+                                    </label>
+                                    <label className="flex items-center gap-2 text-sm text-red-700">
+                                        <input type="radio" name="action" value="LEAVE_DEDUCTION" checked={bulkAdjustForm.action === "LEAVE_DEDUCTION"} onChange={handleBulkAdjustFormChange} />
+                                        Trừ bớt
+                                    </label>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="mb-2 block text-sm font-medium text-gray-700">Số ngày điều chỉnh</label>
+                                <input type="number" name="amount" min="0.25" max="365" step="0.25" value={bulkAdjustForm.amount} onChange={handleBulkAdjustFormChange} className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                {bulkAdjustErrors.amount && <p className="mt-1 text-xs text-red-500">{bulkAdjustErrors.amount}</p>}
+                            </div>
+                            <div>
+                                <label className="mb-2 block text-sm font-medium text-gray-700">Lý do điều chỉnh</label>
+                                <textarea name="reason" rows="3" maxLength="500" value={bulkAdjustForm.reason} onChange={handleBulkAdjustFormChange} className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                {bulkAdjustErrors.reason && <p className="mt-1 text-xs text-red-500">{bulkAdjustErrors.reason}</p>}
+                            </div>
+                            {bulkPreview && (
+                                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+                                    Sẽ {bulkPreview.amount > 0 ? "cộng" : "trừ"} {Math.abs(bulkPreview.amount)} ngày cho {bulkPreview.totalSelected} nhân viên. Chưa có dữ liệu nào được ghi.
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex justify-end gap-3 border-t bg-gray-50 p-4">
+                            <Button variant="secondary" onClick={closeBulkAdjustModal} disabled={bulkAdjustLoading}>Hủy</Button>
+                            <Button variant="secondary" onClick={handleBulkAdjustPreview} disabled={bulkAdjustLoading}>
+                                {bulkAdjustLoading ? <Loader2 size={16} className="animate-spin" /> : "Xem trước"}
+                            </Button>
+                            <Button onClick={handleBulkAdjust} disabled={bulkAdjustLoading || !bulkPreview} className="bg-blue-600 text-white hover:bg-blue-700">
+                                Áp dụng
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* Edit Modal */}
             {showEditModal && selectedLeaveBalance && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -978,10 +1227,10 @@ const LeaveBalance = () => {
 
             {/* Adjust Modal */}
             {showAdjustModal && selectedLeaveBalance && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full overflow-hidden">
+                <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black bg-opacity-50 p-4 sm:items-center">
+                    <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-lg bg-white shadow-xl">
                         {/* Header */}
-                        <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-green-50 to-blue-50">
+                        <div className="flex shrink-0 items-center justify-between border-b bg-gradient-to-r from-green-50 to-blue-50 p-4">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-green-100 rounded-lg">
                                     <Plus className="text-green-600" size={20} />
@@ -1002,7 +1251,7 @@ const LeaveBalance = () => {
                         </div>
 
                         {/* Body */}
-                        <div className="p-6 space-y-4">
+                        <div className="min-h-0 space-y-4 overflow-y-auto p-5">
                             {/* Current Info */}
                             <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                                 <h4 className="font-semibold text-gray-700 text-sm">Thông tin hiện tại:</h4>
@@ -1194,7 +1443,7 @@ const LeaveBalance = () => {
                         </div>
 
                         {/* Footer */}
-                        <div className="flex justify-end gap-3 p-4 border-t bg-gray-50">
+                        <div className="flex shrink-0 justify-end gap-3 border-t bg-gray-50 p-4">
                             <Button
                                 variant="secondary"
                                 onClick={closeAdjustModal}

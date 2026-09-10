@@ -5,6 +5,7 @@ import {
   Lock,
   MoreHorizontal,
   RefreshCcw,
+  Trash2,
   Unlock,
   Upload,
   UserPlus,
@@ -22,6 +23,7 @@ const AttendanceAdminHeader = ({
   onNextPeriod,
   onImport,
   onOpenBulkAttendance,
+  onOpenBulkDelete,
   onExport,
   onSyncData,
   onSyncHoliday,
@@ -123,12 +125,21 @@ const AttendanceAdminHeader = ({
       <div className="flex flex-col gap-2 xl:flex-row xl:flex-wrap xl:items-center xl:justify-end">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
           {canWriteAttendance && (
-            <Button
-              className="h-10 gap-2 rounded-lg bg-blue-600 px-4 text-sm text-white hover:bg-blue-700"
-              onClick={onOpenBulkAttendance}
-            >
-              <UserPlus size={16} /> Tạo công hàng loạt
-            </Button>
+            <>
+              <Button
+                className="h-10 gap-2 rounded-lg bg-blue-600 px-4 text-sm text-white hover:bg-blue-700"
+                onClick={onOpenBulkAttendance}
+              >
+                <UserPlus size={16} /> Tạo công hàng loạt
+              </Button>
+              <Button
+                variant="secondary"
+                className="h-10 gap-2 rounded-lg border-red-200 px-4 text-sm text-red-600 hover:bg-red-50"
+                onClick={onOpenBulkDelete}
+              >
+                <Trash2 size={16} /> Xóa công hàng loạt
+              </Button>
+            </>
           )}
 
           <Button
