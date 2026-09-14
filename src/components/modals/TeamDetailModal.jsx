@@ -235,7 +235,6 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                 teamId,
                 month: selectedMonth,
                 year: selectedYear,
-                minPresent: memBer,
                 customRotations: saturdays.map((saturday) => ({
                     date: saturday.key,
                     employeesOff: manualRotationSelections[saturday.key] || [],
@@ -499,6 +498,8 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
 
         // Lọc theo search term
         return allTeamMembers.filter(person => {
+            if (person.status === "Resigned") return false;
+
             const matchesSearch = matchesSearchText(
                 [person.fullName, person.employeeCode],
                 searchTerm,
