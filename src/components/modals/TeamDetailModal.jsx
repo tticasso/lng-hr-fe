@@ -67,6 +67,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
     const [rotationData, setRotationData] = useState([]);
     const [showAddToRotationModal, setShowAddToRotationModal] = useState(false);
     const [showManualRotationModal, setShowManualRotationModal] = useState(false);
+    const [showManualRotationPreview, setShowManualRotationPreview] = useState(false);
     const [selectedRotationId, setSelectedRotationId] = useState(null);
     const [selectedRotationEmployees, setSelectedRotationEmployees] = useState([]);
     const [manualRotationSelections, setManualRotationSelections] = useState({});
@@ -207,6 +208,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
 
     const closeManualRotationModal = () => {
         setShowManualRotationModal(false);
+        setShowManualRotationPreview(false);
         setManualRotationSelections({});
         setSearchTerm("");
     };
@@ -225,10 +227,6 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
     const handleSubmitManualRotations = async () => {
         const saturdays = getSaturdaysForSelectedMonth();
         if (saturdays.length === 0) return;
-
-        if (!window.confirm(`Ghi đè lịch nghỉ luân phiên tháng ${selectedMonth}/${selectedYear} bằng cấu hình thủ công?`)) {
-            return;
-        }
 
         try {
             const payload = {
@@ -477,7 +475,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
     };
 
     // Lọc nhân viên có thể thêm vào rotation (tất cả thành viên trong team + leader)
-    const getAvailableEmployeesForRotation = () => {
+    const getRotationMembers = () => {
         if (!teamDetail) return [];
 
         // Tạo danh sách bao gồm cả members và leader
@@ -496,10 +494,11 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
             }
         }
 
-        // Lọc theo search term
-        return allTeamMembers.filter(person => {
-            if (person.status === "Resigned") return false;
+        return allTeamMembers.filter((person) => person.status !== "Resigned");
+    };
 
+    const getAvailableEmployeesForRotation = () => {
+        return getRotationMembers().filter((person) => {
             const matchesSearch = matchesSearchText(
                 [person.fullName, person.employeeCode],
                 searchTerm,
@@ -1106,12 +1105,88 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={handleSubmitManualRotations}
+                                    onClick={() => setShowManualRotationPreview(true)}
                                     className="rounded-lg bg-orange-600 px-4 py-2 font-medium text-white hover:bg-orange-700"
                                 >
                                     Lưu lịch thủ công
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showManualRotationPreview && (
+                <div
+                    className="fixed inset-0 z-[80] flex items-center justify-center bg-black bg-opacity-50 p-4"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="manual-rotation-preview-title"
+                >
+                    <div className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-white shadow-xl">
+                        <div className="flex items-center justify-between border-b bg-gradient-to-r from-orange-50 to-yellow-50 p-4">
+                            <div>
+                                <h3 id="manual-rotation-preview-title" className="text-lg font-bold text-gray-800">
+                                    Xem trước lịch nghỉ thủ công
+                                </h3>
+                                <p className="text-xs text-gray-500">
+                                    {formatMonthYear(selectedMonth, selectedYear)}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowManualRotationPreview(false)}
+                                className="rounded-full p-2 transition-colors hover:bg-white"
+                                aria-label="Quay lại chỉnh sửa"
+                            >
+                                <X size={20} className="text-gray-500" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 space-y-3 overflow-y-auto p-4">
+                            {getSaturdaysForSelectedMonth().map((saturday, index) => {
+                                const selectedIds = manualRotationSelections[saturday.key] || [];
+                                const selectedMembers = getRotationMembers().filter((member) => selectedIds.includes(member._id));
+
+                                return (
+                                    <div key={saturday.key} className="rounded-lg border border-gray-200 p-3">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <p className="text-sm font-semibold text-gray-800">
+                                                Tuần {index + 1} - {saturday.label}
+                                            </p>
+                                            <span className="text-xs text-gray-500">{selectedIds.length} người nghỉ</span>
+                                        </div>
+                                        {selectedMembers.length > 0 ? (
+                                            <div className="mt-2 flex flex-wrap gap-2">
+                                                {selectedMembers.map((member) => (
+                                                    <span key={member._id} className="rounded-full bg-orange-50 px-2.5 py-1 text-xs text-orange-800">
+                                                        {member.fullName} · {formatEmployeeCode(member.employeeCode)}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="mt-2 text-xs text-gray-500">Không có ai nghỉ.</p>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <div className="flex justify-end gap-3 border-t bg-gray-50 p-4">
+                            <button
+                                type="button"
+                                onClick={() => setShowManualRotationPreview(false)}
+                                className="rounded-lg border border-gray-300 bg-white px-4 py-2 font-medium text-gray-700 hover:bg-gray-50"
+                            >
+                                Quay lại chỉnh sửa
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSubmitManualRotations}
+                                className="rounded-lg bg-orange-600 px-4 py-2 font-medium text-white hover:bg-orange-700"
+                            >
+                                Xác nhận lưu
+                            </button>
                         </div>
                     </div>
                 </div>
