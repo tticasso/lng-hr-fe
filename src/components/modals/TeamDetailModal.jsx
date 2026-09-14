@@ -475,7 +475,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
     };
 
     // Lọc nhân viên có thể thêm vào rotation (tất cả thành viên trong team + leader)
-    const getRotationMembers = () => {
+    const getRotationMembers = (dateKey) => {
         if (!teamDetail) return [];
 
         // Tạo danh sách bao gồm cả members và leader
@@ -494,11 +494,18 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
             }
         }
 
-        return allTeamMembers.filter((person) => person.status !== "Resigned");
+        return allTeamMembers.filter((person) => {
+            if (person.status === "Resigned") return false;
+            if (!dateKey) return true;
+
+            const startDate = person.startDate?.slice(0, 10);
+            const endDate = person.endDate?.slice(0, 10);
+            return (!startDate || startDate <= dateKey) && (!endDate || endDate >= dateKey);
+        });
     };
 
-    const getAvailableEmployeesForRotation = () => {
-        return getRotationMembers().filter((person) => {
+    const getAvailableEmployeesForRotation = (dateKey) => {
+        return getRotationMembers(dateKey).filter((person) => {
             const matchesSearch = matchesSearchText(
                 [person.fullName, person.employeeCode],
                 searchTerm,
@@ -1057,7 +1064,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                                         </div>
 
                                         <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
-                                            {getAvailableEmployeesForRotation().map((member) => {
+                                            {getAvailableEmployeesForRotation(saturday.key).map((member) => {
                                                 const checked = selectedIds.includes(member._id);
                                                 return (
                                                     <label
@@ -1146,7 +1153,7 @@ const TeamDetailModal = ({ isOpen, onClose, teamId }) => {
                         <div className="flex-1 space-y-3 overflow-y-auto p-4">
                             {getSaturdaysForSelectedMonth().map((saturday, index) => {
                                 const selectedIds = manualRotationSelections[saturday.key] || [];
-                                const selectedMembers = getRotationMembers().filter((member) => selectedIds.includes(member._id));
+                                const selectedMembers = getRotationMembers(saturday.key).filter((member) => selectedIds.includes(member._id));
 
                                 return (
                                     <div key={saturday.key} className="rounded-lg border border-gray-200 p-3">
